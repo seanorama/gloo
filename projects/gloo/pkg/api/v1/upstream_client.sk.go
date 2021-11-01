@@ -4,6 +4,7 @@ package v1
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/solo-io/solo-kit/pkg/api/v1/clients"
 	"github.com/solo-io/solo-kit/pkg/api/v1/clients/factory"
@@ -41,6 +42,8 @@ func NewUpstreamClientWithToken(ctx context.Context, rcFactory factory.ResourceC
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "creating base Upstream resource client")
+	} else {
+		return nil, errors.Wrapf(fmt.Errorf("rcFactory error"), "fake error creating upstream resource client")
 	}
 	return NewUpstreamClientWithBase(rc), nil
 }
