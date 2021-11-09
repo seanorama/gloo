@@ -123,7 +123,7 @@ message VirtualService {
     VirtualHost virtual_host = 1;
 
     // If provided, the Gateway will serve TLS/SSL traffic for this set of routes
-    gloo.solo.io.SslConfig ssl_config = 2;
+    gloo.solo.io.SslConfig ssl_config = 2 [deprecated = true];
 
     // Display only, optional descriptive name.
     // Unlike metadata.name, DisplayName can be any string

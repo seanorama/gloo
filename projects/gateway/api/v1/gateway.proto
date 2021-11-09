@@ -15,6 +15,7 @@ import "github.com/solo-io/solo-kit/api/v1/solo-kit.proto";
 
 import "github.com/solo-io/gloo/projects/gloo/api/v1/proxy.proto";
 import "github.com/solo-io/gloo/projects/gloo/api/v1/options.proto";
+import "github.com/solo-io/gloo/projects/gloo/api/v1/ssl.proto";
 
 /*
 A Gateway describes a single Listener (bind address:port)
@@ -55,6 +56,7 @@ message Gateway {
     oneof GatewayType {
         HttpGateway http_gateway = 9;
         TcpGateway tcp_gateway = 10;
+        MatchedHttpGateways matched_http_gateways = 11;
     }
 
     /*
@@ -117,6 +119,16 @@ message HttpGateway {
     gloo.solo.io.HttpListenerOptions options = 8;
 }
 
+message MatchedHttpGateway {
+    Matcher matcher = 1;
+
+    HttpGateway gateway = 2;
+}
+
+message MatchedHttpGateways {
+    repeated MatchedHttpGateway gateways = 1;
+}
+
 message TcpGateway {
     // TCP hosts that the gateway can route to
     repeated gloo.solo.io.TcpHost tcp_hosts = 1;
@@ -166,4 +178,11 @@ message VirtualServiceSelectorExpressions {
     // Expressions allow for more flexible virtual service label matching, such as equality-based requirements, set-based requirements, or a combination of both.
     // https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#equality-based-requirement
     repeated Expression expressions = 3;
+}
+
+message Matcher {
+    // If provided, the Gateway will serve TLS/SSL traffic for this set of routes
+    gloo.solo.io.SslConfig ssl_config = 1;
+
+    repeated string client_ips = 2;
 }

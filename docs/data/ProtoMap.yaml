@@ -389,6 +389,15 @@ apis:
   gateway.solo.io.HttpGateway:
     relativepath: reference/api/github.com/solo-io/gloo/projects/gateway/api/v1/gateway.proto.sk/#HttpGateway
     package: gateway.solo.io
+  gateway.solo.io.MatchedHttpGateway:
+    relativepath: reference/api/github.com/solo-io/gloo/projects/gateway/api/v1/gateway.proto.sk/#MatchedHttpGateway
+    package: gateway.solo.io
+  gateway.solo.io.MatchedHttpGateways:
+    relativepath: reference/api/github.com/solo-io/gloo/projects/gateway/api/v1/gateway.proto.sk/#MatchedHttpGateways
+    package: gateway.solo.io
+  gateway.solo.io.Matcher:
+    relativepath: reference/api/github.com/solo-io/gloo/projects/gateway/api/v1/gateway.proto.sk/#Matcher
+    package: gateway.solo.io
   gateway.solo.io.Route:
     relativepath: reference/api/github.com/solo-io/gloo/projects/gateway/api/v1/virtual_service.proto.sk/#Route
     package: gateway.solo.io
