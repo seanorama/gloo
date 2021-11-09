@@ -79,6 +79,8 @@ message Listener {
 
         // contains configuration options for Gloo's TCP-level features
         TcpListener tcp_listener = 5;
+
+        MatchedHttpListeners matched_http_listeners = 11;
     }
 
     // SSL Config is optional for the listener. If provided, the listener will serve TLS for connections on this port.
@@ -163,6 +165,15 @@ message HttpListener {
     HttpListenerOptions options = 2;
     // prefix for addressing envoy stats for the http connection manager
     string stat_prefix = 3;
+}
+
+message MatchedHttpListener {
+    Matcher matcher = 1;
+    HttpListener http_listener = 2;
+}
+
+message MatchedHttpListeners {
+    repeated MatchedHttpListener listeners = 1;
 }
 
 /*
@@ -415,4 +426,11 @@ message DirectResponseAction {
     //   Note: Headers can be specified using the Header Modification feature in the enclosing
     //   Route, Virtual Host, or Listener options.
     string body = 2;
+}
+
+message Matcher {
+    // If provided, the Gateway will serve TLS/SSL traffic for this set of routes
+    gloo.solo.io.SslConfig ssl_config = 1;
+
+    repeated string client_ips = 2;
 }
