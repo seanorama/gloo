@@ -416,6 +416,16 @@ func (m *MatchedHttpListener) Equal(that interface{}) bool {
 		return false
 	}
 
+	if h, ok := interface{}(m.GetMatcher()).(equality.Equalizer); ok {
+		if !h.Equal(target.GetMatcher()) {
+			return false
+		}
+	} else {
+		if !proto.Equal(m.GetMatcher(), target.GetMatcher()) {
+			return false
+		}
+	}
+
 	if h, ok := interface{}(m.GetHttpListener()).(equality.Equalizer); ok {
 		if !h.Equal(target.GetHttpListener()) {
 			return false
@@ -1197,6 +1207,51 @@ func (m *DirectResponseAction) Equal(that interface{}) bool {
 
 	if strings.Compare(m.GetBody(), target.GetBody()) != 0 {
 		return false
+	}
+
+	return true
+}
+
+// Equal function
+func (m *Matcher) Equal(that interface{}) bool {
+	if that == nil {
+		return m == nil
+	}
+
+	target, ok := that.(*Matcher)
+	if !ok {
+		that2, ok := that.(Matcher)
+		if ok {
+			target = &that2
+		} else {
+			return false
+		}
+	}
+	if target == nil {
+		return m == nil
+	} else if m == nil {
+		return false
+	}
+
+	if h, ok := interface{}(m.GetSslConfig()).(equality.Equalizer); ok {
+		if !h.Equal(target.GetSslConfig()) {
+			return false
+		}
+	} else {
+		if !proto.Equal(m.GetSslConfig(), target.GetSslConfig()) {
+			return false
+		}
+	}
+
+	if len(m.GetClientIps()) != len(target.GetClientIps()) {
+		return false
+	}
+	for idx, v := range m.GetClientIps() {
+
+		if strings.Compare(v, target.GetClientIps()[idx]) != 0 {
+			return false
+		}
+
 	}
 
 	return true

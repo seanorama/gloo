@@ -473,6 +473,26 @@ func (m *MatchedHttpListener) Hash(hasher hash.Hash64) (uint64, error) {
 		return 0, err
 	}
 
+	if h, ok := interface{}(m.GetMatcher()).(safe_hasher.SafeHasher); ok {
+		if _, err = hasher.Write([]byte("Matcher")); err != nil {
+			return 0, err
+		}
+		if _, err = h.Hash(hasher); err != nil {
+			return 0, err
+		}
+	} else {
+		if fieldValue, err := hashstructure.Hash(m.GetMatcher(), nil); err != nil {
+			return 0, err
+		} else {
+			if _, err = hasher.Write([]byte("Matcher")); err != nil {
+				return 0, err
+			}
+			if err := binary.Write(hasher, binary.LittleEndian, fieldValue); err != nil {
+				return 0, err
+			}
+		}
+	}
+
 	if h, ok := interface{}(m.GetHttpListener()).(safe_hasher.SafeHasher); ok {
 		if _, err = hasher.Write([]byte("HttpListener")); err != nil {
 			return 0, err
@@ -1291,6 +1311,50 @@ func (m *DirectResponseAction) Hash(hasher hash.Hash64) (uint64, error) {
 
 	if _, err = hasher.Write([]byte(m.GetBody())); err != nil {
 		return 0, err
+	}
+
+	return hasher.Sum64(), nil
+}
+
+// Hash function
+func (m *Matcher) Hash(hasher hash.Hash64) (uint64, error) {
+	if m == nil {
+		return 0, nil
+	}
+	if hasher == nil {
+		hasher = fnv.New64()
+	}
+	var err error
+	if _, err = hasher.Write([]byte("gloo.solo.io.github.com/solo-io/gloo/projects/gloo/pkg/api/v1.Matcher")); err != nil {
+		return 0, err
+	}
+
+	if h, ok := interface{}(m.GetSslConfig()).(safe_hasher.SafeHasher); ok {
+		if _, err = hasher.Write([]byte("SslConfig")); err != nil {
+			return 0, err
+		}
+		if _, err = h.Hash(hasher); err != nil {
+			return 0, err
+		}
+	} else {
+		if fieldValue, err := hashstructure.Hash(m.GetSslConfig(), nil); err != nil {
+			return 0, err
+		} else {
+			if _, err = hasher.Write([]byte("SslConfig")); err != nil {
+				return 0, err
+			}
+			if err := binary.Write(hasher, binary.LittleEndian, fieldValue); err != nil {
+				return 0, err
+			}
+		}
+	}
+
+	for _, v := range m.GetClientIps() {
+
+		if _, err = hasher.Write([]byte(v)); err != nil {
+			return 0, err
+		}
+
 	}
 
 	return hasher.Sum64(), nil

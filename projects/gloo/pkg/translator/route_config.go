@@ -68,6 +68,31 @@ func (t *translatorInstance) computeRouteConfig(
 	}
 }
 
+func (t *translatorInstance) computeRouteConfigs(
+	params plugins.Params,
+	proxy *v1.Proxy,
+	listener *v1.Listener,
+	listenerReport *validationapi.ListenerReport,
+) map[*v1.Matcher]*envoy_config_route_v3.RouteConfiguration {
+	if listener.GetHttpListener() != nil {
+		return map[*v1.Matcher]*envoy_config_route_v3.RouteConfiguration{
+			nil: t.computeRouteConfig(params, proxy, listener, listener.GetName() + "-routes", listenerReport),
+		}
+	}
+	if listener.GetMatchedHttpListeners() == nil {
+		return nil
+	}
+
+	var routeConfgs map[*v1.Matcher]*envoy_config_route_v3.RouteConfiguration
+	httpListenerReport := listenerReport.GetHttpListenerReport()
+	if httpListenerReport == nil {
+		contextutils.LoggerFrom(params.Ctx).DPanic("internal error: listener report was not http type")
+	}
+
+	// Iterate through listeners to create routeconfigs
+	return routeConfgs
+}
+
 func (t *translatorInstance) computeVirtualHosts(
 	params plugins.Params,
 	proxy *v1.Proxy,

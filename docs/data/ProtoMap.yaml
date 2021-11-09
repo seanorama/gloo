@@ -536,6 +536,9 @@ apis:
   gloo.solo.io.MatchedHttpListeners:
     relativepath: reference/api/github.com/solo-io/gloo/projects/gloo/api/v1/proxy.proto.sk/#MatchedHttpListeners
     package: gloo.solo.io
+  gloo.solo.io.Matcher:
+    relativepath: reference/api/github.com/solo-io/gloo/projects/gloo/api/v1/proxy.proto.sk/#Matcher
+    package: gloo.solo.io
   gloo.solo.io.ModifiedResources:
     relativepath: reference/api/github.com/solo-io/gloo/projects/gloo/api/grpc/validation/gloo_validation.proto.sk/#ModifiedResources
     package: gloo.solo.io

@@ -31,6 +31,7 @@ weight: 5
 - [RedirectAction](#redirectaction)
 - [RedirectResponseCode](#redirectresponsecode)
 - [DirectResponseAction](#directresponseaction)
+- [Matcher](#matcher)
   
 
 
@@ -212,13 +213,15 @@ Some traffic policies can be configured to work both on the listener and virtual
 
 
 ```yaml
+"matcher": .gloo.solo.io.Matcher
 "httpListener": .gloo.solo.io.HttpListener
 
 ```
 
 | Field | Type | Description |
 | ----- | ---- | ----------- | 
-| `httpListener` | [.gloo.solo.io.HttpListener](../proxy.proto.sk/#httplistener) | gateway.solo.io.Matcher matcher = 1;. |
+| `matcher` | [.gloo.solo.io.Matcher](../proxy.proto.sk/#matcher) |  |
+| `httpListener` | [.gloo.solo.io.HttpListener](../proxy.proto.sk/#httplistener) |  |
 
 
 
@@ -520,6 +523,25 @@ DirectResponseAction is copied directly from https://github.com/envoyproxy/envoy
 | ----- | ---- | ----------- | 
 | `status` | `int` | Specifies the HTTP response status to be returned. |
 | `body` | `string` | Specifies the content of the response body. If this setting is omitted, no body is included in the generated response. Note: Headers can be specified using the Header Modification feature in the enclosing Route, Virtual Host, or Listener options. |
+
+
+
+
+---
+### Matcher
+
+
+
+```yaml
+"sslConfig": .gloo.solo.io.SslConfig
+"clientIps": []string
+
+```
+
+| Field | Type | Description |
+| ----- | ---- | ----------- | 
+| `sslConfig` | [.gloo.solo.io.SslConfig](../ssl.proto.sk/#sslconfig) | If provided, the Gateway will serve TLS/SSL traffic for this set of routes. |
+| `clientIps` | `[]string` |  |
 
 
 
