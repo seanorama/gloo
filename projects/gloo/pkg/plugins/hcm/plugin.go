@@ -44,6 +44,7 @@ func (p *Plugin) RegisterHcmPlugins(allPlugins []plugins.Plugin) {
 // 1. apply the core HCM settings from the HCM plugin to the listener
 // 2. call each of the HCM plugins to make sure that they have a chance to apply their modifications to the listener
 func (p *Plugin) ProcessListener(params plugins.Params, in *v1.Listener, out *envoy_config_listener_v3.Listener) error {
+	// TODO: account for Listener_MatchedHttpListener
 	hl, ok := in.GetListenerType().(*v1.Listener_HttpListener)
 	if !ok {
 		return nil

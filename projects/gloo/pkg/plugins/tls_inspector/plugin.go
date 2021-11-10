@@ -38,7 +38,7 @@ func (p *plugin) ProcessListener(params plugins.Params, in *v1.Listener, out *en
 	}
 
 	// automatically add tls inspector when ssl is enabled
-	if in.GetSslConfigurations() != nil {
+	if in.GetSslConfigurations() != nil { // TODO: is this behavior different for Listener_MatchedHttpListener?
 		out.ListenerFilters = append(out.GetListenerFilters(), tlsInspector)
 	} else {
 		// check if ssl config is set on tcp host

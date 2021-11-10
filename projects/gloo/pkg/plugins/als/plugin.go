@@ -43,6 +43,7 @@ func (p *Plugin) ProcessListener(params plugins.Params, in *v1.Listener, out *en
 		return nil
 	}
 	switch listenerType := in.GetListenerType().(type) {
+	// TODO: support Listener_MatchedHttpListener
 	case *v1.Listener_HttpListener:
 		if listenerType.HttpListener == nil {
 			return nil
