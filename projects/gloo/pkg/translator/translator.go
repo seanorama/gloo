@@ -237,9 +237,9 @@ func (t *translatorInstance) computeListenerResources(
 	//rdsName := routeConfigName(listener) // not relevant, replacement will be called in computeRouteConfigs
 
 	// Calculate routes before listeners, so that HttpFilters is called after ProcessVirtualHost\ProcessRoute
-	routeConfig := t.computeRouteConfigs(params, proxy, listener, listenerReport)
+	routeConfigs := t.computeRouteConfigs(params, proxy, listener, listenerReport)
 
-	envoyListener := t.computeListener(params, proxy, listener, listenerReport)
+	envoyListeners := t.computeListeners(params, proxy, listener, listenerReport, routeConfigs)
 	if envoyListener == nil {
 		return nil
 	}

@@ -2,6 +2,7 @@ package translator
 
 import (
 	"fmt"
+	envoy_config_route_v3 "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 	"reflect"
 	"sort"
 
@@ -87,6 +88,73 @@ func (t *translatorInstance) computeListener(
 	}
 
 	return out
+}
+
+func (t *translatorInstance) computeListeners(
+	params plugins.Params,
+	proxy *v1.Proxy,
+	listener *v1.Listener,
+	listenerReport *validationapi.ListenerReport,
+	routeConfigs map[*v1.Matcher]*envoy_config_route_v3.RouteConfiguration,
+) map[*v1.Matcher]*envoy_config_listener_v3.Listener {
+	params.Ctx = contextutils.WithLogger(params.Ctx, "compute_listener."+listener.GetName())
+	validateListenerPorts(proxy, listenerReport)
+	var filterChains []*envoy_config_listener_v3.FilterChain
+	switch typedListener := listener.GetListenerType().(type) {
+	case *v1.Listener_HttpListener, *v1.Listener_TcpListener:
+		return map[*v1.Matcher]*envoy_config_listener_v3.Listener{
+			nil: t.computeListener(params, proxy, listener, listenerReport),
+		}
+	case *v1.Listener_MatchedHttpListeners:
+
+		out := map[*v1.Matcher]*envoy_config_listener_v3.Listener{}
+
+		for _, matchedListener := range typedListener.MatchedHttpListeners.GetListeners() {
+			// run the http filter chain plugins and listener plugins
+			listenerFilters := t.computeMatchedListenerFilters(params, listener, listenerReport)
+			if len(listenerFilters) == 0 {
+				return nil
+			}
+			filterChains = t.computeFilterChainsFromMatcher(params.Snapshot, listener, listenerFilters, listenerReport)
+
+			CheckForDuplicateFilterChainMatches(filterChains, listenerReport)
+
+			outListener := &envoy_config_listener_v3.Listener{
+				Name: fmt.Sprintf("%s-%s",listener.GetName(), matchedListener.GetMatcher().String()),
+				Address: &envoy_config_core_v3.Address{
+					Address: &envoy_config_core_v3.Address_SocketAddress{
+						SocketAddress: &envoy_config_core_v3.SocketAddress{
+							Protocol: envoy_config_core_v3.SocketAddress_TCP,
+							Address:  listener.GetBindAddress(),
+							PortSpecifier: &envoy_config_core_v3.SocketAddress_PortValue{
+								PortValue: listener.GetBindPort(),
+							},
+							Ipv4Compat: true,
+						},
+					},
+				},
+				FilterChains: filterChains,
+			}
+
+			// run the Listener Plugins
+			for _, plug := range t.plugins {
+				listenerPlugin, ok := plug.(plugins.ListenerPlugin)
+				if !ok {
+					continue
+				}
+				if err := listenerPlugin.ProcessListener(params, listener, outListener); err != nil {
+					validation.AppendListenerError(listenerReport,
+						validationapi.ListenerReport_Error_ProcessingError,
+						err.Error())
+				}
+			}
+
+			out[matchedListener.GetMatcher()] = outListener
+		}
+
+		return out
+	}
+	return nil
 }
 
 func (t *translatorInstance) computeListenerFilters(params plugins.Params, listener *v1.Listener, listenerReport *validationapi.ListenerReport) []*envoy_config_listener_v3.Filter {
