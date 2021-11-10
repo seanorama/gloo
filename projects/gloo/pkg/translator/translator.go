@@ -177,10 +177,10 @@ ClusterLoop:
 		logger.Infof("computing envoy resources for listener: %v", listener.GetName())
 
 		envoyResources := t.computeListenerResources(params, proxy, listener, listenerReport)
-		if envoyResources != nil {
-			listeners = append(listeners, envoyResources.listener)
-			if envoyResources.routeConfig != nil {
-				routeConfigs = append(routeConfigs, envoyResources.routeConfig)
+		for _, er := range envoyResources {
+			listeners = append(listeners, er.listener)
+			if rc := er.routeConfig; rc != nil {
+				routeConfigs = append(routeConfigs, rc)
 			}
 		}
 	}
@@ -229,7 +229,7 @@ func (t *translatorInstance) computeListenerResources(
 	proxy *v1.Proxy,
 	listener *v1.Listener,
 	listenerReport *validationapi.ListenerReport,
-) *listenerResources {
+) []*listenerResources {
 	ctx, span := trace.StartSpan(params.Ctx, "gloo.translator.Translate")
 	params.Ctx = ctx
 	defer span.End()
@@ -239,15 +239,19 @@ func (t *translatorInstance) computeListenerResources(
 	// Calculate routes before listeners, so that HttpFilters is called after ProcessVirtualHost\ProcessRoute
 	routeConfigs := t.computeRouteConfigs(params, proxy, listener, listenerReport)
 
-	envoyListeners := t.computeListeners(params, proxy, listener, listenerReport, routeConfigs)
-	if envoyListener == nil {
+	envoyListeners := t.computeListeners(params, proxy, listener, listenerReport)
+	if len(envoyListeners) == 0 {
 		return nil
 	}
 
-	return &listenerResources{
-		listener:    envoyListener,
-		routeConfig: routeConfig,
+	lrs := []*listenerResources{}
+	for matcher, listener := range envoyListeners {
+		lrs = append(lrs, &listenerResources{
+			listener: listener,
+			routeConfig: routeConfigs[matcher],
+		})
 	}
+	return lrs
 }
 
 func (t *translatorInstance) generateXDSSnapshot(

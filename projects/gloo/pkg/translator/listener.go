@@ -2,7 +2,6 @@ package translator
 
 import (
 	"fmt"
-	envoy_config_route_v3 "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 	"reflect"
 	"sort"
 
@@ -95,11 +94,10 @@ func (t *translatorInstance) computeListeners(
 	proxy *v1.Proxy,
 	listener *v1.Listener,
 	listenerReport *validationapi.ListenerReport,
-	routeConfigs map[*v1.Matcher]*envoy_config_route_v3.RouteConfiguration,
 ) map[*v1.Matcher]*envoy_config_listener_v3.Listener {
 	params.Ctx = contextutils.WithLogger(params.Ctx, "compute_listener."+listener.GetName())
 	validateListenerPorts(proxy, listenerReport)
-	var filterChains []*envoy_config_listener_v3.FilterChain
+	var filterChain *envoy_config_listener_v3.FilterChain
 	switch typedListener := listener.GetListenerType().(type) {
 	case *v1.Listener_HttpListener, *v1.Listener_TcpListener:
 		return map[*v1.Matcher]*envoy_config_listener_v3.Listener{
@@ -111,13 +109,11 @@ func (t *translatorInstance) computeListeners(
 
 		for _, matchedListener := range typedListener.MatchedHttpListeners.GetListeners() {
 			// run the http filter chain plugins and listener plugins
-			listenerFilters := t.computeMatchedListenerFilters(params, listener, listenerReport)
+			listenerFilters := t.computeMatchedListenerFilters(params, listener, listenerReport, matchedListener.GetMatcher())
 			if len(listenerFilters) == 0 {
 				return nil
 			}
-			filterChains = t.computeFilterChainsFromMatcher(params.Snapshot, listener, listenerFilters, listenerReport)
-
-			CheckForDuplicateFilterChainMatches(filterChains, listenerReport)
+			filterChain = t.computeFilterChainsFromMatcher(params.Snapshot, listenerFilters, listenerReport, matchedListener.GetMatcher())
 
 			outListener := &envoy_config_listener_v3.Listener{
 				Name: fmt.Sprintf("%s-%s",listener.GetName(), matchedListener.GetMatcher().String()),
@@ -133,7 +129,7 @@ func (t *translatorInstance) computeListeners(
 						},
 					},
 				},
-				FilterChains: filterChains,
+				FilterChains: []*envoy_config_listener_v3.FilterChain{filterChain},
 			}
 
 			// run the Listener Plugins
@@ -208,6 +204,67 @@ func (t *translatorInstance) computeListenerFilters(params plugins.Params, liste
 	return sortListenerFilters(listenerFilters)
 }
 
+func (t *translatorInstance) computeMatchedListenerFilters(params plugins.Params, listener *v1.Listener, listenerReport *validationapi.ListenerReport, matcher *v1.Matcher) []*envoy_config_listener_v3.Filter {
+	var listenerFilters []plugins.StagedListenerFilter
+	// run the Listener Filter Plugins
+	for _, plug := range t.plugins {
+		filterPlugin, ok := plug.(plugins.ListenerFilterPlugin)
+		if !ok {
+			continue
+		}
+		stagedFilters, err := filterPlugin.ProcessListenerFilter(params, listener)
+		if err != nil {
+			validation.AppendListenerError(listenerReport,
+				validationapi.ListenerReport_Error_ProcessingError,
+				err.Error())
+		}
+		for _, listenerFilter := range stagedFilters {
+			listenerFilters = append(listenerFilters, listenerFilter)
+		}
+	}
+
+	var matchedHttpListener *v1.MatchedHttpListener
+	// return if listener type != matchedHttp || no virtual hosts
+	matchedHttpListeners, ok := listener.GetListenerType().(*v1.Listener_MatchedHttpListeners)
+	if !ok {
+		return nil
+	}
+	for _, mhl := range matchedHttpListeners.MatchedHttpListeners.GetListeners() {
+		if mhl.GetMatcher() == matcher {
+			matchedHttpListener = mhl
+			break
+		}
+	}
+	if len(matchedHttpListener.GetHttpListener().GetVirtualHosts()) == 0 {
+		return nil
+	}
+
+	httpListenerReport := listenerReport.GetHttpListenerReport()
+	if httpListenerReport == nil {
+		contextutils.LoggerFrom(params.Ctx).DPanic("internal error: listener report was not http type")
+	}
+
+	// Check that we don't refer to nonexistent auth config
+	for i, vHost := range matchedHttpListener.GetHttpListener().GetVirtualHosts() {
+		acRef := vHost.GetOptions().GetExtauth().GetConfigRef()
+		if acRef != nil {
+			if _, err := params.Snapshot.AuthConfigs.Find(acRef.GetNamespace(), acRef.GetName()); err != nil {
+				validation.AppendVirtualHostError(httpListenerReport.GetVirtualHostReports()[i], validationapi.VirtualHostReport_Error_ProcessingError, "auth config not found: "+acRef.String())
+			}
+		}
+	}
+
+	// add the http connection manager filter after all the InAuth Listener Filters
+	rdsName := routeConfigName(listener) + matchedHttpListener.GetMatcher().String()
+	httpConnMgr := t.computeHttpConnectionManagerFilter(params, matchedHttpListener.GetHttpListener(), rdsName, httpListenerReport)
+	listenerFilters = append(listenerFilters, plugins.StagedListenerFilter{
+		ListenerFilter: httpConnMgr,
+		Stage:          plugins.AfterStage(plugins.AuthZStage),
+	})
+
+	return sortListenerFilters(listenerFilters)
+}
+
 // create a duplicate of the listener filter chain for each ssl cert we want to serve
 // if there is no SSL config on the listener, the envoy listener will have one insecure filter chain
 func (t *translatorInstance) computeFilterChainsFromSslConfig(
@@ -238,6 +295,45 @@ func (t *translatorInstance) computeFilterChainsFromSslConfig(
 		secureFilterChains = append(secureFilterChains, filterChain)
 	}
 	return secureFilterChains
+}
+
+func (t *translatorInstance) computeFilterChainsFromMatcher(
+	snap *v1.ApiSnapshot,
+	listenerFilters []*envoy_config_listener_v3.Filter,
+	listenerReport *validationapi.ListenerReport,
+	matcher *v1.Matcher,
+) *envoy_config_listener_v3.FilterChain {
+	fc := &envoy_config_listener_v3.FilterChain{
+		Filters: listenerFilters,
+	}
+	fcm := &envoy_config_listener_v3.FilterChainMatch{}
+
+	if sslConfig := matcher.GetSslConfig(); sslConfig != nil {
+		downstreamConfig, err := t.sslConfigTranslator.ResolveDownstreamSslConfig(snap.Secrets, sslConfig)
+		if err != nil {
+			validation.AppendListenerError(listenerReport,
+				validationapi.ListenerReport_Error_SSLConfigError, err.Error())
+			return nil
+		}
+
+		fcm.ServerNames = sslConfig.GetSniDomains()
+
+		fc.TransportSocket = &envoy_config_core_v3.TransportSocket{
+			Name: wellknown.TransportSocketTls,
+			ConfigType: &envoy_config_core_v3.TransportSocket_TypedConfig{TypedConfig: utils.MustMessageToAny(downstreamConfig)},
+		}
+		fc.TransportSocketConnectTimeout = sslConfig.GetTransportSocketConnectTimeout()
+	}
+
+	if clientIPs := matcher.GetClientIps(); len(clientIPs) > 0 {
+		var ranges []*envoy_config_core_v3.CidrRange
+
+		// convert clientIPs to []CidrRange
+
+		fcm.PrefixRanges = ranges
+	}
+
+	return fc
 }
 
 func mergeSslConfigs(sslConfigs []*v1.SslConfig) []*v1.SslConfig {
