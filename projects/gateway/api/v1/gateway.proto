@@ -120,8 +120,12 @@ message HttpGateway {
 }
 
 message MatchedHttpGateway {
+    // Unique matching criteria for the filterChain associated with this Gateway
+    // TODO: Enforce uniqueness
     Matcher matcher = 1;
 
+    // SslConfig within this gateway will be ignored and/or cause error
+    // SslConfig should be applied in the Matcher instead
     HttpGateway gateway = 2;
 }
 
@@ -181,7 +185,7 @@ message VirtualServiceSelectorExpressions {
 }
 
 message Matcher {
-    // If provided, the Gateway will serve TLS/SSL traffic for this set of routes
+    // SslConfig that's matched on is also used to determine the FilterChain's TransportSocket and TransportSocketConnectTimeout
     gloo.solo.io.SslConfig ssl_config = 1;
 
     repeated string client_ips = 2;

@@ -176,6 +176,8 @@ ClusterLoop:
 
 		logger.Infof("computing envoy resources for listener: %v", listener.GetName())
 
+		// we append the listener-routeConfig pairs to their respective slices
+		// does it matter that they were paired in the first place? what happens downstream?
 		envoyResources := t.computeListenerResources(params, proxy, listener, listenerReport)
 		for _, er := range envoyResources {
 			listeners = append(listeners, er.listener)
@@ -246,6 +248,8 @@ func (t *translatorInstance) computeListenerResources(
 
 	lrs := []*listenerResources{}
 	for matcher, listener := range envoyListeners {
+		// return a list of listenerResources where each listener-routeConfig pair shares a matcher
+		// if the original listener is not a MatchedHttpListener type, each should have length 1 with a single nil key
 		lrs = append(lrs, &listenerResources{
 			listener: listener,
 			routeConfig: routeConfigs[matcher],

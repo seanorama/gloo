@@ -101,7 +101,7 @@ func (t *translatorInstance) computeListeners(
 	switch typedListener := listener.GetListenerType().(type) {
 	case *v1.Listener_HttpListener, *v1.Listener_TcpListener:
 		return map[*v1.Matcher]*envoy_config_listener_v3.Listener{
-			nil: t.computeListener(params, proxy, listener, listenerReport),
+			nil: t.computeListener(params, proxy, listener, listenerReport), // compute the listener as we have in the past, with no matcher
 		}
 	case *v1.Listener_MatchedHttpListeners:
 
@@ -109,11 +109,11 @@ func (t *translatorInstance) computeListeners(
 
 		for _, matchedListener := range typedListener.MatchedHttpListeners.GetListeners() {
 			// run the http filter chain plugins and listener plugins
-			listenerFilters := t.computeMatchedListenerFilters(params, listener, listenerReport, matchedListener.GetMatcher())
+			listenerFilters := t.computeMatchedListenerFilters(params, listener, listenerReport, matchedListener)
 			if len(listenerFilters) == 0 {
 				return nil
 			}
-			filterChain = t.computeFilterChainsFromMatcher(params.Snapshot, listenerFilters, listenerReport, matchedListener.GetMatcher())
+			filterChain = t.computeFilterChainFromMatcher(params.Snapshot, listenerFilters, listenerReport, matchedListener.GetMatcher())
 
 			outListener := &envoy_config_listener_v3.Listener{
 				Name: fmt.Sprintf("%s-%s",listener.GetName(), matchedListener.GetMatcher().String()),
@@ -138,6 +138,8 @@ func (t *translatorInstance) computeListeners(
 				if !ok {
 					continue
 				}
+				// Will this work as expected??
+				// If not, is there a simple solution?
 				if err := listenerPlugin.ProcessListener(params, listener, outListener); err != nil {
 					validation.AppendListenerError(listenerReport,
 						validationapi.ListenerReport_Error_ProcessingError,
@@ -204,7 +206,7 @@ func (t *translatorInstance) computeListenerFilters(params plugins.Params, liste
 	return sortListenerFilters(listenerFilters)
 }
 
-func (t *translatorInstance) computeMatchedListenerFilters(params plugins.Params, listener *v1.Listener, listenerReport *validationapi.ListenerReport, matcher *v1.Matcher) []*envoy_config_listener_v3.Filter {
+func (t *translatorInstance) computeMatchedListenerFilters(params plugins.Params, listener *v1.Listener, listenerReport *validationapi.ListenerReport, matchedHttpListener *v1.MatchedHttpListener) []*envoy_config_listener_v3.Filter {
 	var listenerFilters []plugins.StagedListenerFilter
 	// run the Listener Filter Plugins
 	for _, plug := range t.plugins {
@@ -212,6 +214,8 @@ func (t *translatorInstance) computeMatchedListenerFilters(params plugins.Params
 		if !ok {
 			continue
 		}
+		// Will these work as expected??
+		// If not is there a simple fix?
 		stagedFilters, err := filterPlugin.ProcessListenerFilter(params, listener)
 		if err != nil {
 			validation.AppendListenerError(listenerReport,
@@ -223,22 +227,18 @@ func (t *translatorInstance) computeMatchedListenerFilters(params plugins.Params
 		}
 	}
 
-	var matchedHttpListener *v1.MatchedHttpListener
 	// return if listener type != matchedHttp || no virtual hosts
-	matchedHttpListeners, ok := listener.GetListenerType().(*v1.Listener_MatchedHttpListeners)
+	// is this check useful/necessary? can we trust that the passed matchedHttpListener is a member of listener?
+	_, ok := listener.GetListenerType().(*v1.Listener_MatchedHttpListeners)
 	if !ok {
 		return nil
 	}
-	for _, mhl := range matchedHttpListeners.MatchedHttpListeners.GetListeners() {
-		if mhl.GetMatcher() == matcher {
-			matchedHttpListener = mhl
-			break
-		}
-	}
+
 	if len(matchedHttpListener.GetHttpListener().GetVirtualHosts()) == 0 {
 		return nil
 	}
 
+	// do we need a new listenerReport type?? what is this check for?
 	httpListenerReport := listenerReport.GetHttpListenerReport()
 	if httpListenerReport == nil {
 		contextutils.LoggerFrom(params.Ctx).DPanic("internal error: listener report was not http type")
@@ -255,7 +255,9 @@ func (t *translatorInstance) computeMatchedListenerFilters(params plugins.Params
 	}
 
 	// add the http connection manager filter after all the InAuth Listener Filters
-	rdsName := routeConfigName(listener) + matchedHttpListener.GetMatcher().String()
+	rdsName := routeConfigName(listener) + matchedHttpListener.GetMatcher().String() // TODO: may need to standardize/improve rdsName
+	// is it sufficient to pass matchedHttpListener.GetHttpListener() here?
+	// seems so, given that there can be per-matcher settings on the associated listener
 	httpConnMgr := t.computeHttpConnectionManagerFilter(params, matchedHttpListener.GetHttpListener(), rdsName, httpListenerReport)
 	listenerFilters = append(listenerFilters, plugins.StagedListenerFilter{
 		ListenerFilter: httpConnMgr,
@@ -297,7 +299,8 @@ func (t *translatorInstance) computeFilterChainsFromSslConfig(
 	return secureFilterChains
 }
 
-func (t *translatorInstance) computeFilterChainsFromMatcher(
+// There should be exactly one FilterChain per matcher (unless/until we allow matchers to have multiple SslConfigs)
+func (t *translatorInstance) computeFilterChainFromMatcher(
 	snap *v1.ApiSnapshot,
 	listenerFilters []*envoy_config_listener_v3.Filter,
 	listenerReport *validationapi.ListenerReport,
@@ -309,6 +312,7 @@ func (t *translatorInstance) computeFilterChainsFromMatcher(
 	fcm := &envoy_config_listener_v3.FilterChainMatch{}
 
 	if sslConfig := matcher.GetSslConfig(); sslConfig != nil {
+		// Logic derived from computeFilterChainsFromSslConfig()
 		downstreamConfig, err := t.sslConfigTranslator.ResolveDownstreamSslConfig(snap.Secrets, sslConfig)
 		if err != nil {
 			validation.AppendListenerError(listenerReport,
