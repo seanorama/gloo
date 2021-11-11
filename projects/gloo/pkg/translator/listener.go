@@ -238,7 +238,7 @@ func (t *translatorInstance) computeMatchedListenerFilters(params plugins.Params
 		return nil
 	}
 
-	// do we need a new listenerReport type?? what is this check for?
+	// TODO: we need a ListenerReport_MatchedHttpListenerReport type that mirrors MatchedHttpListener
 	httpListenerReport := listenerReport.GetHttpListenerReport()
 	if httpListenerReport == nil {
 		contextutils.LoggerFrom(params.Ctx).DPanic("internal error: listener report was not http type")
