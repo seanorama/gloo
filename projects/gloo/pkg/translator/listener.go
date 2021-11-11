@@ -238,10 +238,13 @@ func (t *translatorInstance) computeMatchedListenerFilters(params plugins.Params
 		return nil
 	}
 
-	// TODO: we need a ListenerReport_MatchedHttpListenerReport type that mirrors MatchedHttpListener
-	httpListenerReport := listenerReport.GetHttpListenerReport()
-	if httpListenerReport == nil {
-		contextutils.LoggerFrom(params.Ctx).DPanic("internal error: listener report was not http type")
+	matchedHttpListenerReport := listenerReport.GetMatchedHttpListenerReport()
+	if matchedHttpListenerReport == nil {
+		contextutils.LoggerFrom(params.Ctx).DPanic("internal error: listener report was not matched http type")
+	}
+	httpListenerReport, ok := matchedHttpListenerReport.GetHttpListenerReports()[matchedHttpListener.GetMatcher().String()]
+	if !ok {
+		contextutils.LoggerFrom(params.Ctx).DPanicf("internal error: matched http listener report does not contain http listener report for matcher %s", matchedHttpListener.GetMatcher().String())
 	}
 
 	// Check that we don't refer to nonexistent auth config

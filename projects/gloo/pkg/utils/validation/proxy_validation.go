@@ -54,6 +54,35 @@ func MakeReport(proxy *v1.Proxy) *validation.ProxyReport {
 					},
 				},
 			}
+		case *v1.Listener_MatchedHttpListeners:
+			httpListenerReports := map[string]*validation.HttpListenerReport{}
+
+			for _, matchedHttpListener := range listenerType.MatchedHttpListeners.GetListeners() {
+				vhostReports := make([]*validation.VirtualHostReport, len(matchedHttpListener.HttpListener.GetVirtualHosts()))
+
+				for j, vh := range matchedHttpListener.HttpListener.GetVirtualHosts() {
+					routeReports := make([]*validation.RouteReport, len(vh.GetRoutes()))
+					for k := range vh.GetRoutes() {
+						routeReports[k] = &validation.RouteReport{}
+					}
+
+					vhostReports[j] = &validation.VirtualHostReport{
+						RouteReports: routeReports,
+					}
+				}
+
+				httpListenerReports[matchedHttpListener.GetMatcher().String()] = &validation.HttpListenerReport{
+						VirtualHostReports: vhostReports,
+				}
+			}
+
+			listenerReports[i] = &validation.ListenerReport{
+				ListenerTypeReport: &validation.ListenerReport_MatchedHttpListenerReport{
+					MatchedHttpListenerReport: &validation.MatchedHttpListenerReport{
+						HttpListenerReports: httpListenerReports,
+					},
+				},
+			}
 		}
 	}
 
