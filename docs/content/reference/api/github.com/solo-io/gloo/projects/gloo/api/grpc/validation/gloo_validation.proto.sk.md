@@ -23,6 +23,7 @@ weight: 5
 - [ListenerReport](#listenerreport)
 - [Error](#error)
 - [Type](#type)
+- [MatchedHttpListenerReport](#matchedhttplistenerreport)
 - [HttpListenerReport](#httplistenerreport)
 - [Error](#error)
 - [Type](#type)
@@ -229,14 +230,16 @@ If the report contains no errors, the (sub-)resource is valid.
 "errors": []gloo.solo.io.ListenerReport.Error
 "httpListenerReport": .gloo.solo.io.HttpListenerReport
 "tcpListenerReport": .gloo.solo.io.TcpListenerReport
+"matchedHttpListenerReport": .gloo.solo.io.MatchedHttpListenerReport
 
 ```
 
 | Field | Type | Description |
 | ----- | ---- | ----------- | 
 | `errors` | [[]gloo.solo.io.ListenerReport.Error](../gloo_validation.proto.sk/#error) | errors on top-level config of the listener. |
-| `httpListenerReport` | [.gloo.solo.io.HttpListenerReport](../gloo_validation.proto.sk/#httplistenerreport) | report for the http listener. Only one of `httpListenerReport` or `tcpListenerReport` can be set. |
-| `tcpListenerReport` | [.gloo.solo.io.TcpListenerReport](../gloo_validation.proto.sk/#tcplistenerreport) | report for the tcp listener. Only one of `tcpListenerReport` or `httpListenerReport` can be set. |
+| `httpListenerReport` | [.gloo.solo.io.HttpListenerReport](../gloo_validation.proto.sk/#httplistenerreport) | report for the http listener. Only one of `httpListenerReport`, `tcpListenerReport`, or `matchedHttpListenerReport` can be set. |
+| `tcpListenerReport` | [.gloo.solo.io.TcpListenerReport](../gloo_validation.proto.sk/#tcplistenerreport) | report for the tcp listener. Only one of `tcpListenerReport`, `httpListenerReport`, or `matchedHttpListenerReport` can be set. |
+| `matchedHttpListenerReport` | [.gloo.solo.io.MatchedHttpListenerReport](../gloo_validation.proto.sk/#matchedhttplistenerreport) | report for the matched http listener. Only one of `matchedHttpListenerReport`, `httpListenerReport`, or `tcpListenerReport` can be set. |
 
 
 
@@ -272,6 +275,23 @@ error types for top-level listener config
 | `BindPortNotUniqueError` |  |
 | `SSLConfigError` |  |
 | `ProcessingError` |  |
+
+
+
+
+---
+### MatchedHttpListenerReport
+
+
+
+```yaml
+"httpListenerReports": map<string, .gloo.solo.io.HttpListenerReport>
+
+```
+
+| Field | Type | Description |
+| ----- | ---- | ----------- | 
+| `httpListenerReports` | `map<string, .gloo.solo.io.HttpListenerReport>` | map key should uniquely identify HttpListenerReport by matcher. |
 
 
 

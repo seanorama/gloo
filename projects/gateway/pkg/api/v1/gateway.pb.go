@@ -7,14 +7,15 @@
 package v1
 
 import (
+	reflect "reflect"
+	sync "sync"
+
 	wrappers "github.com/golang/protobuf/ptypes/wrappers"
 	v1 "github.com/solo-io/gloo/projects/gloo/pkg/api/v1"
 	_ "github.com/solo-io/protoc-gen-ext/extproto"
 	core "github.com/solo-io/solo-kit/pkg/api/v1/resources/core"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
-	reflect "reflect"
-	sync "sync"
 )
 
 const (
@@ -404,7 +405,11 @@ type MatchedHttpGateway struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Matcher *Matcher     `protobuf:"bytes,1,opt,name=matcher,proto3" json:"matcher,omitempty"`
+	// Unique matching criteria for the filterChain associated with this Gateway
+	// TODO: Enforce uniqueness
+	Matcher *Matcher `protobuf:"bytes,1,opt,name=matcher,proto3" json:"matcher,omitempty"`
+	// SslConfig within this gateway will be ignored and/or cause error
+	// SslConfig should be applied in the Matcher instead
 	Gateway *HttpGateway `protobuf:"bytes,2,opt,name=gateway,proto3" json:"gateway,omitempty"`
 }
 
@@ -618,7 +623,7 @@ type Matcher struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// If provided, the Gateway will serve TLS/SSL traffic for this set of routes
+	// SslConfig that's matched on is also used to determine the FilterChain's TransportSocket and TransportSocketConnectTimeout
 	SslConfig *v1.SslConfig `protobuf:"bytes,1,opt,name=ssl_config,json=sslConfig,proto3" json:"ssl_config,omitempty"`
 	ClientIps []string      `protobuf:"bytes,2,rep,name=client_ips,json=clientIps,proto3" json:"client_ips,omitempty"`
 }

@@ -514,11 +514,67 @@ func (m *ListenerReport) Equal(that interface{}) bool {
 			}
 		}
 
+	case *ListenerReport_MatchedHttpListenerReport:
+		if _, ok := target.ListenerTypeReport.(*ListenerReport_MatchedHttpListenerReport); !ok {
+			return false
+		}
+
+		if h, ok := interface{}(m.GetMatchedHttpListenerReport()).(equality.Equalizer); ok {
+			if !h.Equal(target.GetMatchedHttpListenerReport()) {
+				return false
+			}
+		} else {
+			if !proto.Equal(m.GetMatchedHttpListenerReport(), target.GetMatchedHttpListenerReport()) {
+				return false
+			}
+		}
+
 	default:
 		// m is nil but target is not nil
 		if m.ListenerTypeReport != target.ListenerTypeReport {
 			return false
 		}
+	}
+
+	return true
+}
+
+// Equal function
+func (m *MatchedHttpListenerReport) Equal(that interface{}) bool {
+	if that == nil {
+		return m == nil
+	}
+
+	target, ok := that.(*MatchedHttpListenerReport)
+	if !ok {
+		that2, ok := that.(MatchedHttpListenerReport)
+		if ok {
+			target = &that2
+		} else {
+			return false
+		}
+	}
+	if target == nil {
+		return m == nil
+	} else if m == nil {
+		return false
+	}
+
+	if len(m.GetHttpListenerReports()) != len(target.GetHttpListenerReports()) {
+		return false
+	}
+	for k, v := range m.GetHttpListenerReports() {
+
+		if h, ok := interface{}(v).(equality.Equalizer); ok {
+			if !h.Equal(target.GetHttpListenerReports()[k]) {
+				return false
+			}
+		} else {
+			if !proto.Equal(v, target.GetHttpListenerReports()[k]) {
+				return false
+			}
+		}
+
 	}
 
 	return true

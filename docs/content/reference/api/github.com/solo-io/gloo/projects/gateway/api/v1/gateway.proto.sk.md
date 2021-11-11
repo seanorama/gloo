@@ -109,8 +109,8 @@ and the routing configuration to upstreams that are reachable via a specific por
 
 | Field | Type | Description |
 | ----- | ---- | ----------- | 
-| `matcher` | [.gateway.solo.io.Matcher](../gateway.proto.sk/#matcher) |  |
-| `gateway` | [.gateway.solo.io.HttpGateway](../gateway.proto.sk/#httpgateway) |  |
+| `matcher` | [.gateway.solo.io.Matcher](../gateway.proto.sk/#matcher) | Unique matching criteria for the filterChain associated with this Gateway TODO: Enforce uniqueness. |
+| `gateway` | [.gateway.solo.io.HttpGateway](../gateway.proto.sk/#httpgateway) | SslConfig within this gateway will be ignored and/or cause error SslConfig should be applied in the Matcher instead. |
 
 
 
@@ -229,7 +229,7 @@ Virtual Service Selector expression operator, while the set-based syntax differs
 
 | Field | Type | Description |
 | ----- | ---- | ----------- | 
-| `sslConfig` | [.gloo.solo.io.SslConfig](../../../../gloo/api/v1/ssl.proto.sk/#sslconfig) | If provided, the Gateway will serve TLS/SSL traffic for this set of routes. |
+| `sslConfig` | [.gloo.solo.io.SslConfig](../../../../gloo/api/v1/ssl.proto.sk/#sslconfig) | SslConfig that's matched on is also used to determine the FilterChain's TransportSocket and TransportSocketConnectTimeout. |
 | `clientIps` | `[]string` |  |
 
 

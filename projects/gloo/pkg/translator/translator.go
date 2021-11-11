@@ -251,7 +251,7 @@ func (t *translatorInstance) computeListenerResources(
 		// return a list of listenerResources where each listener-routeConfig pair shares a matcher
 		// if the original listener is not a MatchedHttpListener type, each should have length 1 with a single nil key
 		lrs = append(lrs, &listenerResources{
-			listener: listener,
+			listener:    listener,
 			routeConfig: routeConfigs[matcher],
 		})
 	}

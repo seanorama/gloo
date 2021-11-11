@@ -76,7 +76,7 @@ func (t *translatorInstance) computeRouteConfigs(
 ) map[*v1.Matcher]*envoy_config_route_v3.RouteConfiguration {
 	if listener.GetHttpListener() != nil {
 		return map[*v1.Matcher]*envoy_config_route_v3.RouteConfiguration{
-			nil: t.computeRouteConfig(params, proxy, listener, listener.GetName() + "-routes", listenerReport),
+			nil: t.computeRouteConfig(params, proxy, listener, listener.GetName()+"-routes", listenerReport),
 		}
 	}
 	if listener.GetMatchedHttpListeners() == nil {

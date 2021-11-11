@@ -116,7 +116,7 @@ func (t *translatorInstance) computeListeners(
 			filterChain = t.computeFilterChainFromMatcher(params.Snapshot, listenerFilters, listenerReport, matchedListener.GetMatcher())
 
 			outListener := &envoy_config_listener_v3.Listener{
-				Name: fmt.Sprintf("%s-%s",listener.GetName(), matchedListener.GetMatcher().String()),
+				Name: fmt.Sprintf("%s-%s", listener.GetName(), matchedListener.GetMatcher().String()),
 				Address: &envoy_config_core_v3.Address{
 					Address: &envoy_config_core_v3.Address_SocketAddress{
 						SocketAddress: &envoy_config_core_v3.SocketAddress{
@@ -323,7 +323,7 @@ func (t *translatorInstance) computeFilterChainFromMatcher(
 		fcm.ServerNames = sslConfig.GetSniDomains()
 
 		fc.TransportSocket = &envoy_config_core_v3.TransportSocket{
-			Name: wellknown.TransportSocketTls,
+			Name:       wellknown.TransportSocketTls,
 			ConfigType: &envoy_config_core_v3.TransportSocket_TypedConfig{TypedConfig: utils.MustMessageToAny(downstreamConfig)},
 		}
 		fc.TransportSocketConnectTimeout = sslConfig.GetTransportSocketConnectTimeout()
