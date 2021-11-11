@@ -44,7 +44,7 @@ func NewHttpConnectionManager(
 						Ads: &envoy_config_core_v3.AggregatedConfigSource{},
 					},
 				},
-				RouteConfigName: rdsName,
+				RouteConfigName: rdsName, // is this what ties listeners and routeconfigs together??
 			},
 		},
 		HttpFilters: httpFilters,
