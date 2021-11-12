@@ -40,21 +40,46 @@ func (t *translatorInstance) computeRouteConfig(
 	routeCfgName string,
 	listenerReport *validationapi.ListenerReport,
 ) *envoy_config_route_v3.RouteConfiguration {
-	if listener.GetHttpListener() == nil {
-		return nil
-	}
+	return t.computeRouteConfigWithIndex(params, proxy, listener, routeCfgName, listenerReport, -1)
+}
 
-	httpListenerReport := listenerReport.GetHttpListenerReport()
-	if httpListenerReport == nil {
-		contextutils.LoggerFrom(params.Ctx).DPanic("internal error: listener report was not http type")
+func (t *translatorInstance) computeRouteConfigWithIndex(
+	params plugins.Params,
+	proxy *v1.Proxy,
+	listener *v1.Listener,
+	routeCfgName string,
+	listenerReport *validationapi.ListenerReport,
+	index int,
+) *envoy_config_route_v3.RouteConfiguration {
+	var httpListenerReport *validationapi.HttpListenerReport
+	var requireTls bool
+	if index >=0 {
+		matchedListener := listener.GetHybridListener().GetMatchedListeners()[index]
+		if matchedListener.GetHttpListener() == nil {
+			return nil
+		}
+		httpListenerReport = listenerReport.GetHybridListenerReport().GetMatchedListenerReports()[matchedListener.GetMatcher().String()].GetHttpListenerReport()
+		if httpListenerReport == nil {
+			contextutils.LoggerFrom(params.Ctx).DPanic("internal error: listener report was not http type")
+		}
+		requireTls = matchedListener.GetMatcher().GetSslConfig() != nil
+	} else {
+		if listener.GetHttpListener() == nil {
+			return nil
+		}
+		httpListenerReport = listenerReport.GetHttpListenerReport()
+		if httpListenerReport == nil {
+			contextutils.LoggerFrom(params.Ctx).DPanic("internal error: listener report was not http type")
+		}
+		requireTls = len(listener.GetSslConfigurations()) > 0
 	}
 
 	params.Ctx = contextutils.WithLogger(params.Ctx, "compute_route_config."+routeCfgName)
 
-	virtualHosts := t.computeVirtualHosts(params, proxy, listener, httpListenerReport)
+	virtualHosts := t.computeVirtualHosts(params, proxy, listener, httpListenerReport, index, requireTls)
 
 	// validate ssl config if the listener specifies any
-	if err := validateListenerSslConfig(params, listener); err != nil {
+	if err := validateListenerSslConfig(params, listener); index >= 0 && err != nil {
 		validation.AppendListenerError(listenerReport,
 			validationapi.ListenerReport_Error_SSLConfigError,
 			err.Error(),
@@ -73,17 +98,24 @@ func (t *translatorInstance) computeVirtualHosts(
 	proxy *v1.Proxy,
 	listener *v1.Listener,
 	httpListenerReport *validationapi.HttpListenerReport,
+	index int,
+	requireTls bool,
 ) []*envoy_config_route_v3.VirtualHost {
-	httpListener, ok := listener.GetListenerType().(*v1.Listener_HttpListener)
-	if !ok {
+	var httpListener *v1.HttpListener
+	if index >= 0 {
+		httpListener = listener.GetHybridListener().GetMatchedListeners()[index].GetHttpListener()
+	} else {
+		httpListener = listener.GetHttpListener()
+	}
+	if httpListener == nil {
 		return nil
 	}
-	virtualHosts := httpListener.HttpListener.GetVirtualHosts()
+
+	virtualHosts := httpListener.GetVirtualHosts()
 	ValidateVirtualHostDomains(virtualHosts, httpListenerReport)
-	requireTls := len(listener.GetSslConfigurations()) > 0
 	var envoyVirtualHosts []*envoy_config_route_v3.VirtualHost
 	for i, virtualHost := range virtualHosts {
-		vhostParams := plugins.VirtualHostParams{
+		vhostParams := plugins.VirtualHostParams{ // TODO: follow this thread
 			Params:   params,
 			Listener: listener,
 			Proxy:    proxy,

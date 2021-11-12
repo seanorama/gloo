@@ -178,10 +178,8 @@ ClusterLoop:
 
 		envoyResources := t.computeListenerResources(params, proxy, listener, listenerReport)
 		if envoyResources != nil {
-			listeners = append(listeners, envoyResources.listener)
-			if envoyResources.routeConfig != nil {
-				routeConfigs = append(routeConfigs, envoyResources.routeConfig)
-			}
+			listeners = append(listeners, envoyResources.listeners...)
+			routeConfigs = append(routeConfigs, envoyResources.routeConfigs...)
 		}
 	}
 
@@ -220,8 +218,8 @@ ClusterLoop:
 // the set of resources returned by one iteration for a single v1.Listener
 // the top level Translate function should aggregate these into a finished snapshot
 type listenerResources struct {
-	routeConfig *envoy_config_route_v3.RouteConfiguration
-	listener    *envoy_config_listener_v3.Listener
+	routeConfigs []*envoy_config_route_v3.RouteConfiguration
+	listeners    []*envoy_config_listener_v3.Listener
 }
 
 func (t *translatorInstance) computeListenerResources(
@@ -234,20 +232,47 @@ func (t *translatorInstance) computeListenerResources(
 	params.Ctx = ctx
 	defer span.End()
 
-	rdsName := routeConfigName(listener)
+	switch listenerType := listener.ListenerType.(type) {
+	case *v1.Listener_HttpListener, *v1.Listener_TcpListener:
+		rdsName := routeConfigName(listener)
 
-	// Calculate routes before listeners, so that HttpFilters is called after ProcessVirtualHost\ProcessRoute
-	routeConfig := t.computeRouteConfig(params, proxy, listener, rdsName, listenerReport)
+		var routeConfigs []*envoy_config_route_v3.RouteConfiguration
 
-	envoyListener := t.computeListener(params, proxy, listener, listenerReport)
-	if envoyListener == nil {
-		return nil
+		// Calculate routes before listeners, so that HttpFilters is called after ProcessVirtualHost\ProcessRoute
+		routeConfig := t.computeRouteConfig(params, proxy, listener, rdsName, listenerReport)
+		if routeConfig != nil {
+			routeConfigs = append(routeConfigs, routeConfig)
+		}
+
+		envoyListener := t.computeListener(params, proxy, listener, listenerReport)
+		if envoyListener == nil {
+			return nil
+		}
+
+		return &listenerResources{
+			routeConfigs: routeConfigs,
+			listeners:    []*envoy_config_listener_v3.Listener{envoyListener},
+		}
+	case *v1.Listener_HybridListener:
+		var routeConfigs []*envoy_config_route_v3.RouteConfiguration
+		var listeners []*envoy_config_listener_v3.Listener
+
+		for i := range listenerType.HybridListener.GetMatchedListeners() {
+			rdsName := routeConfigNameWithIndex(listener, i)
+			routeConfig := t.computeRouteConfigWithIndex(params, proxy, listener, rdsName, listenerReport, i)
+			if routeConfig != nil {
+				routeConfigs = append(routeConfigs, routeConfig)
+			}
+
+			// TODO: computeListenerWithIndex()
+		}
+
+		return &listenerResources{
+			routeConfigs: routeConfigs,
+			listeners: listeners,
+		}
 	}
-
-	return &listenerResources{
-		listener:    envoyListener,
-		routeConfig: routeConfig,
-	}
+	return nil
 }
 
 func (t *translatorInstance) generateXDSSnapshot(
