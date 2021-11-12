@@ -15,6 +15,9 @@ import "github.com/solo-io/solo-kit/api/v1/solo-kit.proto";
 
 import "github.com/solo-io/gloo/projects/gloo/api/v1/proxy.proto";
 import "github.com/solo-io/gloo/projects/gloo/api/v1/options.proto";
+import "github.com/solo-io/gloo/projects/gloo/api/v1/ssl.proto";
+
+import "github.com/solo-io/gloo/projects/gloo/api/external/envoy/config/core/v3/address.proto";
 
 /*
 A Gateway describes a single Listener (bind address:port)
@@ -55,6 +58,7 @@ message Gateway {
     oneof GatewayType {
         HttpGateway http_gateway = 9;
         TcpGateway tcp_gateway = 10;
+        HybridGateway hybrid_gateway = 11;
     }
 
     /*
@@ -124,6 +128,26 @@ message TcpGateway {
     gloo.solo.io.TcpListenerOptions options = 8;
 
 }
+
+message HybridGateway {
+    repeated MatchedGateway matched_gateways = 1;
+}
+
+message MatchedGateway {
+    Matcher matcher = 1;
+
+    oneof GatewayType {
+        HttpGateway http_gateway = 2;
+        TcpGateway tcp_gateway = 3;
+    }
+}
+
+message Matcher {
+    gloo.solo.io.SslConfig ssl_config = 1;
+
+    repeated .solo.io.envoy.config.core.v3.CidrRange source_prefix_ranges = 2;
+}
+
 // Expressions to define which virtual services to select
 // Example:
 // expressions:
