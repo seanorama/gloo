@@ -24,6 +24,7 @@ func (t *translatorInstance) computeListener(
 	proxy *v1.Proxy,
 	listener *v1.Listener,
 	listenerReport *validationapi.ListenerReport,
+	index int,
 ) *envoy_config_listener_v3.Listener {
 	params.Ctx = contextutils.WithLogger(params.Ctx, "compute_listener."+listener.GetName())
 	validateListenerPorts(proxy, listenerReport)
@@ -52,6 +53,14 @@ func (t *translatorInstance) computeListener(
 			}
 			filterChains = append(filterChains, result...)
 		}
+	case *v1.Listener_HybridListener:
+		// run the http filter chain plugins and listener plugins
+		listenerFilters := t.computeListenerFiltersWithIndex(params, listener, listenerReport, index)
+		if len(listenerFilters) == 0 {
+			return nil
+		}
+		filterChain := t.computeFilterChainFromMatcher(params.Snapshot, listener.GetHybridListener().GetMatchedListeners()[index].GetMatcher(), listenerFilters, listenerReport)
+		filterChains = append(filterChains, filterChain)
 	}
 
 	CheckForDuplicateFilterChainMatches(filterChains, listenerReport)
@@ -90,6 +99,10 @@ func (t *translatorInstance) computeListener(
 }
 
 func (t *translatorInstance) computeListenerFilters(params plugins.Params, listener *v1.Listener, listenerReport *validationapi.ListenerReport) []*envoy_config_listener_v3.Filter {
+	return t.computeListenerFiltersWithIndex(params, listener, listenerReport, -1)
+}
+
+func (t *translatorInstance) computeListenerFiltersWithIndex(params plugins.Params, listener *v1.Listener, listenerReport *validationapi.ListenerReport, index int) []*envoy_config_listener_v3.Filter {
 	var listenerFilters []plugins.StagedListenerFilter
 	// run the Listener Filter Plugins
 	for _, plug := range t.plugins {
@@ -109,18 +122,25 @@ func (t *translatorInstance) computeListenerFilters(params plugins.Params, liste
 	}
 
 	// return if listener type != http || no virtual hosts
-	httpListener, ok := listener.GetListenerType().(*v1.Listener_HttpListener)
-	if !ok || len(httpListener.HttpListener.GetVirtualHosts()) == 0 {
+	var httpListener *v1.HttpListener
+	var httpListenerReport *validationapi.HttpListenerReport
+	if index >= 0 {
+		matchedListener := listener.GetHybridListener().GetMatchedListeners()[index]
+		httpListener = matchedListener.GetHttpListener()
+		httpListenerReport = listenerReport.GetHybridListenerReport().GetMatchedListenerReports()[matchedListener.GetMatcher().String()].GetHttpListenerReport()
+	} else {
+		httpListener = listener.GetHttpListener()
+		httpListenerReport = listenerReport.GetHttpListenerReport()
+	}
+	if httpListener == nil || len(httpListener.GetVirtualHosts()) == 0 {
 		return nil
 	}
-
-	httpListenerReport := listenerReport.GetHttpListenerReport()
 	if httpListenerReport == nil {
 		contextutils.LoggerFrom(params.Ctx).DPanic("internal error: listener report was not http type")
 	}
 
 	// Check that we don't refer to nonexistent auth config
-	for i, vHost := range httpListener.HttpListener.GetVirtualHosts() {
+	for i, vHost := range httpListener.GetVirtualHosts() {
 		acRef := vHost.GetOptions().GetExtauth().GetConfigRef()
 		if acRef != nil {
 			if _, err := params.Snapshot.AuthConfigs.Find(acRef.GetNamespace(), acRef.GetName()); err != nil {
@@ -130,8 +150,8 @@ func (t *translatorInstance) computeListenerFilters(params plugins.Params, liste
 	}
 
 	// add the http connection manager filter after all the InAuth Listener Filters
-	rdsName := routeConfigName(listener)
-	httpConnMgr := t.computeHttpConnectionManagerFilter(params, httpListener.HttpListener, rdsName, httpListenerReport)
+	rdsName := routeConfigNameWithIndex(listener, index)
+	httpConnMgr := t.computeHttpConnectionManagerFilter(params, httpListener, rdsName, httpListenerReport)
 	listenerFilters = append(listenerFilters, plugins.StagedListenerFilter{
 		ListenerFilter: httpConnMgr,
 		Stage:          plugins.AfterStage(plugins.AuthZStage),
@@ -139,6 +159,52 @@ func (t *translatorInstance) computeListenerFilters(params plugins.Params, liste
 
 	return sortListenerFilters(listenerFilters)
 }
+
+func (t *translatorInstance) computeFilterChainFromMatcher(
+	snap *v1.ApiSnapshot,
+	matcher *v1.Matcher,
+	listenerFilters []*envoy_config_listener_v3.Filter,
+	listenerReport *validationapi.ListenerReport,
+) *envoy_config_listener_v3.FilterChain {
+
+	fc := &envoy_config_listener_v3.FilterChain{
+		Filters: listenerFilters,
+	}
+	fcm := &envoy_config_listener_v3.FilterChainMatch{}
+
+	if sslConfig := matcher.GetSslConfig(); sslConfig != nil {
+		// Logic derived from computeFilterChainsFromSslConfig()
+		downstreamConfig, err := t.sslConfigTranslator.ResolveDownstreamSslConfig(snap.Secrets, sslConfig)
+		if err != nil {
+			validation.AppendListenerError(listenerReport,
+				validationapi.ListenerReport_Error_SSLConfigError, err.Error())
+			return nil
+		}
+
+		fcm.ServerNames = sslConfig.GetSniDomains()
+
+		fc.TransportSocket = &envoy_config_core_v3.TransportSocket{
+			Name:       wellknown.TransportSocketTls,
+			ConfigType: &envoy_config_core_v3.TransportSocket_TypedConfig{TypedConfig: utils.MustMessageToAny(downstreamConfig)},
+		}
+		fc.TransportSocketConnectTimeout = sslConfig.GetTransportSocketConnectTimeout()
+	}
+
+	var sourcePrefixRanges []*envoy_config_core_v3.CidrRange
+	for _, spr := range matcher.GetSourcePrefixRanges() {
+		outSpr := &envoy_config_core_v3.CidrRange{
+			AddressPrefix: spr.GetAddressPrefix(),
+			PrefixLen: spr.GetPrefixLen(),
+		}
+		sourcePrefixRanges = append(sourcePrefixRanges, outSpr)
+	}
+
+	fcm.SourcePrefixRanges = sourcePrefixRanges
+
+
+	return fc
+}
+
 
 // create a duplicate of the listener filter chain for each ssl cert we want to serve
 // if there is no SSL config on the listener, the envoy listener will have one insecure filter chain

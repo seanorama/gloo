@@ -244,7 +244,7 @@ func (t *translatorInstance) computeListenerResources(
 			routeConfigs = append(routeConfigs, routeConfig)
 		}
 
-		envoyListener := t.computeListener(params, proxy, listener, listenerReport)
+		envoyListener := t.computeListener(params, proxy, listener, listenerReport, -1)
 		if envoyListener == nil {
 			return nil
 		}
@@ -264,7 +264,11 @@ func (t *translatorInstance) computeListenerResources(
 				routeConfigs = append(routeConfigs, routeConfig)
 			}
 
-			// TODO: computeListenerWithIndex()
+			// TODO: check for duplicate matchers elsewhere since we get one filterChain per call here
+			envoyListener := t.computeListener(params, proxy, listener, listenerReport, i)
+			if envoyListener == nil {
+				return nil
+			}
 		}
 
 		return &listenerResources{
