@@ -40,21 +40,20 @@ func (t *translatorInstance) computeRouteConfig(
 	routeCfgName string,
 	listenerReport *validationapi.ListenerReport,
 ) *envoy_config_route_v3.RouteConfiguration {
-	return t.computeRouteConfigWithIndex(params, proxy, listener, routeCfgName, listenerReport, -1)
+	return t.computeRouteConfigWithMatchedListener(params, proxy, listener, routeCfgName, listenerReport, nil)
 }
 
-func (t *translatorInstance) computeRouteConfigWithIndex(
+func (t *translatorInstance) computeRouteConfigWithMatchedListener(
 	params plugins.Params,
 	proxy *v1.Proxy,
 	listener *v1.Listener,
 	routeCfgName string,
 	listenerReport *validationapi.ListenerReport,
-	index int,
+	matchedListener *v1.MatchedListener,
 ) *envoy_config_route_v3.RouteConfiguration {
 	var httpListenerReport *validationapi.HttpListenerReport
 	var requireTls bool
-	if index >=0 {
-		matchedListener := listener.GetHybridListener().GetMatchedListeners()[index]
+	if matchedListener != nil {
 		if matchedListener.GetHttpListener() == nil {
 			return nil
 		}
@@ -76,10 +75,10 @@ func (t *translatorInstance) computeRouteConfigWithIndex(
 
 	params.Ctx = contextutils.WithLogger(params.Ctx, "compute_route_config."+routeCfgName)
 
-	virtualHosts := t.computeVirtualHosts(params, proxy, listener, httpListenerReport, index, requireTls)
+	virtualHosts := t.computeVirtualHosts(params, proxy, listener, httpListenerReport, matchedListener, requireTls)
 
 	// validate ssl config if the listener specifies any
-	if err := validateListenerSslConfig(params, listener); index >= 0 && err != nil {
+	if err := validateListenerSslConfig(params, listener); matchedListener != nil && err != nil {
 		validation.AppendListenerError(listenerReport,
 			validationapi.ListenerReport_Error_SSLConfigError,
 			err.Error(),
@@ -98,12 +97,12 @@ func (t *translatorInstance) computeVirtualHosts(
 	proxy *v1.Proxy,
 	listener *v1.Listener,
 	httpListenerReport *validationapi.HttpListenerReport,
-	index int,
+	matchedListener *v1.MatchedListener,
 	requireTls bool,
 ) []*envoy_config_route_v3.VirtualHost {
 	var httpListener *v1.HttpListener
-	if index >= 0 {
-		httpListener = listener.GetHybridListener().GetMatchedListeners()[index].GetHttpListener()
+	if matchedListener != nil {
+		httpListener = matchedListener.GetHttpListener()
 	} else {
 		httpListener = listener.GetHttpListener()
 	}

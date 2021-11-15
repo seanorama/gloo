@@ -244,7 +244,7 @@ func (t *translatorInstance) computeListenerResources(
 			routeConfigs = append(routeConfigs, routeConfig)
 		}
 
-		envoyListener := t.computeListener(params, proxy, listener, listenerReport, -1)
+		envoyListener := t.computeListenerWithMatchedListener(params, proxy, listener, listenerReport, nil)
 		if envoyListener == nil {
 			return nil
 		}
@@ -257,15 +257,15 @@ func (t *translatorInstance) computeListenerResources(
 		var routeConfigs []*envoy_config_route_v3.RouteConfiguration
 		var listeners []*envoy_config_listener_v3.Listener
 
-		for i := range listenerType.HybridListener.GetMatchedListeners() {
-			rdsName := routeConfigNameWithIndex(listener, i)
-			routeConfig := t.computeRouteConfigWithIndex(params, proxy, listener, rdsName, listenerReport, i)
+		for _, matchedListener := range listenerType.HybridListener.GetMatchedListeners() {
+			rdsName := routeConfigNameWithMatchedListener(listener, matchedListener)
+			routeConfig := t.computeRouteConfigWithMatchedListener(params, proxy, listener, rdsName, listenerReport, matchedListener)
 			if routeConfig != nil {
 				routeConfigs = append(routeConfigs, routeConfig)
 			}
 
 			// TODO: check for duplicate matchers elsewhere since we get one filterChain per call here
-			envoyListener := t.computeListener(params, proxy, listener, listenerReport, i)
+			envoyListener := t.computeListenerWithMatchedListener(params, proxy, listener, listenerReport, matchedListener)
 			if envoyListener == nil {
 				return nil
 			}

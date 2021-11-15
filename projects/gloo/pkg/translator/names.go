@@ -9,9 +9,9 @@ func routeConfigName(listener *v1.Listener) string {
 	return listener.GetName() + "-routes"
 }
 
-func routeConfigNameWithIndex(listener *v1.Listener, index int) string {
-	if hybridListener := listener.GetHybridListener(); hybridListener != nil && index > 0 {
-		return fmt.Sprintf("%s-%s-routes", listener.GetName(), hybridListener.GetMatchedListeners()[index].GetMatcher().String())
+func routeConfigNameWithMatchedListener(listener *v1.Listener, matchedListener *v1.MatchedListener) string {
+	if matchedListener != nil {
+		return fmt.Sprintf("%s-%s-routes", listener.GetName(), matchedListener.GetMatcher().String())
 	}
 	return routeConfigName(listener)
 }

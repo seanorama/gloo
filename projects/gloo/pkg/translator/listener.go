@@ -19,12 +19,12 @@ import (
 	"github.com/solo-io/go-utils/contextutils"
 )
 
-func (t *translatorInstance) computeListener(
+func (t *translatorInstance) computeListenerWithMatchedListener(
 	params plugins.Params,
 	proxy *v1.Proxy,
 	listener *v1.Listener,
 	listenerReport *validationapi.ListenerReport,
-	index int,
+	matchedListener *v1.MatchedListener,
 ) *envoy_config_listener_v3.Listener {
 	params.Ctx = contextutils.WithLogger(params.Ctx, "compute_listener."+listener.GetName())
 	validateListenerPorts(proxy, listenerReport)
@@ -55,11 +55,11 @@ func (t *translatorInstance) computeListener(
 		}
 	case *v1.Listener_HybridListener:
 		// run the http filter chain plugins and listener plugins
-		listenerFilters := t.computeListenerFiltersWithIndex(params, listener, listenerReport, index)
+		listenerFilters := t.computeListenerFiltersWithMatchedListener(params, listener, listenerReport, matchedListener)
 		if len(listenerFilters) == 0 {
 			return nil
 		}
-		filterChain := t.computeFilterChainFromMatcher(params.Snapshot, listener.GetHybridListener().GetMatchedListeners()[index].GetMatcher(), listenerFilters, listenerReport)
+		filterChain := t.computeFilterChainFromMatcher(params.Snapshot, matchedListener.GetMatcher(), listenerFilters, listenerReport)
 		filterChains = append(filterChains, filterChain)
 	}
 
@@ -99,10 +99,10 @@ func (t *translatorInstance) computeListener(
 }
 
 func (t *translatorInstance) computeListenerFilters(params plugins.Params, listener *v1.Listener, listenerReport *validationapi.ListenerReport) []*envoy_config_listener_v3.Filter {
-	return t.computeListenerFiltersWithIndex(params, listener, listenerReport, -1)
+	return t.computeListenerFiltersWithMatchedListener(params, listener, listenerReport, nil)
 }
 
-func (t *translatorInstance) computeListenerFiltersWithIndex(params plugins.Params, listener *v1.Listener, listenerReport *validationapi.ListenerReport, index int) []*envoy_config_listener_v3.Filter {
+func (t *translatorInstance) computeListenerFiltersWithMatchedListener(params plugins.Params, listener *v1.Listener, listenerReport *validationapi.ListenerReport, matchedListener *v1.MatchedListener) []*envoy_config_listener_v3.Filter {
 	var listenerFilters []plugins.StagedListenerFilter
 	// run the Listener Filter Plugins
 	for _, plug := range t.plugins {
@@ -124,8 +124,7 @@ func (t *translatorInstance) computeListenerFiltersWithIndex(params plugins.Para
 	// return if listener type != http || no virtual hosts
 	var httpListener *v1.HttpListener
 	var httpListenerReport *validationapi.HttpListenerReport
-	if index >= 0 {
-		matchedListener := listener.GetHybridListener().GetMatchedListeners()[index]
+	if matchedListener != nil {
 		httpListener = matchedListener.GetHttpListener()
 		httpListenerReport = listenerReport.GetHybridListenerReport().GetMatchedListenerReports()[matchedListener.GetMatcher().String()].GetHttpListenerReport()
 	} else {
@@ -150,7 +149,7 @@ func (t *translatorInstance) computeListenerFiltersWithIndex(params plugins.Para
 	}
 
 	// add the http connection manager filter after all the InAuth Listener Filters
-	rdsName := routeConfigNameWithIndex(listener, index)
+	rdsName := routeConfigNameWithMatchedListener(listener, matchedListener)
 	httpConnMgr := t.computeHttpConnectionManagerFilter(params, httpListener, rdsName, httpListenerReport)
 	listenerFilters = append(listenerFilters, plugins.StagedListenerFilter{
 		ListenerFilter: httpConnMgr,
