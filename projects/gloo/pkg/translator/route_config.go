@@ -81,6 +81,7 @@ func (h *httpRouteConfigurationTranslator) ComputeRouteConfiguration(params plug
 }
 
 func (h *httpRouteConfigurationTranslator) computeVirtualHosts(params plugins.Params) []*envoy_config_route_v3.VirtualHost {
+	fmt.Println("Test Test Test!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 	virtualHosts := h.listener.GetVirtualHosts()
 	ValidateVirtualHostDomains(virtualHosts, h.report)
 
