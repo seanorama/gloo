@@ -1,0 +1,16 @@
+syntax = "proto3";
+package cache.options.gloo.solo.io;
+option go_package = "github.com/solo-io/gloo/projects/gloo/pkg/api/v1/enterprise/options/cache";
+
+import "validate/validate.proto";
+import "extproto/ext.proto";
+
+option (extproto.equal_all) = true;
+option (extproto.hash_all) = true;
+option (extproto.clone_all) = true;
+
+/*
+    HTTP Cache
+    The purpose of this filter is to enable HTTP caching for envoy.
+*/
+message FilterConfig {}
