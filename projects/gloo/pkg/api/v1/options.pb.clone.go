@@ -29,6 +29,8 @@ import (
 
 	github_com_solo_io_gloo_projects_gloo_pkg_api_external_envoy_type_matcher_v3 "github.com/solo-io/gloo/projects/gloo/pkg/api/external/envoy/type/matcher/v3"
 
+	github_com_solo_io_gloo_projects_gloo_pkg_api_v1_enterprise_options_cache "github.com/solo-io/gloo/projects/gloo/pkg/api/v1/enterprise/options/cache"
+
 	github_com_solo_io_gloo_projects_gloo_pkg_api_v1_enterprise_options_dlp "github.com/solo-io/gloo/projects/gloo/pkg/api/v1/enterprise/options/dlp"
 
 	github_com_solo_io_gloo_projects_gloo_pkg_api_v1_enterprise_options_extauth_v1 "github.com/solo-io/gloo/projects/gloo/pkg/api/v1/enterprise/options/extauth/v1"
@@ -266,6 +268,12 @@ func (m *HttpListenerOptions) Clone() proto.Message {
 		target.LeftmostXffAddress = h.Clone().(*github_com_golang_protobuf_ptypes_wrappers.BoolValue)
 	} else {
 		target.LeftmostXffAddress = proto.Clone(m.GetLeftmostXffAddress()).(*github_com_golang_protobuf_ptypes_wrappers.BoolValue)
+	}
+
+	if h, ok := interface{}(m.GetCache()).(clone.Cloner); ok {
+		target.Cache = h.Clone().(*github_com_solo_io_gloo_projects_gloo_pkg_api_v1_enterprise_options_cache.FilterConfig)
+	} else {
+		target.Cache = proto.Clone(m.GetCache()).(*github_com_solo_io_gloo_projects_gloo_pkg_api_v1_enterprise_options_cache.FilterConfig)
 	}
 
 	return target

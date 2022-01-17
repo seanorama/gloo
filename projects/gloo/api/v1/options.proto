@@ -157,7 +157,7 @@ message HttpListenerOptions {
     google.protobuf.BoolValue leftmost_xff_address = 16;
 
     // Enterprise-only: Config for HTTP Caching
-    cache.options.gloo.solo.io.FilterConfig cache = 6;
+    cache.options.gloo.solo.io.FilterConfig cache = 17;
 }
 
 // Optional, feature-specific configuration that lives on tcp listeners

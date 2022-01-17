@@ -321,6 +321,16 @@ func (m *HttpListenerOptions) Equal(that interface{}) bool {
 		}
 	}
 
+	if h, ok := interface{}(m.GetCache()).(equality.Equalizer); ok {
+		if !h.Equal(target.GetCache()) {
+			return false
+		}
+	} else {
+		if !proto.Equal(m.GetCache(), target.GetCache()) {
+			return false
+		}
+	}
+
 	return true
 }
 

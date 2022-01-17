@@ -45,6 +45,8 @@ spec:
                                   nullable: true
                                   type: integer
                               type: object
+                            cache:
+                              type: object
                             csrf:
                               properties:
                                 additionalOrigins:
@@ -5058,6 +5060,8 @@ spec:
                                             minimum: 0
                                             nullable: true
                                             type: integer
+                                        type: object
+                                      cache:
                                         type: object
                                       csrf:
                                         properties:
