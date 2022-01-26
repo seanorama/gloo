@@ -63,7 +63,12 @@ message Gateway {
     oneof GatewayType {
         HttpGateway http_gateway = 9;
         TcpGateway tcp_gateway = 10;
+
+        // TODO - we introduced this recently, can ew just deprecate and not support it? I don't think anyone is using it yet
+        // and the new multip_http_gateway will be more configuration
         HybridGateway hybrid_gateway = 11;
+
+        MultiHttpGateway multi_http_gateway = 15;
     }
 
     /*
@@ -150,6 +155,103 @@ message MatchedGateway {
         TcpGateway tcp_gateway = 3;
     }
 }
+
+
+message MultiHttpGateway {
+
+    // How to select MatchableHttpGateways to aggregate
+    oneof selection_type {
+        // Delegate to the resource with the given `name` and `namespace.
+        core.solo.io.ResourceRef ref = 3;
+
+        // Delegate to the MatchableHttpGateway that match the given selector.
+        Selector selector = 4;
+    }
+
+    // TODO - how can we ensure that configurtion in this message (ie on the Gateway resource)
+    // can control the config at the HttpGateway level?
+    // Should I expose the same Matcher config at this level?
+}
+
+
+// THIS IS THE NEW CRD
+// it contains configuratio for a FilterChain:
+//   HttpGateway confgiures Filters
+//   Matcher configures the FilterChainMatch, TransportSocket
+//   MatcherAction confgiures the way that MatchableHttpGateway merges its configuration with the SslConfig defined on a VS
+message MatchableHttpGateway {
+
+    HttpGateway http_gateway = 1;
+
+    message Matcher {
+        // CidrRange specifies an IP Address and a prefix length to construct the subnet mask for a CIDR range.
+        // See https://www.envoyproxy.io/docs/envoy/latest/api-v3/config/core/v3/address.proto#envoy-v3-api-msg-config-core-v3-cidrrange
+        repeated .solo.io.envoy.config.core.v3.CidrRange source_prefix_ranges = 1;
+
+        gloo.solo.io.SslConfig ssl_config = 2;
+    }
+
+    Matcher matcher = 2;
+
+
+    /**
+
+    TODO - this almost feels unncessary. The same team that owns a MatchableHttpGateway will own a VirtualService
+
+    enum MatcherAction{
+        // Only generate FilterChainMatch
+        IgnoreVirtualService = 0;
+        InheritFromVirtualService = 1;
+    }
+
+    MatcherAction matcher_action = 3;
+
+     */
+}
+
+message Selector {
+
+
+    repeated string namespaces = 1;
+
+    map<string, string> labels = 2;
+
+    message Expression {
+        // Kubernetes label key, must conform to Kubernetes syntax requirements
+        // https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#syntax-and-character-set
+        string key = 1;
+
+        // Selector expression operator, while the set-based syntax differs from Kubernetes (kubernetes: `key: !mylabel`, gloo: `key: mylabel, operator: "!"` | kubernetes: `key: mylabel`, gloo: `key: mylabel, operator: exists`), the functionality remains the same.
+        enum Operator {
+            // =
+            Equals = 0;
+            // ==
+            DoubleEquals = 1;
+            // !=
+            NotEquals = 2;
+            // in
+            In = 3;
+            // notin
+            NotIn = 4;
+            // exists
+            Exists = 5;
+            // !
+            DoesNotExist = 6;
+            // gt
+            GreaterThan = 7;
+            // lt
+            LessThan = 8;
+        }
+        // The operator can only be in, notin, =, ==, !=, exists, ! (DoesNotExist), gt (GreaterThan), lt (LessThan).
+        Operator operator = 2;
+        repeated string values = 3;
+    }
+
+    // Expressions allow for more flexible Route Tables label matching, such as equality-based requirements, set-based requirements, or a combination of both.
+    // https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#equality-based-requirement
+    repeated Expression expressions = 3;
+}
+
 
 message Matcher {
     // Gloo use SNI domains as matching criteria for Gateway selection
