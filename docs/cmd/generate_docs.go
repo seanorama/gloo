@@ -358,7 +358,7 @@ func generateSecurityScanGloo(ctx context.Context) error {
 	}
 	githubutils.SortReleasesBySemver(allReleases)
 	versionsToScan := getVersionsToScan(allReleases)
-	return BuildSecurityScanReportGloo(versionsToScan)
+	return WriteSecurityScanReportForProject(GlooProjectName, versionsToScan)
 }
 
 func generateSecurityScanGlooE(ctx context.Context) error {
@@ -379,7 +379,8 @@ func generateSecurityScanGlooE(ctx context.Context) error {
 
 	githubutils.SortReleasesBySemver(allReleases)
 	versionsToScan := getVersionsToScan(allReleases)
-	return BuildSecurityScanReportGlooE(versionsToScan)
+	return WriteSecurityScanReportForProject(SoloProjectsProjectName, versionsToScan)
+
 }
 
 func fetchEnterpriseHelmValues(args []string) error {

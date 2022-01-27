@@ -8,61 +8,97 @@ import (
 	"k8s.io/apimachinery/pkg/util/version"
 )
 
-func BuildSecurityScanReportGloo(tags []string) error {
-	// tags are sorted by minor version
+const GlooProjectName = "gloo"
+const SoloProjectsProjectName = "solo-projects"
+
+
+// WriteSecurityScanReportForProject works by performing the following steps:
+// 	1. Given a list of tags (ie v1.8.4) and a project (ie Gloo)
+//  2. For each tag:
+// 		A - Determine what images were published for that tag
+//		B - Pull down the report for that image/tag combination
+//		C - Aggregate those details into a consumable format
+//		D - Write those reports to a file our docs templates can render
+func WriteSecurityScanReportForProject(project string, tags []string) error {
+	if project != GlooProjectName && project != SoloProjectsProjectName {
+		panic("Only supported for gloo and solo-projects")
+	}
+
+	// We assume that tags are sorted by minor version
 	latestTag := tags[0]
 	prevMinorVersion, _ := version.ParseSemantic(latestTag)
+
+	reportWriter := GetReportWriter()
+
 	for ix, tag := range tags {
-		semver, err := version.ParseSemantic(tag)
+		taggedVersion, err := version.ParseSemantic(tag)
 		if err != nil {
 			return err
 		}
-		if ix == 0 || semver.Minor() != prevMinorVersion.Minor() {
-			fmt.Printf("\n***Latest %d.%d.x Gloo Open Source Release: %s***\n\n", semver.Major(), semver.Minor(), tag)
-			err = printImageReportGloo(tag)
-			if err != nil {
-				return err
-			}
-			prevMinorVersion = semver
-		} else {
-			fmt.Printf("<details><summary> Release %s </summary>\n\n", tag)
-			err = printImageReportGloo(tag)
-			if err != nil {
-				return err
-			}
-			fmt.Println("</details>")
+
+		// To make the docs clearer, we have some formatting to distinguish the most recent tag
+		// for each minor version
+		isLatestTagForMinorVersion := ix == 0 || taggedVersion.Minor() != prevMinorVersion.Minor()
+		if isLatestTagForMinorVersion {
+			prevMinorVersion = taggedVersion
 		}
+
+		// The report builder handles the formatting logic for combining a report for a single image
+		// into a report for a set of images within a tag
+		versionedReportBuilder := GetVersionedReportBuilder(project, taggedVersion, isLatestTagForMinorVersion)
+
+		// Aggregate all image reports into a single report
+		if err := addProjectImagesToReport(project, versionedReportBuilder); err != nil {
+			return err
+		}
+
+		report := versionedReportBuilder.Build()
+
+		if err := reportWriter.Write(taggedVersion, report); err != nil {
+			return err
+		}
+	}
+
+	return reportWriter.Flush()
+}
+
+func addProjectImagesToReport(project string, reportBuilder *VersionedReportBuilder) error {
+	if project == GlooProjectName {
+		return addGlooImagesToReport(reportBuilder)
+	}
+
+	if project == SoloProjectsProjectName {
+		return addGlooEImagesToReport(reportBuilder)
 	}
 
 	return nil
 }
 
-func BuildSecurityScanReportGlooE(tags []string) error {
-	// tags are sorted by minor version
-	latestTag := tags[0]
-	prevMinorVersion, _ := version.ParseSemantic(latestTag)
-	for ix, tag := range tags {
-		semver, err := version.ParseSemantic(tag)
+func addGlooImagesToReport(reportBuilder *VersionedReportBuilder) error {
+	publishedReportUrlTemplate := "https://storage.googleapis.com/solo-gloo-security-scans/gloo/%s/%s_cve_report.docgen"
+	for _, image := range OpenSourceImages() {
+		url := fmt.Sprintf(publishedReportUrlTemplate, reportBuilder.Version.String(), image)
+		imageReport, err := GetSecurityScanReport(url)
 		if err != nil {
 			return err
 		}
-		if ix == 0 || semver.Minor() != prevMinorVersion.Minor() {
-			fmt.Printf("\n***Latest %d.%d.x Gloo Enterprise Release: %s***\n\n", semver.Major(), semver.Minor(), tag)
-			err = printImageReportGlooE(semver)
-			if err != nil {
-				return err
-			}
-			prevMinorVersion = semver
-		} else {
-			fmt.Printf("<details><summary>Release %s </summary>\n\n", tag)
-			err = printImageReportGlooE(semver)
-			if err != nil {
-				return err
-			}
-			fmt.Println("</details>")
-		}
+		reportBuilder.AddImageReport(image, imageReport)
 	}
+	return nil
+}
 
+func addGlooEImagesToReport(reportBuilder *VersionedReportBuilder) error {
+	publishedReportUrlTemplate := "https://storage.googleapis.com/solo-gloo-security-scans/solo-projects/%s/%s_cve_report.docgen"
+	hasFedVersion, _ := reportBuilder.Version.Compare("1.7.0")
+
+	for _, image := range EnterpriseImages(hasFedVersion < 0) {
+		url := fmt.Sprintf(publishedReportUrlTemplate, reportBuilder.Version.String(), image)
+		imageReport, err := GetSecurityScanReport(url)
+		if err != nil {
+			return err
+		}
+		reportBuilder.AddImageReport(image, imageReport)
+	}
 	return nil
 }
 
@@ -82,34 +118,6 @@ func EnterpriseImages(before17 bool) []string {
 	return append([]string{"rate-limit-ee", "gloo-ee", "gloo-ee-envoy-wrapper", "observability-ee", "extauth-ee"}, extraImages...)
 }
 
-func printImageReportGloo(tag string) error {
-	for _, image := range OpenSourceImages() {
-		fmt.Printf("**Gloo %s image**\n\n", image)
-		url := "https://storage.googleapis.com/solo-gloo-security-scans/gloo/" + tag + "/" + image + "_cve_report.docgen"
-		report, err := GetSecurityScanReport(url)
-		if err != nil {
-			return err
-		}
-		fmt.Printf("%s\n\n", report)
-	}
-	return nil
-}
-
-func printImageReportGlooE(semver *version.Version) error {
-	tag := semver.String()
-	hasFedVersion, _ := semver.Compare("1.7.0")
-
-	for _, image := range EnterpriseImages(hasFedVersion < 0) {
-		fmt.Printf("**Gloo Enterprise %s image**\n\n", image)
-		url := "https://storage.googleapis.com/solo-gloo-security-scans/solo-projects/" + tag + "/" + image + "_cve_report.docgen"
-		report, err := GetSecurityScanReport(url)
-		if err != nil {
-			return err
-		}
-		fmt.Printf("%s\n\n", report)
-	}
-	return nil
-}
 
 func GetSecurityScanReport(url string) (string, error) {
 	resp, err := http.Get(url)
