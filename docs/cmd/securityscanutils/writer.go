@@ -15,15 +15,12 @@ const glooFilename = "gloo-security-scan.docgen"
 const soloProjectsFilename = "glooe-security-scan.docgen"
 
 func GetReportWriter(project string, latestVersion *version.Version) ReportWriter {
-	if project == GlooProjectName {
-		return NewPartitionedFileReportWriter(docsDir, glooFilename, latestVersion)
-	}
-
+	filename := glooFilename
 	if project == SoloProjectsProjectName {
-		return NewPartitionedFileReportWriter(docsDir, soloProjectsFilename, latestVersion)
+		filename = soloProjectsFilename
 	}
 
-	return nil
+	return NewPartitionedFileReportWriter(docsDir, filename, latestVersion)
 }
 
 type ReportWriter interface {
@@ -49,6 +46,9 @@ func NewFileReportWriter(dir, filename string) *FileReportWriter {
 func (f *FileReportWriter) Write(version *version.Version, report string) error {
 	if f.fileBuffer == nil {
 		// Create the file and fileBuffer once
+		if err := os.MkdirAll(f.dir, os.ModePerm); err != nil {
+			return err
+		}
 		outputFile, err := os.Create(filepath.Join(f.dir, f.filename))
 		if err != nil {
 			return err
@@ -87,6 +87,7 @@ type PartitionedFileReportWriter struct {
 func NewPartitionedFileReportWriter(dir string, filename string, latestVersion *version.Version) *PartitionedFileReportWriter {
 	return &PartitionedFileReportWriter{
 		dir:             dir,
+		filename:        filename,
 		latestVersion:   latestVersion,
 		writers:         make(map[uint]*FileReportWriter),
 		aggregateWriter: NewFileReportWriter(dir, filename),

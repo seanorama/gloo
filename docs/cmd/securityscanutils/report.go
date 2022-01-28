@@ -17,7 +17,7 @@ func GetVersionedReportBuilder(project string, version *version.Version, isMostR
 		Version:            version,
 		Header:             fmt.Sprintf("<details><summary> Release %s </summary>\n\n", version.String()),
 		Trailer:            fmt.Sprintln("</details>"),
-		ImageHeaderFormat:  "**" + projectHeader + " %s image**\n\n",
+		ImageHeaderFormat:  "** %s image**\n\n",
 		ImageTrailerFormat: "\n\n",
 	}
 
