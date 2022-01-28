@@ -12,7 +12,7 @@ const GlooProjectName = "gloo"
 const SoloProjectsProjectName = "solo-projects"
 
 // WriteSecurityScanReportForProject works by performing the following steps:
-// 	1. Given a list of tags (ie v1.8.4) and a project (ie Gloo)
+//  1. Given a list of tags (ie v1.8.4) and a project (ie Gloo)
 //  2. For each tag:
 // 		A - Determine what images were published for that tag
 //		B - Pull down the report for that image/tag combination

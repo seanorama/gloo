@@ -380,7 +380,6 @@ func generateSecurityScanGlooE(ctx context.Context) error {
 	githubutils.SortReleasesBySemver(allReleases)
 	versionsToScan := getVersionsToScan(allReleases)
 	return WriteSecurityScanReportForProject(SoloProjectsProjectName, versionsToScan)
-
 }
 
 func fetchEnterpriseHelmValues(args []string) error {
