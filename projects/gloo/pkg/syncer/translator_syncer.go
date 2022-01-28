@@ -2,14 +2,17 @@ package syncer
 
 import (
 	"context"
-
 	"github.com/rotisserie/eris"
+	gatewayv1 "github.com/solo-io/gloo/projects/gateway/pkg/api/v1"
+	"github.com/solo-io/gloo/projects/gateway/pkg/reconciler"
+	"github.com/solo-io/gloo/projects/gateway/pkg/utils"
 	"github.com/solo-io/gloo/projects/gateway/pkg/utils/metrics"
 	"github.com/solo-io/gloo/projects/gloo/pkg/api/v1/enterprise/options/ratelimit"
 	"github.com/solo-io/gloo/projects/gloo/pkg/syncer/sanitizer"
 	"github.com/solo-io/go-utils/contextutils"
 
 	"github.com/hashicorp/go-multierror"
+	gwtranslator "github.com/solo-io/gloo/projects/gateway/pkg/translator"
 	v1 "github.com/solo-io/gloo/projects/gloo/pkg/api/v1"
 	v1snap "github.com/solo-io/gloo/projects/gloo/pkg/api/v1/gloosnapshot"
 	"github.com/solo-io/gloo/projects/gloo/pkg/translator"
@@ -31,6 +34,7 @@ type translatorSyncer struct {
 	extensionKeys map[string]struct{}
 	settings      *v1.Settings
 	statusMetrics metrics.ConfigStatusMetrics
+	gatewayTranslator  gwtranslator.Translator
 }
 
 type TranslatorSyncerExtensionParams struct {
@@ -64,6 +68,7 @@ func NewTranslatorSyncer(
 	extensions []TranslatorSyncerExtension,
 	settings *v1.Settings,
 	statusMetrics metrics.ConfigStatusMetrics,
+	gatewayTranslator gwtranslator.Translator,
 ) v1snap.ApiSyncer {
 	s := &translatorSyncer{
 		translator:    translator,
@@ -74,6 +79,7 @@ func NewTranslatorSyncer(
 		sanitizer:     sanitizer,
 		settings:      settings,
 		statusMetrics: statusMetrics,
+		gatewayTranslator: gatewayTranslator,
 	}
 	if devMode {
 		// TODO(ilackarms): move this somewhere else?
@@ -86,6 +92,8 @@ func NewTranslatorSyncer(
 
 func (s *translatorSyncer) Sync(ctx context.Context, snap *v1snap.ApiSnapshot) error {
 	logger := contextutils.LoggerFrom(ctx)
+	//generate proxies
+	//
 	var multiErr *multierror.Error
 	reports := make(reporter.ResourceReports)
 	err := s.syncEnvoy(ctx, snap, reports)
@@ -114,4 +122,38 @@ func (s *translatorSyncer) Sync(ctx context.Context, snap *v1snap.ApiSnapshot) e
 	}
 
 	return multiErr.ErrorOrNil()
+}
+
+func(s *translatorSyncer) setProxies(ctx context.Context, snap v1snap.ApiSnapshot) error{
+    gwSnap := gatewayv1.ApiSnapshot {
+    	VirtualServices: snap.VirtualServices,
+    	Gateways: snap.Gateways,
+    	RouteTables: snap.RouteTables,
+    	RouteOptions: snap.RouteOptions,
+    	VirtualHostOptions: snap.VirtualHostOptions,
+	}
+	logger := contextutils.LoggerFrom(ctx)
+	gatewaysByProxy := utils.GatewaysByProxyName(snap.Gateways)
+
+	desiredProxies := make(reconciler.GeneratedProxies)
+	// TODO: make this an instance variable or const
+	managedProxyLabels := map[string]string{
+		"created_by": "gateway",
+	}
+	for proxyName, gatewayList := range gatewaysByProxy {
+		//TODO writeNamespace
+		proxy, reports := s.gatewayTranslator.Translate(ctx, proxyName, "gloo-system", &gwSnap, gatewayList)
+		if proxy != nil {
+
+			//TODO: I assume we can remove compression if these stay in memory
+			//if s.shouldCompresss(ctx) {
+			//	compress.SetShouldCompressed(proxy)
+			//}
+
+			logger.Infof("desired proxy %v", proxy.GetMetadata().Ref())
+			proxy.GetMetadata().Labels = managedProxyLabels
+			desiredProxies[proxy] = reports
+		}
+	}
+	return nil
 }

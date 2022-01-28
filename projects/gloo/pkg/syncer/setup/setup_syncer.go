@@ -27,6 +27,7 @@ import (
 	"github.com/solo-io/gloo/pkg/utils/channelutils"
 	"github.com/solo-io/gloo/pkg/utils/setuputils"
 	gateway "github.com/solo-io/gloo/projects/gateway/pkg/api/v1"
+	gwtranslator "github.com/solo-io/gloo/projects/gateway/pkg/translator"
 	rlv1alpha1 "github.com/solo-io/gloo/projects/gloo/pkg/api/external/solo/ratelimit"
 	v1 "github.com/solo-io/gloo/projects/gloo/pkg/api/v1"
 	extauth "github.com/solo-io/gloo/projects/gloo/pkg/api/v1/enterprise/options/extauth/v1"
@@ -549,6 +550,27 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 	)
 
 	t := translator.NewTranslator(sslutils.NewSslConfigTranslator(), opts.Settings, pluginRegistryFactory)
+	gwOpts := gwtranslator.Opts{
+		GlooNamespace:                 opts.WriteNamespace,
+		WriteNamespace:                opts.WriteNamespace,
+		StatusReporterNamespace:       opts.StatusReporterNamespace,
+		WatchNamespaces:               opts.WatchNamespaces,
+		Gateways:                      opts.Gateways,
+		VirtualServices:               opts.VirtualServices,
+		RouteTables:                   opts.RouteTables,
+		Proxies:                       opts.Proxies,
+		RouteOptions:                  opts.RouteOptions,
+		VirtualHostOptions:            opts.VirtualHostOptions,
+		WatchOpts:                     opts.WatchOpts,
+		ValidationServerAddress:       "",
+		DevMode:                       opts.DevMode,
+		//TODO: set correctly
+		ReadGatewaysFromAllNamespaces: false,
+		//TODO: set correctly or remove
+		Validation:                    nil,
+		ConfigStatusMetricOpts:        nil,
+	}
+	gatewayTranslator := gwtranslator.NewDefaultTranslator(gwOpts)
 
 	routeReplacingSanitizer, err := sanitizer.NewRouteReplacingSanitizer(opts.Settings.GetGloo().GetInvalidConfigPolicy())
 	if err != nil {
@@ -593,7 +615,7 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 	if err != nil {
 		return err
 	}
-	translationSync := syncer.NewTranslatorSyncer(t, opts.ControlPlane.SnapshotCache, xdsHasher, xdsSanitizer, rpt, opts.DevMode, syncerExtensions, opts.Settings, statusMetrics)
+	translationSync := syncer.NewTranslatorSyncer(t, opts.ControlPlane.SnapshotCache, xdsHasher, xdsSanitizer, rpt, opts.DevMode, syncerExtensions, opts.Settings, statusMetrics, gatewayTranslator)
 
 	syncers := v1snap.ApiSyncers{
 		translationSync,

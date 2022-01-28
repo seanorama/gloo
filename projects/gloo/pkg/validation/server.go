@@ -80,13 +80,34 @@ func (s *validator) shouldNotify(snap *v1snap.ApiSnapshot) bool {
 	if contextutils.GetLogLevel() == zapcore.DebugLevel {
 		logger.Debugw("last validation snapshot", zap.Any("latestSnapshot", syncutil.StringifySnapshot(s.latestSnapshot)))
 		logger.Debugw("current validation snapshot", zap.Any("currentSnapshot", syncutil.StringifySnapshot(snap)))
+		logger.Debugf("validation hash changed: %v", hashChanged)
 	}
-	logger.Debugf("validation hash changed: %v", hashChanged)
-
 	// notify if the hash of what we care about has changed
 	return hashChanged
 }
+//TODO: this might be merged with shouldNotify
+func (s *validator) gatewayUpdate(snap *v1snap.ApiSnapshot) bool {
 
+	if s.latestSnapshot == nil {
+		return true
+	}
+	//look at the hash of resources that affect the gateway snapshot
+	hashFunc := func(snap *v1snap.ApiSnapshot) uint64 {
+		toHash := append([]interface{}{}, snap.VirtualHostOptions.AsInterfaces()...)
+		toHash = append(toHash, snap.VirtualServices.AsInterfaces()...)
+		toHash = append(toHash, snap.Gateways.AsInterfaces()...)
+		toHash = append(toHash, snap.RouteOptions.AsInterfaces()...)
+		toHash = append(toHash, snap.RouteTables.AsInterfaces()...)
+
+		hash, err := hashutils.HashAllSafe(nil, toHash...)
+		if err != nil {
+			panic("this error should never happen, as this is safe hasher")
+		}
+		return hash
+	}
+	hashChanged := hashFunc(s.latestSnapshot) != hashFunc(snap)
+    return hashChanged
+}
 // only call within a lock
 // notify all receivers
 func (s *validator) pushNotifications() {

@@ -76,12 +76,12 @@ func (s *translatorSyncer) Sync(ctx context.Context, snap *v1.ApiSnapshot) error
 		logger.Debug(syncutil.StringifySnapshot(snap))
 	}
 
-	desiredProxies, invalidProxies := s.generatedDesiredProxies(ctx, snap)
+	desiredProxies, invalidProxies := s.GeneratedDesiredProxies(ctx, snap)
 
 	return s.reconcile(ctx, desiredProxies, invalidProxies)
 }
 
-func (s *translatorSyncer) generatedDesiredProxies(ctx context.Context, snap *v1.ApiSnapshot) (reconciler.GeneratedProxies, reconciler.InvalidProxies) {
+func (s *translatorSyncer) GeneratedDesiredProxies(ctx context.Context, snap *v1.ApiSnapshot) (reconciler.GeneratedProxies, reconciler.InvalidProxies) {
 	logger := contextutils.LoggerFrom(ctx)
 	gatewaysByProxy := utils.GatewaysByProxyName(snap.Gateways)
 

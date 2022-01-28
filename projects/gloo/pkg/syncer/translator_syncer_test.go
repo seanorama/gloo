@@ -2,6 +2,7 @@ package syncer_test
 
 import (
 	"context"
+	"github.com/golang/mock/gomock"
 
 	envoy_config_cluster_v3 "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
 	envoy_config_endpoint_v3 "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
@@ -25,6 +26,7 @@ import (
 	"github.com/solo-io/solo-kit/pkg/api/v1/resources/core"
 	"github.com/solo-io/solo-kit/pkg/api/v2/reporter"
 	"github.com/solo-io/solo-kit/pkg/errors"
+	gatewaymocks "github.com/solo-io/gloo/projects/gateway/pkg/translator/mocks"
 )
 
 var _ = Describe("Translate Proxy", func() {
@@ -44,12 +46,17 @@ var _ = Describe("Translate Proxy", func() {
 		ref            = "syncer-test"
 		statusClient   resources.StatusClient
 		statusMetrics  metrics.ConfigStatusMetrics
+		gatewayTranslator *gatewaymocks.MockTranslator
+		ctrl           *gomock.Controller
 	)
 
 	BeforeEach(func() {
 		var err error
 		xdsCache = &MockXdsCache{}
 		sanitizer = &MockXdsSanitizer{}
+		// TODO add specific behavior to mock
+		ctrl = gomock.NewController(GinkgoT())
+		gatewayTranslator = gatewaymocks.NewMockTranslator(ctrl)
 		ctx, cancel = context.WithCancel(context.Background())
 
 		resourceClientFactory := &factory.MemoryResourceClientFactory{
@@ -77,7 +84,7 @@ var _ = Describe("Translate Proxy", func() {
 		rep := reporter.NewReporter(ref, statusClient, proxyClient.BaseClient(), upstreamClient)
 
 		xdsHasher := &xds.ProxyKeyHasher{}
-		syncer = NewTranslatorSyncer(&mockTranslator{true, false, nil}, xdsCache, xdsHasher, sanitizer, rep, false, nil, settings, statusMetrics)
+		syncer = NewTranslatorSyncer(&mockTranslator{true, false, nil}, xdsCache, xdsHasher, sanitizer, rep, false, nil, settings, statusMetrics, gatewayTranslator)
 		snap = &v1snap.ApiSnapshot{
 			Proxies: v1.ProxyList{
 				proxy,
@@ -106,7 +113,7 @@ var _ = Describe("Translate Proxy", func() {
 		Expect(err).NotTo(HaveOccurred())
 		snap.Proxies[0] = p1
 
-		syncer = NewTranslatorSyncer(&mockTranslator{false, false, nil}, xdsCache, xdsHasher, sanitizer, rep, false, nil, settings, statusMetrics)
+		syncer = NewTranslatorSyncer(&mockTranslator{false, false, nil}, xdsCache, xdsHasher, sanitizer, rep, false, nil, settings, statusMetrics, gatewayTranslator)
 
 		err = syncer.Sync(context.Background(), snap)
 		Expect(err).NotTo(HaveOccurred())
@@ -188,6 +195,8 @@ var _ = Describe("Empty cache", func() {
 		ref            = "syncer-test"
 		statusClient   resources.StatusClient
 		statusMetrics  metrics.ConfigStatusMetrics
+		gatewayTranslator *gatewaymocks.MockTranslator
+		ctrl           *gomock.Controller
 	)
 
 	BeforeEach(func() {
@@ -220,6 +229,10 @@ var _ = Describe("Empty cache", func() {
 
 		xdsHasher := &xds.ProxyKeyHasher{}
 
+		// TODO add specific behavior to mock
+		ctrl = gomock.NewController(GinkgoT())
+		gatewayTranslator = gatewaymocks.NewMockTranslator(ctrl)
+
 		snapshot = xds.NewEndpointsSnapshotFromResources(
 			envoycache.NewResources("current endpoint", []envoycache.Resource{
 				resource.NewEnvoyResource(&envoy_config_endpoint_v3.ClusterLoadAssignment{
@@ -238,7 +251,7 @@ var _ = Describe("Empty cache", func() {
 		)
 		statusMetrics, err = metrics.NewConfigStatusMetrics(metrics.GetDefaultConfigStatusOptions())
 		Expect(err).NotTo(HaveOccurred())
-		syncer = NewTranslatorSyncer(&mockTranslator{true, false, snapshot}, xdsCache, xdsHasher, sanitizer, rep, false, nil, settings, statusMetrics)
+		syncer = NewTranslatorSyncer(&mockTranslator{true, false, snapshot}, xdsCache, xdsHasher, sanitizer, rep, false, nil, settings, statusMetrics, gatewayTranslator)
 
 		_, err = proxyClient.Write(proxy, clients.WriteOpts{})
 		Expect(err).NotTo(HaveOccurred())
@@ -309,6 +322,8 @@ var _ = Describe("Translate mulitple proxies with errors", func() {
 		ref            = "syncer-test"
 		statusClient   resources.StatusClient
 		statusMetrics  metrics.ConfigStatusMetrics
+		gatewayTranslator *gatewaymocks.MockTranslator
+		ctrl           *gomock.Controller
 	)
 
 	proxiesShouldHaveErrors := func(proxies v1.ProxyList, numProxies int) {
@@ -377,6 +392,10 @@ var _ = Describe("Translate mulitple proxies with errors", func() {
 
 		settings = &v1.Settings{}
 
+		// TODO add specific behavior to mock
+		ctrl = gomock.NewController(GinkgoT())
+		gatewayTranslator = gatewaymocks.NewMockTranslator(ctrl)
+
 		statusClient = statusutils.GetStatusClientFromEnvOrDefault(ns)
 		statusMetrics, err = metrics.NewConfigStatusMetrics(metrics.GetDefaultConfigStatusOptions())
 		Expect(err).NotTo(HaveOccurred())
@@ -384,7 +403,7 @@ var _ = Describe("Translate mulitple proxies with errors", func() {
 		rep := reporter.NewReporter(ref, statusClient, proxyClient.BaseClient(), usClient)
 
 		xdsHasher := &xds.ProxyKeyHasher{}
-		syncer = NewTranslatorSyncer(&mockTranslator{true, true, nil}, xdsCache, xdsHasher, sanitizer, rep, false, nil, settings, statusMetrics)
+		syncer = NewTranslatorSyncer(&mockTranslator{true, true, nil}, xdsCache, xdsHasher, sanitizer, rep, false, nil, settings, statusMetrics, gatewayTranslator)
 		snap = &v1snap.ApiSnapshot{
 			Proxies: v1.ProxyList{
 				proxy1,

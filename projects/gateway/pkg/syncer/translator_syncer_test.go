@@ -388,7 +388,7 @@ var _ = Describe("TranslatorSyncer", func() {
 			mockTranslator.EXPECT().Translate(gomock.Any(), "gateway-proxy", "gloo-system", snap, gomock.Any()).
 				Return(proxy, nil)
 
-			ts.generatedDesiredProxies(ctx, snap)
+			ts.GeneratedDesiredProxies(ctx, snap)
 
 			Expect(proxy.Metadata.Annotations).To(HaveKeyWithValue(compress.CompressedKey, compress.CompressedValue))
 		})
@@ -397,7 +397,7 @@ var _ = Describe("TranslatorSyncer", func() {
 			mockTranslator.EXPECT().Translate(gomock.Any(), "gateway-proxy", "gloo-system", snap, gomock.Any()).
 				Return(proxy, nil)
 
-			ts.generatedDesiredProxies(ctx, snap)
+			ts.GeneratedDesiredProxies(ctx, snap)
 
 			Expect(proxy.Metadata.Annotations).NotTo(HaveKeyWithValue(compress.CompressedKey, compress.CompressedValue))
 		})
