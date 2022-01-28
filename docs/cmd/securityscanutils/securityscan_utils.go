@@ -11,24 +11,23 @@ import (
 const GlooProjectName = "gloo"
 const SoloProjectsProjectName = "solo-projects"
 
-
 // WriteSecurityScanReportForProject works by performing the following steps:
 // 	1. Given a list of tags (ie v1.8.4) and a project (ie Gloo)
 //  2. For each tag:
 // 		A - Determine what images were published for that tag
 //		B - Pull down the report for that image/tag combination
 //		C - Aggregate those details into a consumable format
-//		D - Write those reports to a file our docs templates can render
+//		D - Write those reports to a file that our docs templates can render
 func WriteSecurityScanReportForProject(project string, tags []string) error {
 	if project != GlooProjectName && project != SoloProjectsProjectName {
 		panic("Only supported for gloo and solo-projects")
 	}
 
-	// We assume that tags are sorted by minor version
+	// We assume that tags are sorted in descending order
 	latestTag := tags[0]
 	prevMinorVersion, _ := version.ParseSemantic(latestTag)
 
-	reportWriter := GetReportWriter()
+	reportWriter := GetReportWriter(project, prevMinorVersion)
 
 	for ix, tag := range tags {
 		taggedVersion, err := version.ParseSemantic(tag)
@@ -117,7 +116,6 @@ func EnterpriseImages(before17 bool) []string {
 	}
 	return append([]string{"rate-limit-ee", "gloo-ee", "gloo-ee-envoy-wrapper", "observability-ee", "extauth-ee"}, extraImages...)
 }
-
 
 func GetSecurityScanReport(url string) (string, error) {
 	resp, err := http.Get(url)

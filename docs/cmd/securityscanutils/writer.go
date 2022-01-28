@@ -1,40 +1,73 @@
 package securityscanutils
 
 import (
-    "github.com/hashicorp/go-multierror"
-    "k8s.io/apimachinery/pkg/util/version"
+	"bufio"
+	"fmt"
+	"os"
+	"path/filepath"
+
+	"github.com/hashicorp/go-multierror"
+	"k8s.io/apimachinery/pkg/util/version"
 )
 
-
 const docsDir = "content/static/content"
-const filename = "gloo-security-scan.docgen"
+const glooFilename = "gloo-security-scan.docgen"
+const soloProjectsFilename = "glooe-security-scan.docgen"
 
-func GetReportWriter(latestVersion *version.Version) ReportWriter {
+func GetReportWriter(project string, latestVersion *version.Version) ReportWriter {
+	if project == GlooProjectName {
+		return NewPartitionedFileReportWriter(docsDir, glooFilename, latestVersion)
+	}
 
-    
-    return &FileReportWriter{
-        dir: docsDir,
-    }
+	if project == SoloProjectsProjectName {
+		return NewPartitionedFileReportWriter(docsDir, soloProjectsFilename, latestVersion)
+	}
+
+	return nil
 }
 
 type ReportWriter interface {
-    Write(version *version.Version, report string) error
-    Flush() error
+	Write(version *version.Version, report string) error
+	Flush() error
 }
 
 type FileReportWriter struct {
-    dir string
-    
+	dir      string
+	filename string
+
+	file       *os.File
+	fileBuffer *bufio.Writer
 }
 
-func (a *FileReportWriter) Write(version *version.Version, report string) error {
-    panic("implement me")
+func NewFileReportWriter(dir, filename string) *FileReportWriter {
+	return &FileReportWriter{
+		dir:      dir,
+		filename: filename,
+	}
 }
 
-func (a *FileReportWriter) Flush() error {
-    panic("implement me")
+func (f *FileReportWriter) Write(version *version.Version, report string) error {
+	if f.fileBuffer == nil {
+		// Create the file and fileBuffer once
+		outputFile, err := os.Create(filepath.Join(f.dir, f.filename))
+		if err != nil {
+			return err
+		}
+
+		f.file = outputFile
+		f.fileBuffer = bufio.NewWriter(outputFile)
+	}
+
+	_, err := f.fileBuffer.WriteString(report)
+	return err
 }
 
+func (f *FileReportWriter) Flush() error {
+	defer f.file.Close()
+
+	// flush buffered data to the file
+	return f.fileBuffer.Flush()
+}
 
 // A PartitionedFileReportWriter writes reports to separate files, grouped by minor version
 // We needed this type of ReportWriter since aggregating reports in a single file caused
@@ -43,37 +76,56 @@ func (a *FileReportWriter) Flush() error {
 // look for the old aggregate file name. Therefore, to maintain backwards compatibility with those
 // versions, we also write some of the reports to the old file format
 type PartitionedFileReportWriter struct {
-    latestVersion *version.Version
+	dir           string
+	filename      string
+	latestVersion *version.Version
 
-    writers map[uint]*FileReportWriter
+	writers         map[uint]*FileReportWriter
+	aggregateWriter *FileReportWriter
+}
 
-    aggregateWriter *FileReportWriter
+func NewPartitionedFileReportWriter(dir string, filename string, latestVersion *version.Version) *PartitionedFileReportWriter {
+	return &PartitionedFileReportWriter{
+		dir:             dir,
+		latestVersion:   latestVersion,
+		writers:         make(map[uint]*FileReportWriter),
+		aggregateWriter: NewFileReportWriter(dir, filename),
+	}
 }
 
 func (p *PartitionedFileReportWriter) Write(version *version.Version, report string) error {
-    // Choose the appropriate partitioned writer
-    w, ok := p.writers[version.Minor()]
-    if ok {
-        if err := w.Write(version, report); err != nil {
-            return err
-        }
-    }
+	// Choose the appropriate partitioned writer
+	w, ok := p.writers[version.Minor()]
+	if !ok {
+		// Create the partitioned writer if necessary
+		w = NewFileReportWriter(fmt.Sprintf("%s/%d", p.dir, version.Minor()), p.filename)
+		p.writers[version.Minor()] = w
+	}
 
-    if p.latestVersion.Minor() - version.Minor() > 1 {
-        // If the version of the report is not n-1, don't bother aggregating it
-        return nil
-    }
-    return p.aggregateWriter.Write(version, report)
+	if err := w.Write(version, report); err != nil {
+		return err
+	}
+
+	if p.latestVersion.Minor()-version.Minor() <= 2 {
+		// Only include latest minor version and one before that
+		// The purpose of this writer is to support older versions of the docs that fail to
+		// render when the file is too large.
+		return p.aggregateWriter.Write(version, report)
+	}
+
+	return nil
 }
 
 func (p *PartitionedFileReportWriter) Flush() error {
-    var multiErr *multierror.Error
+	var multiErr *multierror.Error
 
-    for _, w := range p.writers {
-         multiErr = multierror.Append(multiErr, w.Flush())
-    }
-    multiErr = multierror.Append(multiErr, p.aggregateWriter.Flush())
+	// Flush each of the writers
+	for _, w := range p.writers {
+		multiErr = multierror.Append(multiErr, w.Flush())
+	}
 
-    return multiErr.ErrorOrNil()
+	// Flush the aggregate writer
+	multiErr = multierror.Append(multiErr, p.aggregateWriter.Flush())
+
+	return multiErr.ErrorOrNil()
 }
-
