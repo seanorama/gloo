@@ -12,6 +12,9 @@ import (
 	"github.com/solo-io/gloo/projects/gloo/pkg/api/external/envoy/extensions/transformation"
 	gloov1 "github.com/solo-io/gloo/projects/gloo/pkg/api/v1"
 	"github.com/solo-io/gloo/projects/gloo/pkg/api/v1/core/matchers"
+	extauth "github.com/solo-io/gloo/projects/gloo/pkg/api/v1/enterprise/options/extauth/v1"
+	"github.com/solo-io/gloo/projects/gloo/pkg/api/v1/enterprise/options/ratelimit"
+	"github.com/solo-io/gloo/projects/gloo/pkg/api/v1/options/cors"
 	glootransformation "github.com/solo-io/gloo/projects/gloo/pkg/api/v1/options/transformation"
 	"github.com/solo-io/solo-kit/pkg/api/v1/resources/core"
 	"github.com/solo-io/solo-kit/pkg/api/v2/reporter"
@@ -664,6 +667,11 @@ var _ = Describe("Route converter", func() {
 
 				rt = &v1.RouteTable{
 					Metadata: &core.Metadata{
+						Labels: map[string]string{
+							"apiproducts.protal.gloo.solo.io": "petstore-product.default",
+							"apiproducts.portal.gloo.solo.io/version": "v1",
+							"environments.portal.gloo.solo.io": "dev.default",
+						},
 						Name:      "rt",
 						Namespace: "default",
 					},
@@ -696,50 +704,82 @@ var _ = Describe("Route converter", func() {
 				}
 
 				vs = &v1.VirtualService{
+					DisplayName: "Development",
 					Metadata: &core.Metadata{
 						Name:      "vs",
 						Namespace: "default",
 					},
 					VirtualHost: &v1.VirtualHost{
-						Options: &gloov1.VirtualHostOptions{
-							StagedTransformations: &glootransformation.TransformationStages{
-								Regular: &glootransformation.RequestResponseTransformations{
-									RequestTransforms: []*glootransformation.RequestMatch{
-										{
-											RequestTransformation: vsOnlyTransformation,
-										},
-									},
-								},
-							},
-						},
+						Domains: []string{"api.example.com:3200", "api.example.com"},
+						//Options: &gloov1.VirtualHostOptions{
+						//	//Cors: &cors.CorsPolicy{
+						//	//	AllowCredentials: true,
+						//	//},
+						//	StagedTransformations: &glootransformation.TransformationStages{
+						//		Regular: &glootransformation.RequestResponseTransformations{
+						//			RequestTransforms: []*glootransformation.RequestMatch{
+						//				{
+						//					RequestTransformation: vsOnlyTransformation,
+						//				},
+						//			},
+						//		},
+						//	},
+						//},
 						Routes: []*v1.Route{
 							{
+								Name: "petstore-product.v1",
 								Matchers: []*matchers.Matcher{{
 									PathSpecifier: &matchers.Matcher_Prefix{
-										Prefix: "/foo",
+										Prefix: "/",
 									},
 								}},
 								Action: &v1.Route_DelegateAction{
 									DelegateAction: &v1.DelegateAction{
-										DelegationType: &v1.DelegateAction_Ref{
-											Ref: &core.ResourceRef{
-												Name:      "rt",
-												Namespace: "default",
+										DelegationType: &v1.DelegateAction_Selector{
+											Selector: &v1.RouteTableSelector{
+												Labels: map[string]string{
+													"apiproducts.protal.gloo.solo.io": "petstore-product.default",
+													"apiproducts.portal.gloo.solo.io/version": "v1",
+													"environments.portal.gloo.solo.io": "dev.default",
+												},
 											},
 										},
 									},
 								},
 								Options: &gloov1.RouteOptions{
-									StagedTransformations: &glootransformation.TransformationStages{
-										InheritTransformation: true,
-										Regular: &glootransformation.RequestResponseTransformations{
-											RequestTransforms: []*glootransformation.RequestMatch{
+									Cors: &cors.CorsPolicy{
+										AllowCredentials: true,
+										AllowHeaders: []string{"api-key", "Authorization"},
+										AllowOrigin: []string{"http://petstore.example.com:32000", "https://petstore.example.com:32000", "http://petstore.example.com", "https://petstore.example.com"},
+									},
+									Extauth: &extauth.ExtAuthExtension{
+										Spec: &extauth.ExtAuthExtension_ConfigRef{
+											ConfigRef: &core.ResourceRef{
+												Name: "default-petstore-product-dev",
+												Namespace: "default",
+											},
+										},
+									},
+									RateLimitConfigType: &gloov1.RouteOptions_RateLimitConfigs{
+										RateLimitConfigs: &ratelimit.RateLimitConfigRefs{
+											Refs: []*ratelimit.RateLimitConfigRef{
 												{
-													RequestTransformation: rtOnlyTransformation,
+													Name: "default-petstore-product-dev",
+													Namespace: "default",
 												},
 											},
 										},
 									},
+									//StagedTransformations: &glootransformation.TransformationStages{
+									//	InheritTransformation: true,
+									//	Regular: &glootransformation.RequestResponseTransformations{
+									//		RequestTransforms: []*glootransformation.RequestMatch{
+									//			{
+									//				RequestTransformation: rtOnlyTransformation,
+									//			},
+									//		},
+									//	},
+									//},
 								},
 							},
 						},
@@ -753,7 +793,7 @@ var _ = Describe("Route converter", func() {
 
 			})
 
-			It("assigns vhost transformation config to route level", func() {
+			FIt("assigns vhost transformation config to route level", func() {
 				rpt := reporter.ResourceReports{}
 				converted, err := rv.ConvertVirtualService(vs, gw, "proxy1", snapshot, rpt)
 				Expect(rpt).To(HaveLen(0))
