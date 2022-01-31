@@ -2,6 +2,7 @@ package syncer_test
 
 import (
 	"context"
+
 	"github.com/golang/mock/gomock"
 
 	envoy_config_cluster_v3 "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
@@ -10,6 +11,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/solo-io/gloo/pkg/utils/statusutils"
+	gatewaymocks "github.com/solo-io/gloo/projects/gateway/pkg/translator/mocks"
 	"github.com/solo-io/gloo/projects/gateway/pkg/utils/metrics"
 	"github.com/solo-io/gloo/projects/gloo/pkg/api/grpc/validation"
 	v1 "github.com/solo-io/gloo/projects/gloo/pkg/api/v1"
@@ -26,28 +28,27 @@ import (
 	"github.com/solo-io/solo-kit/pkg/api/v1/resources/core"
 	"github.com/solo-io/solo-kit/pkg/api/v2/reporter"
 	"github.com/solo-io/solo-kit/pkg/errors"
-	gatewaymocks "github.com/solo-io/gloo/projects/gateway/pkg/translator/mocks"
 )
 
 var _ = Describe("Translate Proxy", func() {
 
 	var (
-		xdsCache       *MockXdsCache
-		sanitizer      *MockXdsSanitizer
-		syncer         v1snap.ApiSyncer
-		snap           *v1snap.ApiSnapshot
-		settings       *v1.Settings
-		upstreamClient clients.ResourceClient
-		proxyClient    v1.ProxyClient
-		ctx            context.Context
-		cancel         context.CancelFunc
-		proxyName      = "proxy-name"
-		ns             = "any-ns"
-		ref            = "syncer-test"
-		statusClient   resources.StatusClient
-		statusMetrics  metrics.ConfigStatusMetrics
+		xdsCache          *MockXdsCache
+		sanitizer         *MockXdsSanitizer
+		syncer            v1snap.ApiSyncer
+		snap              *v1snap.ApiSnapshot
+		settings          *v1.Settings
+		upstreamClient    clients.ResourceClient
+		proxyClient       v1.ProxyClient
+		ctx               context.Context
+		cancel            context.CancelFunc
+		proxyName         = "proxy-name"
+		ns                = "any-ns"
+		ref               = "syncer-test"
+		statusClient      resources.StatusClient
+		statusMetrics     metrics.ConfigStatusMetrics
 		gatewayTranslator *gatewaymocks.MockTranslator
-		ctrl           *gomock.Controller
+		ctrl              *gomock.Controller
 	)
 
 	BeforeEach(func() {
@@ -180,23 +181,23 @@ var _ = Describe("Translate Proxy", func() {
 var _ = Describe("Empty cache", func() {
 
 	var (
-		xdsCache       *MockXdsCache
-		sanitizer      *MockXdsSanitizer
-		syncer         v1snap.ApiSyncer
-		settings       *v1.Settings
-		upstreamClient clients.ResourceClient
-		proxyClient    v1.ProxyClient
-		ctx            context.Context
-		cancel         context.CancelFunc
-		proxy          *v1.Proxy
-		snapshot       envoycache.Snapshot
-		proxyName      = "proxy-name"
-		ns             = "any-ns"
-		ref            = "syncer-test"
-		statusClient   resources.StatusClient
-		statusMetrics  metrics.ConfigStatusMetrics
+		xdsCache          *MockXdsCache
+		sanitizer         *MockXdsSanitizer
+		syncer            v1snap.ApiSyncer
+		settings          *v1.Settings
+		upstreamClient    clients.ResourceClient
+		proxyClient       v1.ProxyClient
+		ctx               context.Context
+		cancel            context.CancelFunc
+		proxy             *v1.Proxy
+		snapshot          envoycache.Snapshot
+		proxyName         = "proxy-name"
+		ns                = "any-ns"
+		ref               = "syncer-test"
+		statusClient      resources.StatusClient
+		statusMetrics     metrics.ConfigStatusMetrics
 		gatewayTranslator *gatewaymocks.MockTranslator
-		ctrl           *gomock.Controller
+		ctrl              *gomock.Controller
 	)
 
 	BeforeEach(func() {
@@ -309,21 +310,21 @@ var _ = Describe("Empty cache", func() {
 var _ = Describe("Translate mulitple proxies with errors", func() {
 
 	var (
-		xdsCache       *MockXdsCache
-		sanitizer      *MockXdsSanitizer
-		syncer         v1snap.ApiSyncer
-		snap           *v1snap.ApiSnapshot
-		settings       *v1.Settings
-		proxyClient    v1.ProxyClient
-		upstreamClient v1.UpstreamClient
-		proxyName      = "proxy-name"
-		upstreamName   = "upstream-name"
-		ns             = "any-ns"
-		ref            = "syncer-test"
-		statusClient   resources.StatusClient
-		statusMetrics  metrics.ConfigStatusMetrics
+		xdsCache          *MockXdsCache
+		sanitizer         *MockXdsSanitizer
+		syncer            v1snap.ApiSyncer
+		snap              *v1snap.ApiSnapshot
+		settings          *v1.Settings
+		proxyClient       v1.ProxyClient
+		upstreamClient    v1.UpstreamClient
+		proxyName         = "proxy-name"
+		upstreamName      = "upstream-name"
+		ns                = "any-ns"
+		ref               = "syncer-test"
+		statusClient      resources.StatusClient
+		statusMetrics     metrics.ConfigStatusMetrics
 		gatewayTranslator *gatewaymocks.MockTranslator
-		ctrl           *gomock.Controller
+		ctrl              *gomock.Controller
 	)
 
 	proxiesShouldHaveErrors := func(proxies v1.ProxyList, numProxies int) {

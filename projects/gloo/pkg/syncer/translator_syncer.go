@@ -2,6 +2,7 @@ package syncer
 
 import (
 	"context"
+
 	"github.com/rotisserie/eris"
 	gatewayv1 "github.com/solo-io/gloo/projects/gateway/pkg/api/v1"
 	"github.com/solo-io/gloo/projects/gateway/pkg/reconciler"
@@ -31,10 +32,10 @@ type translatorSyncer struct {
 	latestSnap *v1snap.ApiSnapshot
 	extensions []TranslatorSyncerExtension
 	// used to track which envoy node IDs exist without belonging to a proxy
-	extensionKeys map[string]struct{}
-	settings      *v1.Settings
-	statusMetrics metrics.ConfigStatusMetrics
-	gatewayTranslator  gwtranslator.Translator
+	extensionKeys     map[string]struct{}
+	settings          *v1.Settings
+	statusMetrics     metrics.ConfigStatusMetrics
+	gatewayTranslator gwtranslator.Translator
 }
 
 type TranslatorSyncerExtensionParams struct {
@@ -71,14 +72,14 @@ func NewTranslatorSyncer(
 	gatewayTranslator gwtranslator.Translator,
 ) v1snap.ApiSyncer {
 	s := &translatorSyncer{
-		translator:    translator,
-		xdsCache:      xdsCache,
-		xdsHasher:     xdsHasher,
-		reporter:      reporter,
-		extensions:    extensions,
-		sanitizer:     sanitizer,
-		settings:      settings,
-		statusMetrics: statusMetrics,
+		translator:        translator,
+		xdsCache:          xdsCache,
+		xdsHasher:         xdsHasher,
+		reporter:          reporter,
+		extensions:        extensions,
+		sanitizer:         sanitizer,
+		settings:          settings,
+		statusMetrics:     statusMetrics,
 		gatewayTranslator: gatewayTranslator,
 	}
 	if devMode {
@@ -94,6 +95,7 @@ func (s *translatorSyncer) Sync(ctx context.Context, snap *v1snap.ApiSnapshot) e
 	logger := contextutils.LoggerFrom(ctx)
 	//generate proxies
 	//
+	s.setProxies(ctx, snap)
 	var multiErr *multierror.Error
 	reports := make(reporter.ResourceReports)
 	err := s.syncEnvoy(ctx, snap, reports)
@@ -124,13 +126,13 @@ func (s *translatorSyncer) Sync(ctx context.Context, snap *v1snap.ApiSnapshot) e
 	return multiErr.ErrorOrNil()
 }
 
-func(s *translatorSyncer) setProxies(ctx context.Context, snap v1snap.ApiSnapshot) error{
-    gwSnap := gatewayv1.ApiSnapshot {
-    	VirtualServices: snap.VirtualServices,
-    	Gateways: snap.Gateways,
-    	RouteTables: snap.RouteTables,
-    	RouteOptions: snap.RouteOptions,
-    	VirtualHostOptions: snap.VirtualHostOptions,
+func (s *translatorSyncer) setProxies(ctx context.Context, snap *v1snap.ApiSnapshot) {
+	gwSnap := gatewayv1.ApiSnapshot{
+		VirtualServices:    snap.VirtualServices,
+		Gateways:           snap.Gateways,
+		RouteTables:        snap.RouteTables,
+		RouteOptions:       snap.RouteOptions,
+		VirtualHostOptions: snap.VirtualHostOptions,
 	}
 	logger := contextutils.LoggerFrom(ctx)
 	gatewaysByProxy := utils.GatewaysByProxyName(snap.Gateways)
@@ -153,7 +155,7 @@ func(s *translatorSyncer) setProxies(ctx context.Context, snap v1snap.ApiSnapsho
 			logger.Infof("desired proxy %v", proxy.GetMetadata().Ref())
 			proxy.GetMetadata().Labels = managedProxyLabels
 			desiredProxies[proxy] = reports
+			logger.Infof("Generated proxy %s", proxy.String())
 		}
 	}
-	return nil
 }

@@ -85,6 +85,7 @@ func (s *validator) shouldNotify(snap *v1snap.ApiSnapshot) bool {
 	// notify if the hash of what we care about has changed
 	return hashChanged
 }
+
 //TODO: this might be merged with shouldNotify
 func (s *validator) gatewayUpdate(snap *v1snap.ApiSnapshot) bool {
 
@@ -106,8 +107,9 @@ func (s *validator) gatewayUpdate(snap *v1snap.ApiSnapshot) bool {
 		return hash
 	}
 	hashChanged := hashFunc(s.latestSnapshot) != hashFunc(snap)
-    return hashChanged
+	return hashChanged
 }
+
 // only call within a lock
 // notify all receivers
 func (s *validator) pushNotifications() {

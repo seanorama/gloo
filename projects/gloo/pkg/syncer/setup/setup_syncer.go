@@ -551,24 +551,24 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 
 	t := translator.NewTranslator(sslutils.NewSslConfigTranslator(), opts.Settings, pluginRegistryFactory)
 	gwOpts := gwtranslator.Opts{
-		GlooNamespace:                 opts.WriteNamespace,
-		WriteNamespace:                opts.WriteNamespace,
-		StatusReporterNamespace:       opts.StatusReporterNamespace,
-		WatchNamespaces:               opts.WatchNamespaces,
-		Gateways:                      opts.Gateways,
-		VirtualServices:               opts.VirtualServices,
-		RouteTables:                   opts.RouteTables,
-		Proxies:                       opts.Proxies,
-		RouteOptions:                  opts.RouteOptions,
-		VirtualHostOptions:            opts.VirtualHostOptions,
-		WatchOpts:                     opts.WatchOpts,
-		ValidationServerAddress:       "",
-		DevMode:                       opts.DevMode,
+		GlooNamespace:           opts.WriteNamespace,
+		WriteNamespace:          opts.WriteNamespace,
+		StatusReporterNamespace: opts.StatusReporterNamespace,
+		WatchNamespaces:         opts.WatchNamespaces,
+		Gateways:                opts.Gateways,
+		VirtualServices:         opts.VirtualServices,
+		RouteTables:             opts.RouteTables,
+		Proxies:                 opts.Proxies,
+		RouteOptions:            opts.RouteOptions,
+		VirtualHostOptions:      opts.VirtualHostOptions,
+		WatchOpts:               opts.WatchOpts,
+		ValidationServerAddress: "",
+		DevMode:                 opts.DevMode,
 		//TODO: set correctly
 		ReadGatewaysFromAllNamespaces: false,
 		//TODO: set correctly or remove
-		Validation:                    nil,
-		ConfigStatusMetricOpts:        nil,
+		Validation:             nil,
+		ConfigStatusMetricOpts: nil,
 	}
 	gatewayTranslator := gwtranslator.NewDefaultTranslator(gwOpts)
 

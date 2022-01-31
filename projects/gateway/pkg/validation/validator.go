@@ -155,6 +155,7 @@ func (v *validator) Sync(ctx context.Context, snap *v1.ApiSnapshot) error {
 
 	return nil
 }
+
 type applyResource func(snap *v1.ApiSnapshot) (proxyNames []string, resource resources.Resource, ref *core.ResourceRef)
 
 // update internal snapshot to handle race where a lot of resources may be deleted at once, before syncer updates
