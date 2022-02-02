@@ -1,0 +1,40 @@
+name: Docs
+on:
+  pull_request:
+    branches:
+      - 'master'
+  workflow_run:
+    workflows: ["Test Bot DMs"]
+    types:
+      - completed
+jobs:
+  build:
+    name: Test Bot DMs
+    runs-on: ubuntu-18.04
+    steps:
+    - name: Free disk space
+      run: |
+        echo "Before clearing disk space:"
+        df -h
+
+        # https://github.com/actions/virtual-environments/issues/709
+        sudo apt-get clean
+
+        # Clean up pre-installed tools
+        # https://github.com/actions/virtual-environments/issues/1918
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /opt/ghc
+        sudo rm -rf /usr/local/share/boost
+        sudo rm -rf $AGENT_TOOLSDIRECTORY
+
+        echo "After clearing disk space:"
+        df -h
+    - name: Notify On Failure
+      id: notify-on-failure
+      if: ${{ github.event_name != 'pull_request' && failure() }}
+      run : ./scripts/send_bot_message.py https://hooks.slack.com/services/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
+
+
+${{ github.actor.uppercase }}
+
+format('{0}_{1}', github.actor.uppercase, "WEBHOOK")
