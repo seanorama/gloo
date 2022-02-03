@@ -3,6 +3,8 @@ package setup
 import (
 	"context"
 	"fmt"
+	gwreconciler "github.com/solo-io/gloo/projects/gateway/pkg/reconciler"
+	gwsyncer "github.com/solo-io/gloo/projects/gateway/pkg/syncer"
 	"net"
 	"net/http"
 	"strconv"
@@ -548,7 +550,10 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		authConfigClient.BaseClient(),
 		rlReporterClient,
 	)
-
+	statusMetrics, err := metrics.NewConfigStatusMetrics(opts.Settings.GetObservabilityOptions().GetConfigStatusMetricLabels())
+	if err != nil {
+		return err
+	}
 	t := translator.NewTranslator(sslutils.NewSslConfigTranslator(), opts.Settings, pluginRegistryFactory)
 	gwOpts := gwtranslator.Opts{
 		GlooNamespace:           opts.WriteNamespace,
@@ -571,7 +576,8 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		ConfigStatusMetricOpts: nil,
 	}
 	gatewayTranslator := gwtranslator.NewDefaultTranslator(gwOpts)
-
+	proxyReconciler := gwreconciler.NewProxyReconciler(nil /*proxyValidator TODO: delete*/, proxyClient, statusClient)
+	gwTranslatorSyncer := gwsyncer.NewTranslatorSyncer(opts.WatchOpts.Ctx, opts.WriteNamespace, proxyReconciler, rpt, gatewayTranslator, statusClient, statusMetrics)
 	routeReplacingSanitizer, err := sanitizer.NewRouteReplacingSanitizer(opts.Settings.GetGloo().GetInvalidConfigPolicy())
 	if err != nil {
 		return err
@@ -611,11 +617,8 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 	}
 	syncerExtensions = reconcileUpgradedTranslatorSyncerExtensions(syncerExtensions, upgradedExtensions)
 
-	statusMetrics, err := metrics.NewConfigStatusMetrics(opts.Settings.GetObservabilityOptions().GetConfigStatusMetricLabels())
-	if err != nil {
-		return err
-	}
-	translationSync := syncer.NewTranslatorSyncer(t, opts.ControlPlane.SnapshotCache, xdsHasher, xdsSanitizer, rpt, opts.DevMode, syncerExtensions, opts.Settings, statusMetrics, gatewayTranslator)
+
+	translationSync := syncer.NewTranslatorSyncer(t, opts.ControlPlane.SnapshotCache, xdsHasher, xdsSanitizer, rpt, opts.DevMode, syncerExtensions, opts.Settings, statusMetrics, gatewayTranslator, gwTranslatorSyncer)
 
 	syncers := v1snap.ApiSyncers{
 		translationSync,

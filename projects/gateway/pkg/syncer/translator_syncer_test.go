@@ -348,7 +348,7 @@ var _ = Describe("TranslatorSyncer", func() {
 			ctx      context.Context
 			settings *gloov1.Settings
 
-			ts    *translatorSyncer
+			ts    *TranslatorSyncer
 			snap  *gatewayv1.ApiSnapshot
 			proxy *gloov1.Proxy
 		)
@@ -362,7 +362,7 @@ var _ = Describe("TranslatorSyncer", func() {
 			}
 			ctx = context.Background()
 
-			ts = &translatorSyncer{
+			ts = &TranslatorSyncer{
 				writeNamespace: "gloo-system",
 				translator:     mockTranslator,
 			}

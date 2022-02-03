@@ -133,7 +133,7 @@ func (s *validator) pushNotifications() {
 func (s *validator) Sync(ctx context.Context, snap *v1snap.ApiSnapshot) error {
 	snapCopy := snap.Clone()
 	s.lock.Lock()
-	if s.shouldNotify(snap) {
+	if s.shouldNotify(snap) || s.gatewayUpdate(snap) {
 		s.pushNotifications()
 	}
 	s.latestSnapshot = &snapCopy
