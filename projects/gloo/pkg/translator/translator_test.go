@@ -68,7 +68,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
-var _ = FDescribe("Translator", func() {
+var _ = Describe("Translator", func() {
 	var (
 		ctrl              *gomock.Controller
 		settings          *v1.Settings
@@ -2354,7 +2354,7 @@ var _ = FDescribe("Translator", func() {
 			return glooutils.MustAnyToMessage(cluster.TransportSocket.GetTypedConfig()).(*envoyauth.UpstreamTlsContext)
 		}
 
-		FIt("should process an upstream with tls config", func() {
+		It("should process an upstream with tls config", func() {
 
 			pk := gloohelpers.PrivateKey()
 			cc := gloohelpers.Certificate()
@@ -2383,7 +2383,7 @@ var _ = FDescribe("Translator", func() {
 			Expect(tlsContext().CommonTlsContext.GetValidationContext().TrustedCa.GetInlineString()).To(Equal(rca))
 		})
 
-		FContext("SslParameters", func() {
+		Context("SslParameters", func() {
 
 			It("should set upstream SslParameters if defined on upstream", func() {
 				upstreamSslParameters := &v1.SslParameters{
