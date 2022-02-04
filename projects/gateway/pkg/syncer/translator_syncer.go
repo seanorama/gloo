@@ -92,7 +92,7 @@ func (s *TranslatorSyncer) GeneratedDesiredProxies(ctx context.Context, snap *v1
 			}
 
 			logger.Infof("desired proxy %v", proxy.GetMetadata().Ref())
-			logger.Infof("desired proxy(extra logs) %v", proxy.String())
+			//logger.Infof("desired proxy(extra logs) %v", proxy.String())
 			proxy.GetMetadata().Labels = s.managedProxyLabels
 			desiredProxies[proxy] = reports
 		} else {

@@ -523,7 +523,7 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 	// We are ready!
 
 	go errutils.AggregateErrs(watchOpts.Ctx, errs, edsErrs, "eds.gloo")
-
+	memoryProxyClient := gwreconciler.NewMemoryProxyClient()
 	apiCache := v1snap.NewApiEmitterWithEmit(
 		artifactClient,
 		endpointClient,
@@ -545,7 +545,8 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 	rpt := reporter.NewReporter("gloo",
 		statusClient,
 		hybridUsClient.BaseClient(),
-		proxyClient.BaseClient(),
+		//TODO: client impl passed here will depend on install mode
+		memoryProxyClient.BaseClient(),
 		upstreamGroupClient.BaseClient(),
 		authConfigClient.BaseClient(),
 		rlReporterClient,
@@ -576,7 +577,7 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		ConfigStatusMetricOpts: nil,
 	}
 	gatewayTranslator := gwtranslator.NewDefaultTranslator(gwOpts)
-	proxyReconciler := gwreconciler.NewProxyReconciler(nil /*proxyValidator TODO: delete*/, proxyClient, statusClient)
+	proxyReconciler := gwreconciler.NewProxyReconciler(nil /*proxyValidator TODO: delete*/, memoryProxyClient, statusClient)
 	gwTranslatorSyncer := gwsyncer.NewTranslatorSyncer(opts.WatchOpts.Ctx, opts.WriteNamespace, proxyReconciler, rpt, gatewayTranslator, statusClient, statusMetrics)
 	routeReplacingSanitizer, err := sanitizer.NewRouteReplacingSanitizer(opts.Settings.GetGloo().GetInvalidConfigPolicy())
 	if err != nil {
@@ -618,7 +619,7 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 	syncerExtensions = reconcileUpgradedTranslatorSyncerExtensions(syncerExtensions, upgradedExtensions)
 
 
-	translationSync := syncer.NewTranslatorSyncer(t, opts.ControlPlane.SnapshotCache, xdsHasher, xdsSanitizer, rpt, opts.DevMode, syncerExtensions, opts.Settings, statusMetrics, gatewayTranslator, gwTranslatorSyncer)
+	translationSync := syncer.NewTranslatorSyncer(t, opts.ControlPlane.SnapshotCache, xdsHasher, xdsSanitizer, rpt, opts.DevMode, syncerExtensions, opts.Settings, statusMetrics, /*TODO: delete */gatewayTranslator, gwTranslatorSyncer, memoryProxyClient)
 
 	syncers := v1snap.ApiSyncers{
 		translationSync,

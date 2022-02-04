@@ -2,17 +2,16 @@ package syncer
 
 import (
 	"context"
-
 	"github.com/rotisserie/eris"
 	gatewayv1 "github.com/solo-io/gloo/projects/gateway/pkg/api/v1"
-	"github.com/solo-io/gloo/projects/gateway/pkg/reconciler"
-	"github.com/solo-io/gloo/projects/gateway/pkg/utils"
 	"github.com/solo-io/gloo/projects/gateway/pkg/utils/metrics"
 	"github.com/solo-io/gloo/projects/gloo/pkg/api/v1/enterprise/options/ratelimit"
 	"github.com/solo-io/gloo/projects/gloo/pkg/syncer/sanitizer"
 	"github.com/solo-io/go-utils/contextutils"
+	"github.com/solo-io/solo-kit/pkg/api/v1/clients"
 
 	"github.com/hashicorp/go-multierror"
+	gwreconciler "github.com/solo-io/gloo/projects/gateway/pkg/reconciler"
 	gwsyncer "github.com/solo-io/gloo/projects/gateway/pkg/syncer"
 	gwtranslator "github.com/solo-io/gloo/projects/gateway/pkg/translator"
 	v1 "github.com/solo-io/gloo/projects/gloo/pkg/api/v1"
@@ -38,6 +37,7 @@ type translatorSyncer struct {
 	statusMetrics     metrics.ConfigStatusMetrics
 	gatewayTranslator gwtranslator.Translator
 	gatewaySyncer     *gwsyncer.TranslatorSyncer
+	proxyClient       gwreconciler.MemoryProxyClient
 }
 
 type TranslatorSyncerExtensionParams struct {
@@ -73,6 +73,7 @@ func NewTranslatorSyncer(
 	statusMetrics metrics.ConfigStatusMetrics,
 	gatewayTranslator gwtranslator.Translator,
 	gatewaySyncer *gwsyncer.TranslatorSyncer,
+	proxyClient   gwreconciler.MemoryProxyClient,
 ) v1snap.ApiSyncer {
 	s := &translatorSyncer{
 		translator:        translator,
@@ -85,6 +86,7 @@ func NewTranslatorSyncer(
 		statusMetrics:     statusMetrics,
 		gatewayTranslator: gatewayTranslator,
 		gatewaySyncer:     gatewaySyncer,
+		proxyClient:       proxyClient,
 	}
 	if devMode {
 		// TODO(ilackarms): move this somewhere else?
@@ -102,7 +104,7 @@ func (s *translatorSyncer) Sync(ctx context.Context, snap *v1snap.ApiSnapshot) e
 	//generate proxies
 	// TODO: check whether we are running in gateway mode
 	// TODO: only run if there was an update to a gw type
-	s.setProxies(ctx, snap, reports)
+	s.translateProxies(ctx, snap)
 	var multiErr *multierror.Error
 	err := s.syncEnvoy(ctx, snap, reports)
 	if err != nil {
@@ -118,7 +120,7 @@ func (s *translatorSyncer) Sync(ctx context.Context, snap *v1snap.ApiSnapshot) e
 		reports.Merge(intermediateReports)
 		s.extensionKeys[nodeID] = struct{}{}
 	}
-
+	logger.Infof("[ethan] done syncing envoy, about to write reports %v", reports)
 	if err := s.reporter.WriteReports(ctx, reports, nil); err != nil {
 		logger.Debugf("Failed writing report for proxies: %v", err)
 		multiErr = multierror.Append(multiErr, eris.Wrapf(err, "writing reports"))
@@ -132,8 +134,8 @@ func (s *translatorSyncer) Sync(ctx context.Context, snap *v1snap.ApiSnapshot) e
 	return multiErr.ErrorOrNil()
 }
 
-func (s *translatorSyncer) setProxies(ctx context.Context, snap *v1snap.ApiSnapshot, allReports reporter.ResourceReports) {
-	gwSnap := gatewayv1.ApiSnapshot{
+func(s *translatorSyncer) translateProxies(ctx context.Context, snap *v1snap.ApiSnapshot) {
+	gwSnap := &gatewayv1.ApiSnapshot{
 		VirtualServices:    snap.VirtualServices,
 		Gateways:           snap.Gateways,
 		RouteTables:        snap.RouteTables,
@@ -141,39 +143,16 @@ func (s *translatorSyncer) setProxies(ctx context.Context, snap *v1snap.ApiSnaps
 		VirtualHostOptions: snap.VirtualHostOptions,
 	}
 	logger := contextutils.LoggerFrom(ctx)
-	gatewaysByProxy := utils.GatewaysByProxyName(snap.Gateways)
-
-	desiredProxies := make(reconciler.GeneratedProxies)
-	// TODO: make this an instance variable or const
-	managedProxyLabels := map[string]string{
-		"created_by": "gateway",
-	}
-	for proxyName, gatewayList := range gatewaysByProxy {
-		//TODO writeNamespace
-		proxy, reports := s.gatewayTranslator.Translate(ctx, proxyName, "gloo-system", &gwSnap, gatewayList)
+	s.gatewaySyncer.Sync(ctx, gwSnap)
+	proxyList, _ := s.proxyClient.List("gloo-system", clients.ListOpts{})
+	for _, proxy := range proxyList {
 		if proxy != nil {
-
-			//TODO: I assume we can remove compression if these stay in memory
-			// Otherwise, implement shouldCompress
-			//if s.shouldCompresss(ctx) {
-			//	compress.SetShouldCompressed(proxy)
-			//}
-
-			logger.Infof("desired proxy %v", proxy.GetMetadata().Ref())
-			proxy.GetMetadata().Labels = managedProxyLabels
-			desiredProxies[proxy] = reports
-
-			//TODO: remove this log
-			logger.Infof("Generated proxy %s", proxy.String())
+			logger.Infof("ELC logging statuses %s", proxy.GetNamespacedStatuses().String())
+			logger.Infof("Generated proxy from gloo %s", proxy.String())
+		} else {
+			logger.Infof("result list contains nil proxies??")
 		}
 	}
-	//TODO handle reports
-	//TODO stripInvalidListenersAndVirtualHosts - will generate a list of proxies
-	finalProxies :=make(v1.ProxyList, len(desiredProxies))
-	i := 0
-	for proxy, _ := range(desiredProxies) {
-		finalProxies[i] = proxy
-		i++
-	}
-	snap.Proxies = finalProxies
+	snap.Proxies = proxyList
+	logger.Infof("Done generating proxies, total %d", len(proxyList))
 }
