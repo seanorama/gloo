@@ -33,6 +33,22 @@ message Path {
   repeated PathSegment segments = 1;
 }
 
+message TemplatedPath {
+  /*
+  If non-empty, Inserts named paths into a template string.
+  For example, if the template is '/api/{apiVersionPath}/pet/{petIdPath}'
+  and we have two named paths defined in `named_paths`, apiVersionPath and petIdPath, with extracted values 'v2' and '123' respectively,
+  the final resulting value will be '/api/v2/pet/123'
+  Use {PATH_NAME} as the interpolation notation (even repeated) regardless of the type of the
+  provided value.
+  If an undefined PATH_NAME is used in the template, this will nack during configuration.
+  If this is empty, only the value of the first provider will be used as the resulting value.
+  */
+  string path_template = 1;
+
+  map<string, Path> named_paths = 2;
+}
+
 // In the future we may add support for regex and subgroups
 message ValueProvider {
 
@@ -216,7 +232,7 @@ message ResponseTemplate {
           - key: address
   `yaml
   */
-  map<string, Path> setters = 2;
+  map<string, TemplatedPath> setters = 2;
 }
 
 message RESTResolver {

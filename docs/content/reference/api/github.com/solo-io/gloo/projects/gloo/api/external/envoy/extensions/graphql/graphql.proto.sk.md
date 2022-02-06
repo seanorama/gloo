@@ -13,6 +13,7 @@ weight: 5
 
 - [PathSegment](#pathsegment)
 - [Path](#path)
+- [TemplatedPath](#templatedpath)
 - [ValueProvider](#valueprovider)
 - [GraphQLArgExtraction](#graphqlargextraction)
 - [GraphQLParentExtraction](#graphqlparentextraction)
@@ -85,6 +86,25 @@ used to reference into json structures by key(s)
 | Field | Type | Description |
 | ----- | ---- | ----------- | 
 | `segments` | [[]envoy.config.filter.http.graphql.v2.PathSegment](../graphql.proto.sk/#pathsegment) |  |
+
+
+
+
+---
+### TemplatedPath
+
+
+
+```yaml
+"pathTemplate": string
+"namedPaths": map<string, .envoy.config.filter.http.graphql.v2.Path>
+
+```
+
+| Field | Type | Description |
+| ----- | ---- | ----------- | 
+| `pathTemplate` | `string` | If non-empty, Inserts named paths into a template string. For example, if the template is '/api/{apiVersionPath}/pet/{petIdPath}' and we have two named paths defined in `named_paths`, apiVersionPath and petIdPath, with extracted values 'v2' and '123' respectively, the final resulting value will be '/api/v2/pet/123' Use {PATH_NAME} as the interpolation notation (even repeated) regardless of the type of the provided value. If an undefined PATH_NAME is used in the template, this will nack during configuration. If this is empty, only the value of the first provider will be used as the resulting value. |
+| `namedPaths` | `map<string, .envoy.config.filter.http.graphql.v2.Path>` |  |
 
 
 
@@ -312,14 +332,14 @@ modify JSON response from upstream before it is processed by execution engine.
 
 ```yaml
 "resultRoot": []envoy.config.filter.http.graphql.v2.PathSegment
-"setters": map<string, .envoy.config.filter.http.graphql.v2.Path>
+"setters": map<string, .envoy.config.filter.http.graphql.v2.TemplatedPath>
 
 ```
 
 | Field | Type | Description |
 | ----- | ---- | ----------- | 
 | `resultRoot` | [[]envoy.config.filter.http.graphql.v2.PathSegment](../graphql.proto.sk/#pathsegment) | In cases where the data to populate the graphql type is not in the root object of the result, use result root to specify the path of the response we should use as the root. If {"a": {"b": [1,2,3]}} is the response from the api, setting resultroot as `a.b` will pass on [1,2,3] to the execution engine rather than the whole api response. |
-| `setters` | `map<string, .envoy.config.filter.http.graphql.v2.Path>` | Example: ``` type Query { getSimple: Simple } type Simple { name String address String }``` if we do `getsimple` and the response we get back from the upstream is ``` {"data": { "people": { "name": "John Doe", "details": { "address": "123 Turnip Rd" } } } } ``` the following response transform would let the graphql execution engine correctly marshal the upstream resposne into the expected graphql response: ` responseTransform: result_root: segments: - key: data - key: people setters: address: segments: - key: details - key: address `yaml. |
+| `setters` | `map<string, .envoy.config.filter.http.graphql.v2.TemplatedPath>` | Example: ``` type Query { getSimple: Simple } type Simple { name String address String }``` if we do `getsimple` and the response we get back from the upstream is ``` {"data": { "people": { "name": "John Doe", "details": { "address": "123 Turnip Rd" } } } } ``` the following response transform would let the graphql execution engine correctly marshal the upstream resposne into the expected graphql response: ` responseTransform: result_root: segments: - key: data - key: people setters: address: segments: - key: details - key: address `yaml. |
 
 
 

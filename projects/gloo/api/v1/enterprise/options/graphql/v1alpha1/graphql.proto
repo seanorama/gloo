@@ -100,6 +100,7 @@ message ResponseTemplate {
     type Simple {
       name String
       number String
+      nameAndNumber String!
     }
 
     and the upstream response is `{"name": "simple name", "details": {"num": "1234567890"}}`,
@@ -107,7 +108,8 @@ message ResponseTemplate {
     nested `number` field. We can use a simple setter here:
 
     setters:
-      number: "details.num"
+      number: "{$response.details.num}"
+      nameAndNumber: "{$response.details.name} {$response.details.number}"
 
     and the graphql server will be able to extract data for a field given the path to the relevant data
     in the upstream JSON response. We don't need to have a setter for the `name` field because the JSON
