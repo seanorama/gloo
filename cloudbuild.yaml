@@ -1,67 +1,67 @@
 steps:
-# clones Gloo Edge so it can be setup & tested
-# All steps after this must set working directory to use the cloned Gloo Edge source
+# # clones Gloo Edge so it can be setup & tested
+# # All steps after this must set working directory to use the cloned Gloo Edge source
 
-# $COMMIT_SHA is a default gcloud env var, to run via cloudbuild submit use:
-# gcloud builds submit --substitutions COMMIT_SHA=<commit sha>,REPO_NAME=solo-io/gloo,_PR_NUM=<<insert PR Number here>> --project solo-public
-- name: 'gcr.io/$PROJECT_ID/prepare-go-workspace:0.4.15'
-  args:
-    - "--repo-name"
-    - "$REPO_NAME"
-    - "--repo-sha"
-    - "$COMMIT_SHA"
-    - "--repo-output-dir"
-    - "."
-  env:
-    - 'GIT_SSH_CONFIG=FALSE'
-  id: 'prepare-workspace'
+# # $COMMIT_SHA is a default gcloud env var, to run via cloudbuild submit use:
+# # gcloud builds submit --substitutions COMMIT_SHA=<commit sha>,REPO_NAME=solo-io/gloo,_PR_NUM=<<insert PR Number here>> --project solo-public
+# - name: 'gcr.io/$PROJECT_ID/prepare-go-workspace:0.4.15'
+#   args:
+#     - "--repo-name"
+#     - "$REPO_NAME"
+#     - "--repo-sha"
+#     - "$COMMIT_SHA"
+#     - "--repo-output-dir"
+#     - "."
+#   env:
+#     - 'GIT_SSH_CONFIG=FALSE'
+#   id: 'prepare-workspace'
 
-- name: 'gcr.io/cloud-builders/wget'
-  entrypoint: ./ci/spell.sh
-  args: ['check']
-  dir: &dir '/workspace/gloo'
-  env:
-  # The LSCOMMAND is the env var which tells the spell script how to search for the files it needs to fix.
-  - 'LSCOMMAND=find * -type f | grep -v vendor | grep -v docs/themes | grep -v docs/site'
-  id: 'check-spelling'
+# - name: 'gcr.io/cloud-builders/wget'
+#   entrypoint: ./ci/spell.sh
+#   args: ['check']
+#   dir: &dir '/workspace/gloo'
+#   env:
+#   # The LSCOMMAND is the env var which tells the spell script how to search for the files it needs to fix.
+#   - 'LSCOMMAND=find * -type f | grep -v vendor | grep -v docs/themes | grep -v docs/site'
+#   id: 'check-spelling'
 
-- name: gcr.io/cloud-builders/gsutil
-  entrypoint: 'bash'
-  args: ['-c', 'mkdir -p /go/pkg && cd /go/pkg && gsutil cat gs://$PROJECT_ID-cache/gloo/gloo-mod.tar.gz | tar -xzf - || echo "untar mod cache failed; continuing because we can download deps as we need them"']
-  dir: *dir
-  id: 'untar-mod-cache'
-
-# Log into quay.io
-# - name: 'gcr.io/cloud-builders/docker'
+# - name: gcr.io/cloud-builders/gsutil
 #   entrypoint: 'bash'
-#   env:
-#   - 'DOCKER_CONFIG=/workspace/docker-config'
-#   args: ['-c', 'docker login quay.io --username "solo-io+solobot" --password $$QUAY_IO_PASSWORD']
-#   secretEnv: ['QUAY_IO_PASSWORD']
-#   waitFor: ['prepare-workspace']
-#   id: 'docker-login'
-
-# 1) Run make targets to push docker images to quay.io
-# - name: 'gcr.io/$PROJECT_ID/go-mod-make:0.4.15'
-#   args: ['docker-push-extended']
-#   env:
-#   - 'DOCKER_CONFIG=/workspace/docker-config'
-#   - 'TAGGED_VERSION=$TAG_NAME'
-#   - 'TEST_ASSET_ID=$_PR_NUM'
+#   args: ['-c', 'mkdir -p /go/pkg && cd /go/pkg && gsutil cat gs://$PROJECT_ID-cache/gloo/gloo-mod.tar.gz | tar -xzf - || echo "untar mod cache failed; continuing because we can download deps as we need them"']
 #   dir: *dir
-#   secretEnv: ['GITHUB_TOKEN']
-#   waitFor: ['docker-login']
-#   id: 'docker-push-extended'
-# 2) Publish helm chart, compile manifests, produce release artifacts, deploy docs
-# isolating this portion of the release in order to force the manifest to be regenerated with the tagged version
-- name: gcr.io/cloud-builders/gcloud
-  args: ['auth', 'configure-docker']
-  env:
-    - 'DOCKER_CONFIG=/workspace/docker-config'
-  dir: *dir
-  # waitFor: ['docker-push-extended']
-  waitFor: ['prepare-workspace']
-  id: 'gcr-auth'
+#   id: 'untar-mod-cache'
+
+# # Log into quay.io
+# # - name: 'gcr.io/cloud-builders/docker'
+# #   entrypoint: 'bash'
+# #   env:
+# #   - 'DOCKER_CONFIG=/workspace/docker-config'
+# #   args: ['-c', 'docker login quay.io --username "solo-io+solobot" --password $$QUAY_IO_PASSWORD']
+# #   secretEnv: ['QUAY_IO_PASSWORD']
+# #   waitFor: ['prepare-workspace']
+# #   id: 'docker-login'
+
+# # 1) Run make targets to push docker images to quay.io
+# # - name: 'gcr.io/$PROJECT_ID/go-mod-make:0.4.15'
+# #   args: ['docker-push-extended']
+# #   env:
+# #   - 'DOCKER_CONFIG=/workspace/docker-config'
+# #   - 'TAGGED_VERSION=$TAG_NAME'
+# #   - 'TEST_ASSET_ID=$_PR_NUM'
+# #   dir: *dir
+# #   secretEnv: ['GITHUB_TOKEN']
+# #   waitFor: ['docker-login']
+# #   id: 'docker-push-extended'
+# # 2) Publish helm chart, compile manifests, produce release artifacts, deploy docs
+# # isolating this portion of the release in order to force the manifest to be regenerated with the tagged version
+# - name: gcr.io/cloud-builders/gcloud
+#   args: ['auth', 'configure-docker']
+#   env:
+#     - 'DOCKER_CONFIG=/workspace/docker-config'
+#   dir: *dir
+#   # waitFor: ['docker-push-extended']
+#   waitFor: ['prepare-workspace']
+#   id: 'gcr-auth'
 - name: 'gcr.io/$PROJECT_ID/go-mod-make:0.4.15'
   # args: ['fetch-package-and-save-helm', 'render-manifests', 'upload-github-release-assets', 'push-chart-to-registry', '-B']
   args: ['package-chart']
@@ -71,8 +71,8 @@ steps:
     - 'TAGGED_VERSION=$TAG_NAME'
     - 'TEST_ASSET_ID=$_PR_NUM'
     - 'GCLOUD_PROJECT_ID=$PROJECT_ID'
-  dir: *dir
+  dir: &dir '/workspace/gloo'
   # secretEnv: ['GITHUB_TOKEN']
   # waitFor: ['gcr-auth', 'test']
-  waitFor: ['gcr-auth']
+  # waitFor: ['gcr-auth']
   id: 'release-chart'
