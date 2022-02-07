@@ -2,28 +2,28 @@ steps:
 # # clones Gloo Edge so it can be setup & tested
 # # All steps after this must set working directory to use the cloned Gloo Edge source
 
-# # $COMMIT_SHA is a default gcloud env var, to run via cloudbuild submit use:
-# # gcloud builds submit --substitutions COMMIT_SHA=<commit sha>,REPO_NAME=solo-io/gloo,_PR_NUM=<<insert PR Number here>> --project solo-public
-# - name: 'gcr.io/$PROJECT_ID/prepare-go-workspace:0.4.15'
-#   args:
-#     - "--repo-name"
-#     - "$REPO_NAME"
-#     - "--repo-sha"
-#     - "$COMMIT_SHA"
-#     - "--repo-output-dir"
-#     - "."
-#   env:
-#     - 'GIT_SSH_CONFIG=FALSE'
-#   id: 'prepare-workspace'
+# $COMMIT_SHA is a default gcloud env var, to run via cloudbuild submit use:
+# gcloud builds submit --substitutions COMMIT_SHA=<commit sha>,REPO_NAME=solo-io/gloo,_PR_NUM=<<insert PR Number here>> --project solo-public
+- name: 'gcr.io/$PROJECT_ID/prepare-go-workspace:0.4.15'
+  args:
+    - "--repo-name"
+    - "$REPO_NAME"
+    - "--repo-sha"
+    - "$COMMIT_SHA"
+    - "--repo-output-dir"
+    - "."
+  env:
+    - 'GIT_SSH_CONFIG=FALSE'
+  id: 'prepare-workspace'
 
-# - name: 'gcr.io/cloud-builders/wget'
-#   entrypoint: ./ci/spell.sh
-#   args: ['check']
-#   dir: &dir '/workspace/gloo'
-#   env:
-#   # The LSCOMMAND is the env var which tells the spell script how to search for the files it needs to fix.
-#   - 'LSCOMMAND=find * -type f | grep -v vendor | grep -v docs/themes | grep -v docs/site'
-#   id: 'check-spelling'
+- name: 'gcr.io/cloud-builders/wget'
+  entrypoint: ./ci/spell.sh
+  args: ['check']
+  dir: &dir '/workspace/gloo'
+  env:
+  # The LSCOMMAND is the env var which tells the spell script how to search for the files it needs to fix.
+  - 'LSCOMMAND=find * -type f | grep -v vendor | grep -v docs/themes | grep -v docs/site'
+  id: 'check-spelling'
 
 # - name: gcr.io/cloud-builders/gsutil
 #   entrypoint: 'bash'
