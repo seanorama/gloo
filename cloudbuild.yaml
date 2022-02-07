@@ -52,16 +52,16 @@ steps:
 # #   secretEnv: ['GITHUB_TOKEN']
 # #   waitFor: ['docker-login']
 # #   id: 'docker-push-extended'
-# # 2) Publish helm chart, compile manifests, produce release artifacts, deploy docs
-# # isolating this portion of the release in order to force the manifest to be regenerated with the tagged version
-# - name: gcr.io/cloud-builders/gcloud
-#   args: ['auth', 'configure-docker']
-#   env:
-#     - 'DOCKER_CONFIG=/workspace/docker-config'
-#   dir: *dir
-#   # waitFor: ['docker-push-extended']
-#   waitFor: ['prepare-workspace']
-#   id: 'gcr-auth'
+# 2) Publish helm chart, compile manifests, produce release artifacts, deploy docs
+# isolating this portion of the release in order to force the manifest to be regenerated with the tagged version
+- name: gcr.io/cloud-builders/gcloud
+  args: ['auth', 'configure-docker']
+  env:
+    - 'DOCKER_CONFIG=/workspace/docker-config'
+  dir: *dir
+  # waitFor: ['docker-push-extended']
+  waitFor: ['prepare-workspace']
+  id: 'gcr-auth'
 - name: 'gcr.io/$PROJECT_ID/go-mod-make:0.4.15'
   # args: ['fetch-package-and-save-helm', 'render-manifests', 'upload-github-release-assets', 'push-chart-to-registry', '-B']
   args: ['package-chart']
@@ -71,8 +71,8 @@ steps:
     - 'TAGGED_VERSION=$TAG_NAME'
     - 'TEST_ASSET_ID=$_PR_NUM'
     - 'GCLOUD_PROJECT_ID=$PROJECT_ID'
-  dir: &dir '/workspace/gloo'
+  dir: *dir
   # secretEnv: ['GITHUB_TOKEN']
   # waitFor: ['gcr-auth', 'test']
-  # waitFor: ['gcr-auth']
+  waitFor: ['gcr-auth']
   id: 'release-chart'
