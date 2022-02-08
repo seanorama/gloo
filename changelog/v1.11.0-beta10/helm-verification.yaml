@@ -1,4 +1,0 @@
-changelog:
-  - type: NEW_FEATURE
-    description: Add Helm chart verification to the package-chart and fetch-package-and-save-helm make targets
-    issueLink: https://github.com/solo-io/gloo/issues/5606
