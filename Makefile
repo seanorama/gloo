@@ -504,7 +504,7 @@ package-chart-new: upgrade-helm generate-helm-files
 	helm package --help
 	stat $(keyringpath)
 	mkdir -p $(HELM_SYNC_DIR)/charts
-	yes $(passphrase) | helm package --destination $(HELM_SYNC_DIR)/charts --sign --key $(keyuid) --keyring $(keyringpath) $(HELM_DIR)
+	echo $(passphrase) | helm package --destination $(HELM_SYNC_DIR)/charts --sign --key $(keyuid) --keyring $(keyringpath) --passphrase-file "-" $(HELM_DIR)
 	helm repo index $(HELM_SYNC_DIR)
 
 .PHONY: upgrade-helm
