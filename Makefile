@@ -498,7 +498,7 @@ package-chart: generate-helm-files
 package-chart-new: passphrase:=asdfasdf
 package-chart-new: keyuid:=ben.taussig@solo.io
 package-chart-new: keyringpath:=./debug/secring.gpg
-package-chart-new: generate-helm-files
+package-chart-new: upgrade-helm generate-helm-files
 	which helm
 	helm version
 	helm package --help
@@ -507,6 +507,11 @@ package-chart-new: generate-helm-files
 	yes $(passphrase) | helm package --destination $(HELM_SYNC_DIR)/charts --sign --key $(keyuid) --keyring $(keyringpath) $(HELM_DIR)
 	helm repo index $(HELM_SYNC_DIR)
 
+.PHONY: upgrade-helm
+upgrade-helm:
+	curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+	chmod 700 get_helm.sh
+	./get_helm.sh
 
 .PHONY: push-chart-to-registry
 push-chart-to-registry: generate-helm-files
