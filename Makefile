@@ -499,6 +499,8 @@ package-chart-new: passphrase:=asdfasdf
 package-chart-new: keyuid:=ben.taussig@solo.io
 package-chart-new: keyringpath:=./debug/secring.gpg
 package-chart-new: generate-helm-files
+	helm version
+	stat $(keyringpath)
 	mkdir -p $(HELM_SYNC_DIR)/charts
 	echo $(passphrase) | helm package --destination $(HELM_SYNC_DIR)/charts --sign --key $(keyuid) --keyring $(keyringpath)  --passphrase-file "-" $(HELM_DIR)
 	helm repo index $(HELM_SYNC_DIR)
