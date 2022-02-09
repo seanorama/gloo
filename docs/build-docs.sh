@@ -13,7 +13,9 @@ declare -a oldVersions=($(cat active_versions.json | jq -rc '."oldVersions" | jo
 latestVersion=$(cat active_versions.json | jq -r ."latest")
 
 # verify that latestVersion is in versions
+# start building redirects
 latestVersionInVersions=false
+
 for version in "${versions[@]}"
 do
     if [ "$version" == "$latestVersion" ]; then
@@ -24,6 +26,9 @@ if ! $latestVersionInVersions ; then
   echo "latest version not in versions, update the versions in active_versions.json"
   exit 1
 fi
+
+redir=$(IFS=\| ; echo "${versions[*]}")
+
 
 # Firebase configuration
 firebaseJson=$(cat <<EOF
@@ -38,6 +43,11 @@ firebaseJson=$(cat <<EOF
       "**/.*",
       "resources/**/*",
       "examples/**/*"
+    ],
+    "redirect":[
+      "regex": "/gloo-edge/^(?!($redir))(\d+\.\d+\.\d+)/(.*)",  
+      "destination": "/gloo-edge/:1/:2", 
+      "type": 301
     ],
     "rewrites": [      
       {
