@@ -46,7 +46,7 @@ firebaseJson=$(cat <<EOF
     ],
     "redirect":[
       "regex": "/gloo-edge/^(?!($redir))(\d+\.\d+\.\d+)/(.*)",  
-      "destination": "/gloo-edge/:1/:2", 
+      "destination": "/gloo-edge/latest/:2", 
       "type": 301
     ],
     "rewrites": [      
