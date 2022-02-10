@@ -8,7 +8,7 @@ import (
 	v1 "github.com/solo-io/gloo/projects/gloo/pkg/api/v1"
 )
 
-func DeduplicateSslConfigurations(sslConfigurations []*v1.SslConfig) []*v1.SslConfig {
+func ConsolidateSslConfigurations(sslConfigurations []*v1.SslConfig) []*v1.SslConfig {
 	var result []*v1.SslConfig
 	mergedSslSecrets := map[string]*v1.SslConfig{}
 
@@ -52,7 +52,7 @@ func merge(values []string, newValues ...string) []string {
 }
 
 // Inspired by: https://github.com/solo-io/gloo/blob/0ad2a02a816be2b4a8b6ce27ff9db01206ce6ceb/projects/gateway/pkg/translator/merge_options.go#L10
-// I opted to copy/paste the code since it lives in a different project
+// Copied from the other project to reduce dependency.
 
 // Merges the fields of src into dst.
 // The fields in dst that have non-zero values will not be overwritten.

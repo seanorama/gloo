@@ -104,7 +104,7 @@ func (h *httpFilterChainTranslator) ComputeFilterChains(params plugins.Params) [
 }
 
 func (h *httpFilterChainTranslator) getSslConfigurationWithDefaults() []*v1.SslConfig {
-	mergedSslConfigurations := DeduplicateSslConfigurations(h.sslConfigurations)
+	mergedSslConfigurations := ConsolidateSslConfigurations(h.sslConfigurations)
 
 	if h.defaultSslConfig == nil {
 		return mergedSslConfigurations
@@ -165,13 +165,13 @@ func applySourcePrefixRangesToFilterChain(
 		filterChain.FilterChainMatch = &envoy_config_listener_v3.FilterChainMatch{}
 	}
 
-	var envoySourcePrefixRanges []*envoy_config_core_v3.CidrRange
-	for _, spr := range sourcePrefixRanges {
+	envoySourcePrefixRanges := make([]*envoy_config_core_v3.CidrRange, len(sourcePrefixRanges))
+	for idx, spr := range sourcePrefixRanges {
 		outSpr := &envoy_config_core_v3.CidrRange{
 			AddressPrefix: spr.GetAddressPrefix(),
 			PrefixLen:     spr.GetPrefixLen(),
 		}
-		envoySourcePrefixRanges = append(envoySourcePrefixRanges, outSpr)
+		envoySourcePrefixRanges[idx] = outSpr
 	}
 
 	filterChain.GetFilterChainMatch().SourcePrefixRanges = envoySourcePrefixRanges
