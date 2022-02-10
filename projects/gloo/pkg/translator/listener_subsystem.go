@@ -85,7 +85,7 @@ func (l *ListenerSubsystemTranslatorFactory) GetHttpListenerTranslators(ctx cont
 		parentReport:            listenerReport,
 		networkFilterTranslator: networkFilterTranslator,
 		sslConfigTranslator:     l.sslConfigTranslator,
-		sslConfigurations:       listener.SslConfigurations,
+		sslConfigurations:       listener.GetSslConfigurations(),
 		defaultSslConfig:        nil, // not available for HttpGateway, HybridGateway only feature
 		sourcePrefixRanges:      nil, // not available for HttpGateway, HybridGateway only feature
 	}
@@ -170,6 +170,10 @@ func (l *ListenerSubsystemTranslatorFactory) GetHybridListenerTranslators(ctx co
 	var filterChainTranslators []FilterChainTranslator
 
 	for _, matchedListener := range listener.GetHybridListener().GetMatchedListeners() {
+		var (
+			routeConfigurationTranslator RouteConfigurationTranslator
+			filterChainTranslator        FilterChainTranslator
+		)
 		matcher := matchedListener.GetMatcher()
 
 		switch listenerType := matchedListener.GetListenerType().(type) {
@@ -195,20 +199,19 @@ func (l *ListenerSubsystemTranslatorFactory) GetHybridListenerTranslators(ctx co
 			// For an HttpGateway we first build a set of NetworkFilters.
 			// Then, for each SslConfiguration that was found on that HttpGateway,
 			// we create a replica of the FilterChain, just with a different FilterChainMatcher
-			filterChainTranslator := &httpFilterChainTranslator{
+			filterChainTranslator = &httpFilterChainTranslator{
 				parentReport:            listenerReport,
 				networkFilterTranslator: networkFilterTranslator,
 				sslConfigTranslator:     l.sslConfigTranslator,
-				sslConfigurations:       listener.SslConfigurations,
+				sslConfigurations:       listener.GetSslConfigurations(),
 				defaultSslConfig:        matcher.GetSslConfig(),          // HybridGateway only feature
 				sourcePrefixRanges:      matcher.GetSourcePrefixRanges(), // HybridGateway only feature
 			}
-			filterChainTranslators = append(filterChainTranslators, filterChainTranslator)
 
 			// This translator produces a single RouteConfiguration
 			// We produce the same number of RouteConfigurations as we do
 			// unique instances of the HttpConnectionManager NetworkFilter
-			routeConfigurationTranslator := &httpRouteConfigurationTranslator{
+			routeConfigurationTranslator = &httpRouteConfigurationTranslator{
 				pluginRegistry:           l.pluginRegistry,
 				proxy:                    proxy,
 				parentListener:           listener,
@@ -218,25 +221,25 @@ func (l *ListenerSubsystemTranslatorFactory) GetHybridListenerTranslators(ctx co
 				routeConfigName:          routeConfigurationName,
 				requireTlsOnVirtualHosts: matcher.GetSslConfig() != nil,
 			}
-			routeConfigurationTranslators = append(routeConfigurationTranslators, routeConfigurationTranslator)
 
 		case *v1.MatchedListener_TcpListener:
 			// This translator produces FilterChains
 			// Our current TcpFilterChainPlugins have a 1-many relationship,
 			// meaning that a single TcpListener produces many FilterChains
-			filterChainTranslator := &tcpFilterChainTranslator{
+			filterChainTranslator = &tcpFilterChainTranslator{
 				plugins:            l.pluginRegistry.GetTcpFilterChainPlugins(),
 				parentListener:     listener,
-				listener:           listener.GetTcpListener(),
+				listener:           listenerType.TcpListener,
 				report:             hybridListenerReport.GetMatchedListenerReports()[utils.MatchedRouteConfigName(listener, matcher)].GetTcpListenerReport(),
 				sourcePrefixRanges: matcher.GetSourcePrefixRanges(), // HybridGateway only feature
 			}
-			filterChainTranslators = append(filterChainTranslators, filterChainTranslator)
 
 			// A TcpListener does not produce any RouteConfiguration
-			routeConfigurationTranslator := &emptyRouteConfigurationTranslator{}
-			routeConfigurationTranslators = append(routeConfigurationTranslators, routeConfigurationTranslator)
+			routeConfigurationTranslator = &emptyRouteConfigurationTranslator{}
 		}
+
+		filterChainTranslators = append(filterChainTranslators, filterChainTranslator)
+		routeConfigurationTranslators = append(routeConfigurationTranslators, routeConfigurationTranslator)
 	}
 
 	listenerTranslator := &listenerTranslatorInstance{

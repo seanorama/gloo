@@ -160,7 +160,7 @@ func applySourcePrefixRangesToFilterChain(
 		return
 	}
 
-	if filterChain.FilterChainMatch == nil {
+	if filterChain.GetFilterChainMatch() == nil {
 		// create a FilterChainMatch, if necessary
 		filterChain.FilterChainMatch = &envoy_config_listener_v3.FilterChainMatch{}
 	}
@@ -174,7 +174,7 @@ func applySourcePrefixRangesToFilterChain(
 		envoySourcePrefixRanges = append(envoySourcePrefixRanges, outSpr)
 	}
 
-	filterChain.FilterChainMatch.SourcePrefixRanges = envoySourcePrefixRanges
+	filterChain.GetFilterChainMatch().SourcePrefixRanges = envoySourcePrefixRanges
 }
 
 func newSslFilterChain(
@@ -213,10 +213,10 @@ type multiFilterChainTranslator struct {
 	translators []FilterChainTranslator
 }
 
-func (x *multiFilterChainTranslator) ComputeFilterChains(params plugins.Params) []*envoy_config_listener_v3.FilterChain {
+func (m *multiFilterChainTranslator) ComputeFilterChains(params plugins.Params) []*envoy_config_listener_v3.FilterChain {
 	var outFilterChains []*envoy_config_listener_v3.FilterChain
 
-	for _, translator := range x.translators {
+	for _, translator := range m.translators {
 		outFilterChains = append(outFilterChains, translator.ComputeFilterChains(params)...)
 	}
 
