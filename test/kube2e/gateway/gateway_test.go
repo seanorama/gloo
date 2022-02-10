@@ -80,6 +80,7 @@ var _ = Describe("Kube2e: gateway", func() {
 		kubeClient kubernetes.Interface
 
 		gatewayClient           gatewayv1.GatewayClient
+		httpGatewayClient           gatewayv1.MatchableHttpGatewayClient
 		virtualServiceClient    gatewayv1.VirtualServiceClient
 		routeTableClient        gatewayv1.RouteTableClient
 		virtualHostOptionClient gatewayv1.VirtualHostOptionClient
@@ -104,6 +105,11 @@ var _ = Describe("Kube2e: gateway", func() {
 		cache = kube.NewKubeCache(ctx)
 		gatewayClientFactory := &factory.KubeResourceClientFactory{
 			Crd:         gatewayv1.GatewayCrd,
+			Cfg:         cfg,
+			SharedCache: cache,
+		}
+		httpGatewayClientFactory := &factory.KubeResourceClientFactory{
+			Crd:         gatewayv1.MatchableHttpGatewayCrd,
 			Cfg:         cfg,
 			SharedCache: cache,
 		}
@@ -146,6 +152,11 @@ var _ = Describe("Kube2e: gateway", func() {
 		gatewayClient, err = gatewayv1.NewGatewayClient(ctx, gatewayClientFactory)
 		Expect(err).NotTo(HaveOccurred())
 		err = gatewayClient.Register()
+		Expect(err).NotTo(HaveOccurred())
+
+		httpGatewayClient, err = gatewayv1.NewMatchableHttpGatewayClient(ctx, httpGatewayClientFactory)
+		Expect(err).NotTo(HaveOccurred())
+		err = httpGatewayClient.Register()
 		Expect(err).NotTo(HaveOccurred())
 
 		virtualServiceClient, err = gatewayv1.NewVirtualServiceClient(ctx, virtualServiceClientFactory)
@@ -2303,6 +2314,86 @@ spec:
 				Port:              gatewayPort,
 				ConnectionTimeout: 1, // this is important, as sometimes curl hangs
 				WithoutStats:      true,
+			}, kube2e.SimpleTestRunnerHttpResponse, 1, 60*time.Second, 1*time.Second)
+		})
+
+	})
+
+	FContext("matchable hybrid gateway", func() {
+
+		It("works", func() {
+			dest := &gloov1.Destination{
+				DestinationType: &gloov1.Destination_Upstream{
+					Upstream: &core.ResourceRef{
+						Namespace: testHelper.InstallNamespace,
+						Name:      fmt.Sprintf("%s-%s-%v", testHelper.InstallNamespace, helper.TestrunnerName, helper.TestRunnerPort),
+					},
+				},
+			}
+			// Create a VS that routes to a destination
+			Eventually(func() error {
+				_, err := virtualServiceClient.Write(getVirtualService(dest, nil), clients.WriteOpts{})
+				return err
+			}).ShouldNot(HaveOccurred())
+
+			// wait for default gateway to be created
+			// We have default gateways as part of the gloo install and now that a vs is associated with one,
+			// the translation loop should process it and write a status to it
+			defaultGateway := defaults.DefaultGateway(testHelper.InstallNamespace)
+			helpers.EventuallyResourceAccepted(func() (resources.InputResource, error) {
+				return gatewayClient.Read(testHelper.InstallNamespace, defaultGateway.Metadata.Name, clients.ReadOpts{})
+			})
+
+			// Create a MatchableHttpGateway
+			matchableHttpGateway :=  &gatewayv1.MatchableHttpGateway{
+				Metadata: &core.Metadata{
+					Name:        "matchable-http-gateway",
+					Namespace:   testHelper.InstallNamespace,
+				},
+				Matcher: &gatewayv1.MatchableHttpGateway_Matcher{
+					// match all, hopefully
+				},
+				HttpGateway: &gatewayv1.HttpGateway{
+					// match all virtual services
+				},
+			}
+			_, err := httpGatewayClient.Write(matchableHttpGateway, clients.WriteOpts{})
+			Expect(err).NotTo(HaveOccurred())
+
+			// Create a HybridGateway that references that MatchableHttpGateway
+			gateway := defaults.DefaultHybridGateway(testHelper.InstallNamespace)
+			gateway.GatewayType.(*gatewayv1.Gateway_HybridGateway).HybridGateway = &gatewayv1.HybridGateway{
+				DelegatedHttpGateways: &gatewayv1.DelegatedHttpGateway{
+					SelectionType: &gatewayv1.DelegatedHttpGateway_Ref{
+						Ref: &core.ResourceRef{
+							Name:      matchableHttpGateway.GetMetadata().GetName(),
+							Namespace: matchableHttpGateway.GetMetadata().GetNamespace(),
+						},
+					},
+				},
+			}
+
+			// Write the HybridGateway
+			Eventually(func() error {
+				_, err := gatewayClient.Write(gateway, clients.WriteOpts{})
+				return err
+			}, "15s", "0.5s").ShouldNot(HaveOccurred())
+
+			// wait for HybridGateway to be created
+			helpers.EventuallyResourceAccepted(func() (resources.InputResource, error) {
+				return gatewayClient.Read(testHelper.InstallNamespace, gateway.Metadata.Name, clients.ReadOpts{})
+			})
+
+			testHelper.CurlEventuallyShouldRespond(helper.CurlOpts{
+				Protocol:          "http",
+				Path:              "/",
+				Method:            "GET",
+				Host:              gatewayProxy,
+				Service:           gatewayProxy,
+				Port:              int(gateway.BindPort),
+				ConnectionTimeout: 1, // this is important, as sometimes curl hangs
+				WithoutStats:      true,
+				Verbose: true,
 			}, kube2e.SimpleTestRunnerHttpResponse, 1, 60*time.Second, 1*time.Second)
 		})
 
