@@ -51,6 +51,9 @@ func merge(values []string, newValues ...string) []string {
 	return values
 }
 
+// Inspired by: https://github.com/solo-io/gloo/blob/0ad2a02a816be2b4a8b6ce27ff9db01206ce6ceb/projects/gateway/pkg/translator/merge_options.go#L10
+// I opted to copy/paste the code since it lives in a different project
+
 // Merges the fields of src into dst.
 // The fields in dst that have non-zero values will not be overwritten.
 func mergeSslConfig(dst, src *v1.SslConfig) *v1.SslConfig {
