@@ -56,7 +56,7 @@ func merge(values []string, newValues ...string) []string {
 
 // Merges the fields of src into dst.
 // The fields in dst that have non-zero values will not be overwritten.
-func mergeSslConfig(dst, src *v1.SslConfig) *v1.SslConfig {
+func MergeSslConfig(dst, src *v1.SslConfig) *v1.SslConfig {
 	if src == nil {
 		return dst
 	}

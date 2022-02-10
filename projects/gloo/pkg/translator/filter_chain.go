@@ -113,7 +113,7 @@ func (h *httpFilterChainTranslator) getSslConfigurationWithDefaults() []*v1.SslC
 	// Merge each sslConfig with the default values
 	var sslConfigWithDefaults []*v1.SslConfig
 	for _, ssl := range mergedSslConfigurations {
-		sslConfigWithDefaults = append(sslConfigWithDefaults, mergeSslConfig(ssl, h.defaultSslConfig))
+		sslConfigWithDefaults = append(sslConfigWithDefaults, MergeSslConfig(ssl, h.defaultSslConfig))
 	}
 	return sslConfigWithDefaults
 }
