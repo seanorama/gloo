@@ -2,6 +2,7 @@ package syncer
 
 import (
 	"context"
+
 	"github.com/rotisserie/eris"
 	gatewayv1 "github.com/solo-io/gloo/projects/gateway/pkg/api/v1"
 	"github.com/solo-io/gloo/projects/gateway/pkg/utils/metrics"
@@ -31,11 +32,11 @@ type translatorSyncer struct {
 	latestSnap *v1snap.ApiSnapshot
 	extensions []TranslatorSyncerExtension
 	// used to track which envoy node IDs exist without belonging to a proxy
-	extensionKeys     map[string]struct{}
-	settings          *v1.Settings
-	statusMetrics     metrics.ConfigStatusMetrics
-	gatewaySyncer     *gwsyncer.TranslatorSyncer
-	proxyClient       gwreconciler.MemoryProxyClient
+	extensionKeys map[string]struct{}
+	settings      *v1.Settings
+	statusMetrics metrics.ConfigStatusMetrics
+	gatewaySyncer *gwsyncer.TranslatorSyncer
+	proxyClient   gwreconciler.MemoryProxyClient
 }
 
 type TranslatorSyncerExtensionParams struct {
@@ -70,19 +71,19 @@ func NewTranslatorSyncer(
 	settings *v1.Settings,
 	statusMetrics metrics.ConfigStatusMetrics,
 	gatewaySyncer *gwsyncer.TranslatorSyncer,
-	proxyClient   gwreconciler.MemoryProxyClient,
+	proxyClient gwreconciler.MemoryProxyClient,
 ) v1snap.ApiSyncer {
 	s := &translatorSyncer{
-		translator:        translator,
-		xdsCache:          xdsCache,
-		xdsHasher:         xdsHasher,
-		reporter:          reporter,
-		extensions:        extensions,
-		sanitizer:         sanitizer,
-		settings:          settings,
-		statusMetrics:     statusMetrics,
-		gatewaySyncer:     gatewaySyncer,
-		proxyClient:       proxyClient,
+		translator:    translator,
+		xdsCache:      xdsCache,
+		xdsHasher:     xdsHasher,
+		reporter:      reporter,
+		extensions:    extensions,
+		sanitizer:     sanitizer,
+		settings:      settings,
+		statusMetrics: statusMetrics,
+		gatewaySyncer: gatewaySyncer,
+		proxyClient:   proxyClient,
 	}
 	if devMode {
 		// TODO(ilackarms): move this somewhere else?
@@ -130,7 +131,7 @@ func (s *translatorSyncer) Sync(ctx context.Context, snap *v1snap.ApiSnapshot) e
 	return multiErr.ErrorOrNil()
 }
 
-func(s *translatorSyncer) translateProxies(ctx context.Context, snap *v1snap.ApiSnapshot) {
+func (s *translatorSyncer) translateProxies(ctx context.Context, snap *v1snap.ApiSnapshot) {
 	gwSnap := &gatewayv1.ApiSnapshot{
 		VirtualServices:    snap.VirtualServices,
 		Gateways:           snap.Gateways,

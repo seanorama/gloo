@@ -14,11 +14,10 @@ type MemoryProxyClient interface {
 	Delete(namespace, name string, opts clients.DeleteOpts) error
 	List(namespace string, opts clients.ListOpts) (gloov1.ProxyList, error)
 	gloov1.ProxyWatcher
-
 }
 
 type memoryProxyClient struct {
-	proxies map[string]*gloov1.Proxy
+	proxies    map[string]*gloov1.Proxy
 	baseClient memoryResourceClient
 }
 
@@ -37,40 +36,40 @@ func NewMemoryProxyClient() MemoryProxyClient {
 	c.baseClient = baseClient
 	return &c
 }
-func(s *memoryProxyClient) BaseClient() clients.ResourceClient {
+func (s *memoryProxyClient) BaseClient() clients.ResourceClient {
 	return s.baseClient
 }
 
-func(s *memoryProxyClient) Register() error {
+func (s *memoryProxyClient) Register() error {
 	return nil
 }
 
-func(s *memoryProxyClient) Write(resource *gloov1.Proxy, opts clients.WriteOpts) (*gloov1.Proxy, error) {
+func (s *memoryProxyClient) Write(resource *gloov1.Proxy, opts clients.WriteOpts) (*gloov1.Proxy, error) {
 	//TODO respect opts
 	name := resource.GetMetadata().GetName()
 	s.proxies[name] = resource
 	return resource, nil
 }
 
-func(s *memoryProxyClient) Read(namespace, name string, opts clients.ReadOpts) (*gloov1.Proxy, error) {
+func (s *memoryProxyClient) Read(namespace, name string, opts clients.ReadOpts) (*gloov1.Proxy, error) {
 	//TODO error handling if necessary
 	return s.proxies[name], nil
 }
 
-func(s *memoryProxyClient) Delete(namespace, name string, opts clients.DeleteOpts) error {
+func (s *memoryProxyClient) Delete(namespace, name string, opts clients.DeleteOpts) error {
 	//TODO error handling if necessary, handle DeleteOpts
 	delete(s.proxies, name)
 	return nil
 }
 func (s *memoryProxyClient) List(namespace string, opts clients.ListOpts) (gloov1.ProxyList, error) {
 	proxyList := make([]*gloov1.Proxy, 0, len(s.proxies))
-	for _, proxy:= range s.proxies {
-		proxyList =append(proxyList, proxy)
+	for _, proxy := range s.proxies {
+		proxyList = append(proxyList, proxy)
 	}
 	return proxyList, nil
 }
 
-type memoryResourceClient struct{
+type memoryResourceClient struct {
 	proxyClient *memoryProxyClient
 }
 

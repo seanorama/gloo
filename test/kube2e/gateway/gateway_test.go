@@ -2083,7 +2083,7 @@ spec:
 			Context("gloo", func() {
 
 				var (
-					// Validation of Gloo resources requires that a Proxy resource exist
+					// ValidationOpts of Gloo resources requires that a Proxy resource exist
 					// Therefore, before the tests start, we must create valid resources that produce a Proxy
 					placeholderVs *gatewayv1.VirtualService
 				)

@@ -3,13 +3,18 @@ package setup
 import (
 	"context"
 	"fmt"
+
 	gwreconciler "github.com/solo-io/gloo/projects/gateway/pkg/reconciler"
 	gwsyncer "github.com/solo-io/gloo/projects/gateway/pkg/syncer"
+	gwvalidation "github.com/solo-io/gloo/projects/gateway/pkg/validation"
+
 	"net"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	validationclients "github.com/solo-io/gloo/projects/gloo/pkg/api/grpc/validation"
 
 	"github.com/solo-io/gloo/projects/gateway/pkg/utils/metrics"
 	"github.com/solo-io/gloo/projects/gloo/pkg/api/v1/enterprise/options/graphql/v1alpha1"
@@ -371,6 +376,7 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		return err
 	}
 
+	//TODO: opts.Proxies can have the correct factory depending on the install mode
 	proxyClient, err := v1.NewProxyClient(watchOpts.Ctx, opts.Proxies)
 	if err != nil {
 		return err
@@ -378,6 +384,7 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 	if err := proxyClient.Register(); err != nil {
 		return err
 	}
+	memoryProxyClient, err := v1.NewProxyClient(watchOpts.Ctx, endpointsFactory)
 
 	upstreamGroupClient, err := v1.NewUpstreamGroupClient(watchOpts.Ctx, opts.UpstreamGroups)
 	if err != nil {
@@ -523,7 +530,6 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 	// We are ready!
 
 	go errutils.AggregateErrs(watchOpts.Ctx, errs, edsErrs, "eds.gloo")
-	memoryProxyClient := gwreconciler.NewMemoryProxyClient()
 	apiCache := v1snap.NewApiEmitterWithEmit(
 		artifactClient,
 		endpointClient,
@@ -555,7 +561,7 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 	if err != nil {
 		return err
 	}
-	t := translator.NewTranslator(sslutils.NewSslConfigTranslator(), opts.Settings, pluginRegistryFactory)
+	//TODO: create these with the gloo opts/verify whether namespaces are always the same
 	gwOpts := gwtranslator.Opts{
 		GlooNamespace:           opts.WriteNamespace,
 		WriteNamespace:          opts.WriteNamespace,
@@ -576,7 +582,39 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		Validation:             nil,
 		ConfigStatusMetricOpts: nil,
 	}
+	var (
+		// this constructor should be called within a lock
+		validationClient             validationclients.GlooValidationServiceClient
+		ignoreProxyValidationFailure bool
+		allowWarnings                bool
+	)
+	if gwOpts.Validation != nil {
+		//TODO: this can be in memory
+		validationClient, err = gwvalidation.NewConnectionRefreshingValidationClient(
+			gwvalidation.RetryOnUnavailableClientConstructor(opts.WatchOpts.Ctx, gwOpts.Validation.ProxyValidationServerAddress),
+		)
+		if err != nil {
+			return errors.Wrapf(err, "failed to initialize grpc connection to validation server.")
+		}
+
+		if err != nil {
+			return errors.Wrapf(err, "failed to read notifications from stream")
+		}
+
+		ignoreProxyValidationFailure = gwOpts.Validation.IgnoreProxyValidationFailure
+		allowWarnings = gwOpts.Validation.AllowWarnings
+	}
+
+	t := translator.NewTranslator(sslutils.NewSslConfigTranslator(), opts.Settings, pluginRegistryFactory)
+
 	gatewayTranslator := gwtranslator.NewDefaultTranslator(gwOpts)
+	gwValidationSyncer := gwvalidation.NewValidator(gwvalidation.NewValidatorConfig(
+		gatewayTranslator,
+		validationClient,
+		gwOpts.WriteNamespace,
+		ignoreProxyValidationFailure,
+		allowWarnings,
+	))
 	proxyReconciler := gwreconciler.NewProxyReconciler(nil /*proxyValidator TODO: delete*/, memoryProxyClient, statusClient)
 	gwTranslatorSyncer := gwsyncer.NewTranslatorSyncer(opts.WatchOpts.Ctx, opts.WriteNamespace, proxyReconciler, rpt, gatewayTranslator, statusClient, statusMetrics)
 	routeReplacingSanitizer, err := sanitizer.NewRouteReplacingSanitizer(opts.Settings.GetGloo().GetInvalidConfigPolicy())
@@ -589,7 +627,7 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		routeReplacingSanitizer,
 	}
 
-	validator := validation.NewValidator(watchOpts.Ctx, t, xdsSanitizer)
+	validator := validation.NewValidator(watchOpts.Ctx, t, xdsSanitizer, gwValidationSyncer)
 	if opts.ValidationServer.Server != nil {
 		opts.ValidationServer.Server.SetValidator(validator)
 	}
@@ -618,8 +656,7 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 	}
 	syncerExtensions = reconcileUpgradedTranslatorSyncerExtensions(syncerExtensions, upgradedExtensions)
 
-
-	translationSync := syncer.NewTranslatorSyncer(t, opts.ControlPlane.SnapshotCache, xdsHasher, xdsSanitizer, rpt, opts.DevMode, syncerExtensions, opts.Settings, statusMetrics, /*TODO: delete */gatewayTranslator, gwTranslatorSyncer, memoryProxyClient)
+	translationSync := syncer.NewTranslatorSyncer(t, opts.ControlPlane.SnapshotCache, xdsHasher, xdsSanitizer, rpt, opts.DevMode, syncerExtensions, opts.Settings, statusMetrics, gwTranslatorSyncer, memoryProxyClient)
 
 	syncers := v1snap.ApiSyncers{
 		translationSync,

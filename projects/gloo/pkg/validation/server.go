@@ -8,6 +8,8 @@ import (
 	"github.com/rotisserie/eris"
 	"github.com/solo-io/gloo/pkg/utils/syncutil"
 	"github.com/solo-io/gloo/projects/gloo/pkg/api/grpc/validation"
+
+	gatewayv1 "github.com/solo-io/gloo/projects/gateway/pkg/api/v1"
 	v1 "github.com/solo-io/gloo/projects/gloo/pkg/api/v1"
 	v1snap "github.com/solo-io/gloo/projects/gloo/pkg/api/v1/gloosnapshot"
 	"github.com/solo-io/gloo/projects/gloo/pkg/plugins"
@@ -35,14 +37,18 @@ type validator struct {
 	notifyResync   map[*validation.NotifyOnResyncRequest]chan struct{}
 	ctx            context.Context
 	xdsSanitizer   sanitizer.XdsSanitizers
+	//TODO: after the feature branch is merged we can move the code into this package
+	//I'm leaving it where it is for now to avoid losing changes that happen on main while I am working on a branch
+	gwValidator gatewayv1.ApiSyncer
 }
 
-func NewValidator(ctx context.Context, translator translator.Translator, xdsSanitizer sanitizer.XdsSanitizers) *validator {
+func NewValidator(ctx context.Context, translator translator.Translator, xdsSanitizer sanitizer.XdsSanitizers, gwValidator gatewayv1.ApiSyncer) *validator {
 	return &validator{
 		translator:   translator,
 		notifyResync: make(map[*validation.NotifyOnResyncRequest]chan struct{}, 1),
 		ctx:          ctx,
 		xdsSanitizer: xdsSanitizer,
+		gwValidator:  gwValidator,
 	}
 }
 
@@ -63,6 +69,7 @@ func (s *validator) shouldNotify(snap *v1snap.ApiSnapshot) bool {
 		toHash = append(toHash, snap.Ratelimitconfigs.AsInterfaces()...)
 		// we also include proxies as this will help
 		// the gateway to resync in case the proxy was deleted
+		// TODO: either remove or only check in ingress mode
 		toHash = append(toHash, snap.Proxies.AsInterfaces()...)
 
 		hash, err := hashutils.HashAllSafe(nil, toHash...)
@@ -133,7 +140,18 @@ func (s *validator) pushNotifications() {
 func (s *validator) Sync(ctx context.Context, snap *v1snap.ApiSnapshot) error {
 	snapCopy := snap.Clone()
 	s.lock.Lock()
-	if s.shouldNotify(snap) || s.gatewayUpdate(snap) {
+	gatewayChange := s.gatewayUpdate(snap)
+	if gatewayChange {
+		gwSnap := &gatewayv1.ApiSnapshot{
+			VirtualServices:    snap.VirtualServices,
+			RouteTables:        snap.RouteTables,
+			Gateways:           snap.Gateways,
+			VirtualHostOptions: snap.VirtualHostOptions,
+			RouteOptions:       snap.RouteOptions,
+		}
+		s.gwValidator.Sync(ctx, gwSnap)
+	}
+	if s.shouldNotify(snap) || gatewayChange {
 		s.pushNotifications()
 	}
 	s.latestSnapshot = &snapCopy
