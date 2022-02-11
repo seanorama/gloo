@@ -2321,6 +2321,39 @@ spec:
 
 	FContext("matchable hybrid gateway", func() {
 
+		var (
+			hybridProxyServicePort = corev1.ServicePort{
+				Name:       "hybrid-proxy",
+				Port:       int32(defaults2.HybridPort),
+				TargetPort: intstr.FromInt(int(defaults2.HybridPort)),
+				Protocol:   "TCP",
+			}
+		)
+
+		exposePortOnGwProxyService := func(servicePort corev1.ServicePort) {
+			gwSvc, err := kubeClient.CoreV1().Services(testHelper.InstallNamespace).Get(ctx, gatewayProxy, metav1.GetOptions{})
+			Expect(err).NotTo(HaveOccurred())
+
+			// Append servicePort if not found already
+			found := false
+			for _, v := range gwSvc.Spec.Ports {
+				if v.Name == hybridProxyServicePort.Name || v.Port == hybridProxyServicePort.Port {
+					found = true
+					break
+				}
+			}
+			if !found {
+				gwSvc.Spec.Ports = append(gwSvc.Spec.Ports, hybridProxyServicePort)
+			}
+
+			_, err = kubeClient.CoreV1().Services(testHelper.InstallNamespace).Update(ctx, gwSvc, metav1.UpdateOptions{})
+			Expect(err).NotTo(HaveOccurred())
+		}
+
+		BeforeEach(func() {
+			exposePortOnGwProxyService(hybridProxyServicePort)
+		})
+
 		It("works", func() {
 			dest := &gloov1.Destination{
 				DestinationType: &gloov1.Destination_Upstream{
@@ -2350,9 +2383,6 @@ spec:
 					Name:        "matchable-http-gateway",
 					Namespace:   testHelper.InstallNamespace,
 				},
-				Matcher: &gatewayv1.MatchableHttpGateway_Matcher{
-					// match all, hopefully
-				},
 				HttpGateway: &gatewayv1.HttpGateway{
 					// match all virtual services
 				},
@@ -2361,38 +2391,61 @@ spec:
 			Expect(err).NotTo(HaveOccurred())
 
 			// Create a HybridGateway that references that MatchableHttpGateway
-			gateway := defaults.DefaultHybridGateway(testHelper.InstallNamespace)
-			gateway.GatewayType.(*gatewayv1.Gateway_HybridGateway).HybridGateway = &gatewayv1.HybridGateway{
-				DelegatedHttpGateways: &gatewayv1.DelegatedHttpGateway{
-					SelectionType: &gatewayv1.DelegatedHttpGateway_Ref{
-						Ref: &core.ResourceRef{
-							Name:      matchableHttpGateway.GetMetadata().GetName(),
-							Namespace: matchableHttpGateway.GetMetadata().GetNamespace(),
+			hybridGateway := &gatewayv1.Gateway{
+				Metadata: &core.Metadata{
+					Name:        fmt.Sprintf("%s-hybrid", defaults.GatewayProxyName),
+					Namespace:   testHelper.InstallNamespace,
+				},
+				GatewayType: &gatewayv1.Gateway_HybridGateway{
+					HybridGateway: &gatewayv1.HybridGateway{
+						DelegatedHttpGateways: &gatewayv1.DelegatedHttpGateway{
+							SelectionType: &gatewayv1.DelegatedHttpGateway_Ref{
+								Ref: &core.ResourceRef{
+									Name:      matchableHttpGateway.GetMetadata().GetName(),
+									Namespace: matchableHttpGateway.GetMetadata().GetNamespace(),
+								},
+							},
 						},
 					},
 				},
+				ProxyNames:    []string{defaults.GatewayProxyName},
+				BindAddress:   defaults.GatewayBindAddress,
+				BindPort:      defaults2.HybridPort,
+				UseProxyProto: &wrappers.BoolValue{Value: false},
 			}
 
-			// Write the HybridGateway
+			// Write the HybridGateway and wait for it to be accepted
 			Eventually(func() error {
-				_, err := gatewayClient.Write(gateway, clients.WriteOpts{})
+				_, err := gatewayClient.Write(hybridGateway, clients.WriteOpts{})
 				return err
 			}, "15s", "0.5s").ShouldNot(HaveOccurred())
-
-			// wait for HybridGateway to be created
 			helpers.EventuallyResourceAccepted(func() (resources.InputResource, error) {
-				return gatewayClient.Read(testHelper.InstallNamespace, gateway.Metadata.Name, clients.ReadOpts{})
+				return gatewayClient.Read(testHelper.InstallNamespace, hybridGateway.Metadata.Name, clients.ReadOpts{})
 			})
 
+			// destination reachable via HttpGateway
 			testHelper.CurlEventuallyShouldRespond(helper.CurlOpts{
 				Protocol:          "http",
 				Path:              "/",
 				Method:            "GET",
 				Host:              gatewayProxy,
 				Service:           gatewayProxy,
-				Port:              int(gateway.BindPort),
-				ConnectionTimeout: 1, // this is important, as sometimes curl hangs
-				WithoutStats:      true,
+				Port:              gatewayPort,
+				ConnectionTimeout: 5, // this is important, as sometimes curl hangs
+				WithoutStats:      false,
+				Verbose: true,
+			}, kube2e.SimpleTestRunnerHttpResponse, 1, 60*time.Second, 1*time.Second)
+
+			// destination reachable via HybridGateway
+			testHelper.CurlEventuallyShouldRespond(helper.CurlOpts{
+				Protocol:          "http",
+				Path:              "/",
+				Method:            "GET",
+				Host:              gatewayProxy,
+				Service:           gatewayProxy,
+				Port:              int(hybridProxyServicePort.Port),
+				ConnectionTimeout: 5, // this is important, as sometimes curl hangs
+				WithoutStats:      false,
 				Verbose: true,
 			}, kube2e.SimpleTestRunnerHttpResponse, 1, 60*time.Second, 1*time.Second)
 		})
