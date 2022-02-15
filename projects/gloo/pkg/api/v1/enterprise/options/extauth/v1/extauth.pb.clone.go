@@ -160,6 +160,8 @@ func (m *Settings) Clone() proto.Message {
 
 	target.StatPrefix = m.GetStatPrefix()
 
+	target.PreserveUserIdHeader = m.GetPreserveUserIdHeader()
+
 	switch m.ServiceType.(type) {
 
 	case *Settings_HttpService:

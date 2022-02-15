@@ -243,6 +243,10 @@ func (m *Settings) Equal(that interface{}) bool {
 		return false
 	}
 
+	if m.GetPreserveUserIdHeader() != target.GetPreserveUserIdHeader() {
+		return false
+	}
+
 	switch m.ServiceType.(type) {
 
 	case *Settings_HttpService:

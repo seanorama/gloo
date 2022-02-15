@@ -1,0 +1,6 @@
+changelog:
+  - type: NEW_FEATURE
+    issueLink: https://github.com/solo-io/gloo/issues/5904
+    resolvesIssue: false
+    description: |
+      Adding a flag to preserve X-USER-ID Header from being deleted before it reatches the upstream.

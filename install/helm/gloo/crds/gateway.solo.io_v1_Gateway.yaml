@@ -237,6 +237,8 @@ spec:
                                     type: array
                                 type: object
                             type: object
+                          preserveUserIdHeader:
+                            type: boolean
                           requestBody:
                             properties:
                               allowPartialMessage:
@@ -926,6 +928,8 @@ spec:
                                               type: array
                                           type: object
                                       type: object
+                                    preserveUserIdHeader:
+                                      type: boolean
                                     requestBody:
                                       properties:
                                         allowPartialMessage:
