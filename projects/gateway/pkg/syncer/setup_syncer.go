@@ -268,7 +268,8 @@ func RunGateway(opts translator.Opts) error {
 	notifications := make(<-chan struct{})
 
 	if opts.Validation != nil {
-		validationClient, err = gatewayvalidation.NewConnectionRefreshingValidationClient(
+		validationClient, err = gatewayval
+		idation.NewConnectionRefreshingValidationClient(
 			gatewayvalidation.RetryOnUnavailableClientConstructor(ctx, opts.Validation.ProxyValidationServerAddress),
 		)
 		if err != nil {

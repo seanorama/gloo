@@ -3,6 +3,9 @@ package setup
 import (
 	"context"
 	"fmt"
+	"os"
+
+	"github.com/solo-io/gloo/projects/gateway/pkg/services/k8sadmission"
 
 	gwreconciler "github.com/solo-io/gloo/projects/gateway/pkg/reconciler"
 	gwsyncer "github.com/solo-io/gloo/projects/gateway/pkg/syncer"
@@ -34,6 +37,7 @@ import (
 	"github.com/solo-io/gloo/pkg/utils/channelutils"
 	"github.com/solo-io/gloo/pkg/utils/setuputils"
 	gateway "github.com/solo-io/gloo/projects/gateway/pkg/api/v1"
+	gwdefaults "github.com/solo-io/gloo/projects/gateway/pkg/defaults"
 	gwtranslator "github.com/solo-io/gloo/projects/gateway/pkg/translator"
 	rlv1alpha1 "github.com/solo-io/gloo/projects/gloo/pkg/api/external/solo/ratelimit"
 	v1 "github.com/solo-io/gloo/projects/gloo/pkg/api/v1"
@@ -45,6 +49,8 @@ import (
 	"github.com/solo-io/gloo/projects/gloo/pkg/plugins"
 	consulplugin "github.com/solo-io/gloo/projects/gloo/pkg/plugins/consul"
 	"github.com/solo-io/gloo/projects/gloo/pkg/plugins/registry"
+	extauthExt "github.com/solo-io/gloo/projects/gloo/pkg/syncer/extauth"
+	ratelimitExt "github.com/solo-io/gloo/projects/gloo/pkg/syncer/ratelimit"
 	"github.com/solo-io/gloo/projects/gloo/pkg/syncer/sanitizer"
 	"github.com/solo-io/gloo/projects/gloo/pkg/translator"
 	"github.com/solo-io/gloo/projects/gloo/pkg/upstreams"
@@ -71,10 +77,12 @@ import (
 	"google.golang.org/grpc/reflection"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-
-	extauthExt "github.com/solo-io/gloo/projects/gloo/pkg/syncer/extauth"
-	ratelimitExt "github.com/solo-io/gloo/projects/gloo/pkg/syncer/ratelimit"
 )
+
+// TODO: (copied from gateway) switch AcceptAllResourcesByDefault to false after validation has been tested in user environments
+var AcceptAllResourcesByDefault = true
+
+var AllowWarnings = true
 
 type RunFunc func(opts bootstrap.Opts) error
 
@@ -561,6 +569,48 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 	if err != nil {
 		return err
 	}
+	//TODO: Moved earlier so grpc server is initialzed when creating gw validation syncer, move back when grpc calls are removed
+	if opts.ValidationServer.StartGrpcServer {
+		validationServer := opts.ValidationServer
+		logger.Infof("[ELC]starting validation grpc server %s", validationServer.BindAddr.String())
+		lis, err := net.Listen(validationServer.BindAddr.Network(), validationServer.BindAddr.String())
+		if err != nil {
+			return err
+		}
+		validationServer.Server.Register(validationServer.GrpcServer)
+
+		go func() {
+			<-validationServer.Ctx.Done()
+			validationServer.GrpcServer.Stop()
+		}()
+
+		go func() {
+			if err := validationServer.GrpcServer.Serve(lis); err != nil {
+				logger.Errorf("validation grpc server failed to start")
+			}
+		}()
+		opts.ValidationServer.StartGrpcServer = false
+	}
+	if opts.ControlPlane.StartGrpcServer {
+		// copy for the go-routines
+		controlPlane := opts.ControlPlane
+		logger.Infof("[ELC] starting control plane grpc server %s", controlPlane.BindAddr.String())
+		lis, err := net.Listen(opts.ControlPlane.BindAddr.Network(), opts.ControlPlane.BindAddr.String())
+		if err != nil {
+			return err
+		}
+		go func() {
+			<-controlPlane.GrpcService.Ctx.Done()
+			controlPlane.GrpcServer.Stop()
+		}()
+
+		go func() {
+			if err := controlPlane.GrpcServer.Serve(lis); err != nil {
+				logger.Errorf("xds grpc server failed to start")
+			}
+		}()
+		opts.ControlPlane.StartGrpcServer = false
+	}
 	//TODO: create these with the gloo opts/verify whether namespaces are always the same
 	gwOpts := gwtranslator.Opts{
 		GlooNamespace:           opts.WriteNamespace,
@@ -578,8 +628,8 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		DevMode:                 opts.DevMode,
 		//TODO: set correctly
 		ReadGatewaysFromAllNamespaces: false,
-		//TODO: set correctly or remove
-		Validation:             nil,
+		//TODO: probably remove this as it's only used here
+		Validation:             &opts.ValidationOpts,
 		ConfigStatusMetricOpts: nil,
 	}
 	var (
@@ -590,15 +640,12 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 	)
 	if gwOpts.Validation != nil {
 		//TODO: this can be in memory
+		logger.Infof("[ELC]creating validation client %s", gwOpts.Validation.ProxyValidationServerAddress)
 		validationClient, err = gwvalidation.NewConnectionRefreshingValidationClient(
 			gwvalidation.RetryOnUnavailableClientConstructor(opts.WatchOpts.Ctx, gwOpts.Validation.ProxyValidationServerAddress),
 		)
 		if err != nil {
 			return errors.Wrapf(err, "failed to initialize grpc connection to validation server.")
-		}
-
-		if err != nil {
-			return errors.Wrapf(err, "failed to read notifications from stream")
 		}
 
 		ignoreProxyValidationFailure = gwOpts.Validation.IgnoreProxyValidationFailure
@@ -679,46 +726,75 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 			}
 		}
 	}()
+//TODO: starting grpc server goes here
 
-	if opts.ControlPlane.StartGrpcServer {
-		// copy for the go-routines
-		controlPlane := opts.ControlPlane
-		lis, err := net.Listen(opts.ControlPlane.BindAddr.Network(), opts.ControlPlane.BindAddr.String())
-		if err != nil {
-			return err
+
+
+	//Start the validation webhook
+	validationServerErr := make(chan error, 1)
+	logger.Infof("[ELC] start validation webhook %v", gwOpts.Validation == nil)
+	if gwOpts.Validation != nil {
+		// make sure non-empty WatchNamespaces contains the gloo instance's own namespace if
+		// ReadGatewaysFromAllNamespaces is false
+		if !gwOpts.ReadGatewaysFromAllNamespaces && !utils.AllNamespaces(opts.WatchNamespaces) {
+			foundSelf := false
+			for _, namespace := range opts.WatchNamespaces {
+				if gwOpts.GlooNamespace == namespace {
+					foundSelf = true
+					break
+				}
+			}
+			if !foundSelf {
+				return errors.Errorf("The gateway configuration value readGatewaysFromAllNamespaces was set "+
+					"to false, but the non-empty settings.watchNamespaces "+
+					"list (%s) did not contain this gloo instance's own namespace: %s.",
+					strings.Join(opts.WatchNamespaces, ", "), gwOpts.GlooNamespace)
+			}
 		}
-		go func() {
-			<-controlPlane.GrpcService.Ctx.Done()
-			controlPlane.GrpcServer.Stop()
-		}()
+
+		validationWebhook, err := k8sadmission.NewGatewayValidatingWebhook(
+			k8sadmission.NewWebhookConfig(
+				watchOpts.Ctx,
+				gwValidationSyncer,
+				gwOpts.WatchNamespaces,
+				gwOpts.Validation.ValidatingWebhookPort,
+				gwOpts.Validation.ValidatingWebhookCertPath,
+				gwOpts.Validation.ValidatingWebhookKeyPath,
+				gwOpts.Validation.AlwaysAcceptResources,
+				gwOpts.ReadGatewaysFromAllNamespaces,
+				gwOpts.GlooNamespace,
+			),
+		)
+		if err != nil {
+			return errors.Wrapf(err, "creating validating webhook")
+		}
 
 		go func() {
-			if err := controlPlane.GrpcServer.Serve(lis); err != nil {
-				logger.Errorf("xds grpc server failed to start")
+			// close out validation server when context is cancelled
+			<-watchOpts.Ctx.Done()
+			validationWebhook.Close()
+		}()
+		go func() {
+			contextutils.LoggerFrom(watchOpts.Ctx).Infow("starting gateway validation server",
+				zap.Int("port", gwOpts.Validation.ValidatingWebhookPort),
+				zap.String("cert", gwOpts.Validation.ValidatingWebhookCertPath),
+				zap.String("key", gwOpts.Validation.ValidatingWebhookKeyPath),
+			)
+			if err := validationWebhook.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
+				select {
+				case validationServerErr <- err:
+				default:
+					logger.DPanicw("failed to start validation webhook server", zap.Error(err))
+				}
 			}
 		}()
-		opts.ControlPlane.StartGrpcServer = false
 	}
 
-	if opts.ValidationServer.StartGrpcServer {
-		validationServer := opts.ValidationServer
-		lis, err := net.Listen(validationServer.BindAddr.Network(), validationServer.BindAddr.String())
-		if err != nil {
-			return err
-		}
-		validationServer.Server.Register(validationServer.GrpcServer)
-
-		go func() {
-			<-validationServer.Ctx.Done()
-			validationServer.GrpcServer.Stop()
-		}()
-
-		go func() {
-			if err := validationServer.GrpcServer.Serve(lis); err != nil {
-				logger.Errorf("validation grpc server failed to start")
-			}
-		}()
-		opts.ValidationServer.StartGrpcServer = false
+	// give the validation server 100ms to start
+	select {
+	case err := <-validationServerErr:
+		return errors.Wrapf(err, "failed to start validation webhook server")
+	case <-time.After(time.Millisecond * 100):
 	}
 
 	go func() {
@@ -903,21 +979,67 @@ func constructOpts(ctx context.Context, clientset *kubernetes.Interface, kubeCac
 		return bootstrap.Opts{}, err
 	}
 
+	var validation gwtranslator.ValidationOpts
+	validationCfg := settings.GetGateway().GetValidation()
+	if validationCfg != nil {
+		alwaysAcceptResources := AcceptAllResourcesByDefault
+
+		if alwaysAccept := validationCfg.GetAlwaysAccept(); alwaysAccept != nil {
+			alwaysAcceptResources = alwaysAccept.GetValue()
+		}
+
+		allowWarnings := AllowWarnings
+
+		if allowWarning := validationCfg.GetAllowWarnings(); allowWarning != nil {
+			allowWarnings = allowWarning.GetValue()
+		}
+
+		validation = gwtranslator.ValidationOpts{
+			ProxyValidationServerAddress: validationCfg.GetProxyValidationServerAddr(),
+			ValidatingWebhookPort:        gwdefaults.ValidationWebhookBindPort,
+			ValidatingWebhookCertPath:    validationCfg.GetValidationWebhookTlsCert(),
+			ValidatingWebhookKeyPath:     validationCfg.GetValidationWebhookTlsKey(),
+			IgnoreProxyValidationFailure: validationCfg.GetIgnoreGlooValidationFailure(),
+			AlwaysAcceptResources:        alwaysAcceptResources,
+			AllowWarnings:                allowWarnings,
+			WarnOnRouteShortCircuiting:   validationCfg.GetWarnRouteShortCircuiting().GetValue(),
+		}
+		if validation.ProxyValidationServerAddress == "" {
+			validation.ProxyValidationServerAddress = gwdefaults.GlooProxyValidationServerAddr
+		}
+		if overrideAddr := os.Getenv("PROXY_VALIDATION_ADDR"); overrideAddr != "" {
+			validation.ProxyValidationServerAddress = overrideAddr
+		}
+		if validation.ValidatingWebhookCertPath == "" {
+			validation.ValidatingWebhookCertPath = gwdefaults.ValidationWebhookTlsCertPath
+		}
+		if validation.ValidatingWebhookKeyPath == "" {
+			validation.ValidatingWebhookKeyPath = gwdefaults.ValidationWebhookTlsKeyPath
+		}
+	} else {
+		if validationMustStart := os.Getenv("VALIDATION_MUST_START"); validationMustStart != "" && validationMustStart != "false" {
+			return bootstrap.Opts{}, errors.Errorf("VALIDATION_MUST_START was set to true, but no validation configuration was provided in the settings. "+
+				"Ensure the v1.Settings %v contains the spec.gateway.validation config", settings.GetMetadata().Ref())
+		}
+	}
+	readGatewaysFromAllNamesapces := settings.GetGateway().GetReadGatewaysFromAllNamespaces()
 	return bootstrap.Opts{
-		Upstreams:          upstreamFactory,
-		KubeServiceClient:  kubeServiceClient,
-		Proxies:            proxyFactory,
-		UpstreamGroups:     upstreamGroupFactory,
-		Secrets:            secretFactory,
-		Artifacts:          artifactFactory,
-		AuthConfigs:        authConfigFactory,
-		RateLimitConfigs:   rateLimitConfigFactory,
-		GraphQLSchemas:     graphqlSchemaFactory,
-		VirtualServices:    virtualServiceFactory,
-		RouteTables:        routeTableFactory,
-		VirtualHostOptions: virtualHostOptionFactory,
-		RouteOptions:       routeOptionFactory,
-		Gateways:           gatewayFactory,
-		KubeCoreCache:      kubeCoreCache,
+		Upstreams:                    upstreamFactory,
+		KubeServiceClient:            kubeServiceClient,
+		Proxies:                      proxyFactory,
+		UpstreamGroups:               upstreamGroupFactory,
+		Secrets:                      secretFactory,
+		Artifacts:                    artifactFactory,
+		AuthConfigs:                  authConfigFactory,
+		RateLimitConfigs:             rateLimitConfigFactory,
+		GraphQLSchemas:               graphqlSchemaFactory,
+		VirtualServices:              virtualServiceFactory,
+		RouteTables:                  routeTableFactory,
+		VirtualHostOptions:           virtualHostOptionFactory,
+		RouteOptions:                 routeOptionFactory,
+		Gateways:                     gatewayFactory,
+		KubeCoreCache:                kubeCoreCache,
+		ValidationOpts:               validation,
+		ReadGatwaysFromAllNamespaces: readGatewaysFromAllNamesapces,
 	}, nil
 }
