@@ -638,7 +638,8 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		ignoreProxyValidationFailure bool
 		allowWarnings                bool
 	)
-	if gwOpts.Validation != nil {
+	gatewayMode := false
+	if gwOpts.Validation != nil && gatewayMode {
 		//TODO: this can be in memory
 		logger.Infof("[ELC]creating validation client %s", gwOpts.Validation.ProxyValidationServerAddress)
 		validationClient, err = gwvalidation.NewConnectionRefreshingValidationClient(
@@ -662,7 +663,7 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		ignoreProxyValidationFailure,
 		allowWarnings,
 	))
-	proxyReconciler := gwreconciler.NewProxyReconciler(nil /*proxyValidator TODO: delete*/, memoryProxyClient, statusClient)
+	proxyReconciler := gwreconciler.NewProxyReconciler(validationClient, memoryProxyClient, statusClient)
 	gwTranslatorSyncer := gwsyncer.NewTranslatorSyncer(opts.WatchOpts.Ctx, opts.WriteNamespace, proxyReconciler, rpt, gatewayTranslator, statusClient, statusMetrics)
 	routeReplacingSanitizer, err := sanitizer.NewRouteReplacingSanitizer(opts.Settings.GetGloo().GetInvalidConfigPolicy())
 	if err != nil {

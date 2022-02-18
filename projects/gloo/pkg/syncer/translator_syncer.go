@@ -98,10 +98,13 @@ func (s *translatorSyncer) Sync(ctx context.Context, snap *v1snap.ApiSnapshot) e
 	logger := contextutils.LoggerFrom(ctx)
 	reports := make(reporter.ResourceReports)
 
+	logger.Infof("translation for snapshot %v", snap.Proxies)
 	//generate proxies
 	// TODO: check whether we are running in gateway mode
 	// TODO: only run if there was an update to a gw type
-	s.translateProxies(ctx, snap)
+	if s.gatewaySyncer != nil {
+		s.translateProxies(ctx, snap)
+	}
 	var multiErr *multierror.Error
 	err := s.syncEnvoy(ctx, snap, reports)
 	if err != nil {
