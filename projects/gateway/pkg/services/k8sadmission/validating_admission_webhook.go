@@ -398,6 +398,8 @@ func (wh *gatewayValidationWebhook) validate(
 		}
 		return wh.validateGateway(ctx, rawJson, dryRun)
 	case gwv1.VirtualServiceGVK:
+
+		contextutils.LoggerFrom(ctx).Infof("[ELC] validation webhook- validating vs %v", gvk)
 		if isDelete {
 			err := wh.validator.ValidateDeleteVirtualService(ctx, ref, dryRun)
 			if err != nil {

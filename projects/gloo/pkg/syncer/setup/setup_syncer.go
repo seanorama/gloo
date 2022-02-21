@@ -505,7 +505,6 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 	errs := make(chan error)
 
 	statusClient := gloostatusutils.GetStatusClientForNamespace(opts.StatusReporterNamespace)
-
 	disc := discovery.NewEndpointDiscovery(opts.WatchNamespaces, opts.WriteNamespace, endpointClient, statusClient, discoveryPlugins)
 	edsSync := discovery.NewEdsSyncer(disc, discovery.Opts{}, watchOpts.RefreshRate)
 	discoveryCache := v1.NewEdsEmitter(hybridUsClient)
@@ -563,6 +562,10 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		memoryProxyClient.BaseClient(),
 		upstreamGroupClient.BaseClient(),
 		authConfigClient.BaseClient(),
+		gatewayClient.BaseClient(),
+		rtClient.BaseClient(),
+		virtualHostOptionClient.BaseClient(),
+		routeOptionClient.BaseClient(),
 		rlReporterClient,
 	)
 	statusMetrics, err := metrics.NewConfigStatusMetrics(opts.Settings.GetObservabilityOptions().GetConfigStatusMetricLabels())
@@ -733,7 +736,7 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 
 	//Start the validation webhook
 	validationServerErr := make(chan error, 1)
-	logger.Infof("[ELC] start validation webhook %v", gwOpts.Validation == nil)
+	logger.Infof("[ELC] start validation webhook %v", gwOpts.Validation != nil)
 	if gwOpts.Validation != nil {
 		// make sure non-empty WatchNamespaces contains the gloo instance's own namespace if
 		// ReadGatewaysFromAllNamespaces is false
@@ -773,6 +776,7 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		go func() {
 			// close out validation server when context is cancelled
 			<-watchOpts.Ctx.Done()
+			logger.Infof("[ELC] closing validation webhook server")
 			validationWebhook.Close()
 		}()
 		go func() {

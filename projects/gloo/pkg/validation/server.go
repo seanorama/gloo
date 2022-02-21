@@ -135,7 +135,7 @@ func (s *validator) pushNotifications() {
 	}
 }
 
-// the gloo snapshot has changed.
+// the gloo snapshot has change
 // update the local snapshot, notify subscribers
 func (s *validator) Sync(ctx context.Context, snap *v1snap.ApiSnapshot) error {
 	snapCopy := snap.Clone()
@@ -149,6 +149,7 @@ func (s *validator) Sync(ctx context.Context, snap *v1snap.ApiSnapshot) error {
 			VirtualHostOptions: snap.VirtualHostOptions,
 			RouteOptions:       snap.RouteOptions,
 		}
+		contextutils.LoggerFrom(ctx).Infof("[ELC]Update to gateway type %v", gwSnap.VirtualServices)
 		s.gwValidator.Sync(ctx, gwSnap)
 	}
 	if s.shouldNotify(snap) || gatewayChange {

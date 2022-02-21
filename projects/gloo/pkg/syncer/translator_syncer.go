@@ -149,7 +149,6 @@ func (s *translatorSyncer) translateProxies(ctx context.Context, snap *v1snap.Ap
 	for _, proxy := range proxyList {
 		if proxy != nil {
 			logger.Infof("ELC logging statuses %s", proxy.GetNamespacedStatuses().String())
-			logger.Infof("Generated proxy from gloo %s", proxy.String())
 		} else {
 			logger.Infof("result list contains nil proxies??")
 		}

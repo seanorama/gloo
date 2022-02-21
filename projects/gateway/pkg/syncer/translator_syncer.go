@@ -1,5 +1,4 @@
 package syncer
-
 import (
 	"context"
 	"fmt"
@@ -92,7 +91,7 @@ func (s *TranslatorSyncer) GeneratedDesiredProxies(ctx context.Context, snap *v1
 			}
 
 			logger.Infof("desired proxy %v", proxy.GetMetadata().Ref())
-			//logger.Infof("desired proxy(extra logs) %v", proxy.String())
+			logger.Infof("[ELC] reports %v", reports)
 			proxy.GetMetadata().Labels = s.managedProxyLabels
 			desiredProxies[proxy] = reports
 		} else {
@@ -114,6 +113,7 @@ func (s *TranslatorSyncer) shouldCompresss(ctx context.Context) bool {
 
 func (s *TranslatorSyncer) reconcile(ctx context.Context, desiredProxies reconciler.GeneratedProxies, invalidProxies reconciler.InvalidProxies) error {
 	if err := s.proxyReconciler.ReconcileProxies(ctx, desiredProxies, s.writeNamespace, s.managedProxyLabels); err != nil {
+		contextutils.LoggerFrom(ctx).Infof("[ELC] proxyreconciler, error reconciling proxies, will not set %v", err)
 		return err
 	}
 
@@ -129,6 +129,7 @@ type reportsAndStatus struct {
 }
 type statusSyncer struct {
 	proxyToLastStatus       map[string]reportsAndStatus
+	//Not clear that this is ever written
 	inputResourceLastStatus map[resources.InputResource]*core.Status
 	currentGeneratedProxies []*core.ResourceRef
 	mapLock                 sync.RWMutex
@@ -201,14 +202,18 @@ func (s *statusSyncer) setCurrentProxies(desiredProxies reconciler.GeneratedProx
 	})
 }
 
+//This was called by watchProxiesFromChannel which was removed
+//Not currently called
 func (s *statusSyncer) hashStatuses(proxyList gloov1.ProxyList) (uint64, error) {
 	statuses := make([]interface{}, 0, len(proxyList))
 	for _, proxy := range proxyList {
+
 		statuses = append(statuses, s.statusClient.GetStatus(proxy))
 	}
 	return hashutils.HashAllSafe(nil, statuses...)
 }
-
+//This was called by watchProxiesFromChannel which was removed
+//Not currently called
 func (s *statusSyncer) setStatuses(list gloov1.ProxyList) {
 	s.mapLock.Lock()
 	defer s.mapLock.Unlock()
