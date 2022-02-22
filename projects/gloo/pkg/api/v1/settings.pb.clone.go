@@ -387,6 +387,12 @@ func (m *GlooOptions) Clone() proto.Message {
 		target.FailoverUpstreamDnsPollingInterval = proto.Clone(m.GetFailoverUpstreamDnsPollingInterval()).(*github_com_golang_protobuf_ptypes_duration.Duration)
 	}
 
+	if h, ok := interface{}(m.GetRemoveUnusedFilters()).(clone.Cloner); ok {
+		target.RemoveUnusedFilters = h.Clone().(*github_com_golang_protobuf_ptypes_wrappers.BoolValue)
+	} else {
+		target.RemoveUnusedFilters = proto.Clone(m.GetRemoveUnusedFilters()).(*github_com_golang_protobuf_ptypes_wrappers.BoolValue)
+	}
+
 	return target
 }
 
@@ -798,6 +804,18 @@ func (m *GlooOptions_AWSOptions) Clone() proto.Message {
 		return target
 	}
 	target = &GlooOptions_AWSOptions{}
+
+	if h, ok := interface{}(m.GetPropagateOriginalRouting()).(clone.Cloner); ok {
+		target.PropagateOriginalRouting = h.Clone().(*github_com_golang_protobuf_ptypes_wrappers.BoolValue)
+	} else {
+		target.PropagateOriginalRouting = proto.Clone(m.GetPropagateOriginalRouting()).(*github_com_golang_protobuf_ptypes_wrappers.BoolValue)
+	}
+
+	if h, ok := interface{}(m.GetCredentialRefreshDelay()).(clone.Cloner); ok {
+		target.CredentialRefreshDelay = h.Clone().(*github_com_golang_protobuf_ptypes_duration.Duration)
+	} else {
+		target.CredentialRefreshDelay = proto.Clone(m.GetCredentialRefreshDelay()).(*github_com_golang_protobuf_ptypes_duration.Duration)
+	}
 
 	switch m.CredentialsFetcher.(type) {
 

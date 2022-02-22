@@ -582,6 +582,16 @@ func (m *GlooOptions) Equal(that interface{}) bool {
 		}
 	}
 
+	if h, ok := interface{}(m.GetRemoveUnusedFilters()).(equality.Equalizer); ok {
+		if !h.Equal(target.GetRemoveUnusedFilters()) {
+			return false
+		}
+	} else {
+		if !proto.Equal(m.GetRemoveUnusedFilters(), target.GetRemoveUnusedFilters()) {
+			return false
+		}
+	}
+
 	return true
 }
 
@@ -1386,6 +1396,26 @@ func (m *GlooOptions_AWSOptions) Equal(that interface{}) bool {
 		return m == nil
 	} else if m == nil {
 		return false
+	}
+
+	if h, ok := interface{}(m.GetPropagateOriginalRouting()).(equality.Equalizer); ok {
+		if !h.Equal(target.GetPropagateOriginalRouting()) {
+			return false
+		}
+	} else {
+		if !proto.Equal(m.GetPropagateOriginalRouting(), target.GetPropagateOriginalRouting()) {
+			return false
+		}
+	}
+
+	if h, ok := interface{}(m.GetCredentialRefreshDelay()).(equality.Equalizer); ok {
+		if !h.Equal(target.GetCredentialRefreshDelay()) {
+			return false
+		}
+	} else {
+		if !proto.Equal(m.GetCredentialRefreshDelay(), target.GetCredentialRefreshDelay()) {
+			return false
+		}
 	}
 
 	switch m.CredentialsFetcher.(type) {

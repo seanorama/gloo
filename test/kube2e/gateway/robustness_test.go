@@ -53,7 +53,7 @@ var _ = Describe("Robustness tests", func() {
 	// Historically, we had an EDS Test Suite (https://github.com/solo-io/gloo/tree/197272444efae0e6649c798997d6efa94bb7a8d9/test/kube2e/eds)
 	// however, those tests often flaked, and the purpose of those tests was to validate what these
 	// tests already do: that endpoints are updated and sent to Envoy successfully.
-	// Therefore, we opted to collapste that Test Suite into this file. If in the future there are a larger set
+	// Therefore, we opted to collapse that Test Suite into this file. If in the future there are a larger set
 	// of tests, we can evaluate re-opening that Test Suite.
 
 	const (
@@ -176,6 +176,22 @@ var _ = Describe("Robustness tests", func() {
 		})
 
 		JustBeforeEach(func() {
+			var vsList gatewayv1.VirtualServiceList
+			Eventually(func() bool {
+				vsList, err = virtualServiceClient.List(appService.Namespace, clients.ListOpts{})
+				if err != nil {
+					return false
+				}
+				if len(vsList) == 0 {
+					return true
+				}
+				for _, vs := range vsList {
+					virtualServiceClient.Delete(appService.Namespace, vs.GetMetadata().Name, clients.DeleteOpts{})
+				}
+
+				return false
+
+			}, "12s", "1s").Should(BeTrue())
 			_, writeErr := virtualServiceClient.Write(virtualService, clients.WriteOpts{Ctx: ctx})
 			Expect(writeErr).NotTo(HaveOccurred())
 

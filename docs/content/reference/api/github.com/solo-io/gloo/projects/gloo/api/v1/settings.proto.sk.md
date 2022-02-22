@@ -545,6 +545,7 @@ Settings specific to the gloo (Envoy xDS server) controller
 "restXdsBindAddr": string
 "enableRestEds": .google.protobuf.BoolValue
 "failoverUpstreamDnsPollingInterval": .google.protobuf.Duration
+"removeUnusedFilters": .google.protobuf.BoolValue
 
 ```
 
@@ -563,6 +564,7 @@ Settings specific to the gloo (Envoy xDS server) controller
 | `restXdsBindAddr` | `string` | Where the `gloo` REST xDS server should bind. Defaults to `0.0.0.0:9976`. |
 | `enableRestEds` | [.google.protobuf.BoolValue](https://developers.google.com/protocol-buffers/docs/reference/csharp/class/google/protobuf/well-known-types/bool-value) | Whether or not to use rest xds for all EDS by default. Rest XDS, as opposed to grpc, uses http polling rather than streaming. |
 | `failoverUpstreamDnsPollingInterval` | [.google.protobuf.Duration](https://developers.google.com/protocol-buffers/docs/reference/csharp/class/google/protobuf/well-known-types/duration) | The polling interval for the DNS server if upstream failover is configured. If there is a failover upstream address with a hostname instead of an IP, Gloo will resolve the hostname with the configured frequency to update endpoints with any changes to DNS resolution. Defaults to 10s. |
+| `removeUnusedFilters` | [.google.protobuf.BoolValue](https://developers.google.com/protocol-buffers/docs/reference/csharp/class/google/protobuf/well-known-types/bool-value) | By default gloo adds a series of filters to envoy to ensure that new routes are picked up Even if the listener previously did not have a filter on the chain previously. When set to true unused filters are not added to the chain by default. Defaults to false. |
 
 
 
@@ -575,6 +577,8 @@ Settings specific to the gloo (Envoy xDS server) controller
 ```yaml
 "enableCredentialsDiscovey": bool
 "serviceAccountCredentials": .envoy.config.filter.http.aws_lambda.v2.AWSLambdaConfig.ServiceAccountCredentials
+"propagateOriginalRouting": .google.protobuf.BoolValue
+"credentialRefreshDelay": .google.protobuf.Duration
 
 ```
 
@@ -582,6 +586,8 @@ Settings specific to the gloo (Envoy xDS server) controller
 | ----- | ---- | ----------- | 
 | `enableCredentialsDiscovey` | `bool` | Enable credential discovery via IAM; when this is set, there's no need provide a secret on the upstream when running on AWS environment. Note: This should **ONLY** be enabled when running in an AWS environment, as the AWS code blocks the envoy main thread. This should be negligible when running inside AWS. Only one of `enableCredentialsDiscovey` or `serviceAccountCredentials` can be set. |
 | `serviceAccountCredentials` | [.envoy.config.filter.http.aws_lambda.v2.AWSLambdaConfig.ServiceAccountCredentials](../../external/envoy/extensions/aws/filter.proto.sk/#serviceaccountcredentials) | Use projected service account token, and role arn to create temporary credentials with which to authenticate lambda requests. This functionality is meant to work along side EKS service account to IAM binding functionality as outlined here: https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html If the following environment values are not present in the gateway-proxy, this option cannot be used. 1. AWS_WEB_IDENTITY_TOKEN_FILE 2. AWS_ROLE_ARN The role which will be assumed by the credentials will be the one specified by AWS_ROLE_ARN, however, this can also be overwritten in the AWS Upstream spec via the role_arn field If they are not specified envoy will NACK the config update, which will show up in the logs when running OS Gloo. When running Gloo enterprise it will be reflected in the prometheus stat: "glooe.solo.io/xds/nack" In order to specify the aws sts endpoint, both the cluster and uri must be set. This is due to an envoy limitation which cannot infer the host or path from the cluster, and therefore must be explicitly specified via the uri. Only one of `serviceAccountCredentials` or `enableCredentialsDiscovey` can be set. |
+| `propagateOriginalRouting` | [.google.protobuf.BoolValue](https://developers.google.com/protocol-buffers/docs/reference/csharp/class/google/protobuf/well-known-types/bool-value) | Send downstream path and method as `x-envoy-original-path` and `x-envoy-original-method` headers on the request to AWS lambda. Defaults to false. |
+| `credentialRefreshDelay` | [.google.protobuf.Duration](https://developers.google.com/protocol-buffers/docs/reference/csharp/class/google/protobuf/well-known-types/duration) | Sets cadence for refreshing credentials for Service Account. Does nothing if Service account is not set. Does not affect the default filewatch for service account only augments it. Defaults to not refreshing on time period. Suggested is 15 minutes. |
 
 
 
@@ -591,6 +597,7 @@ Settings specific to the gloo (Envoy xDS server) controller
 
  
 Policy for how Gloo should handle invalid config
+[#next-free-field: 15]
 
 ```yaml
 "replaceInvalidRoutes": bool
