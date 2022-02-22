@@ -307,6 +307,7 @@ func RunGateway(opts translator.Opts) error {
 	translatorSyncer := NewTranslatorSyncer(
 		ctx,
 		opts.WriteNamespace,
+		proxyClient,
 		proxyReconciler,
 		rpt,
 		txlator,

@@ -12,7 +12,6 @@ import (
 	"github.com/solo-io/solo-kit/pkg/api/v1/clients"
 
 	"github.com/hashicorp/go-multierror"
-	gwreconciler "github.com/solo-io/gloo/projects/gateway/pkg/reconciler"
 	gwsyncer "github.com/solo-io/gloo/projects/gateway/pkg/syncer"
 	v1 "github.com/solo-io/gloo/projects/gloo/pkg/api/v1"
 	v1snap "github.com/solo-io/gloo/projects/gloo/pkg/api/v1/gloosnapshot"
@@ -36,7 +35,7 @@ type translatorSyncer struct {
 	settings      *v1.Settings
 	statusMetrics metrics.ConfigStatusMetrics
 	gatewaySyncer *gwsyncer.TranslatorSyncer
-	proxyClient   gwreconciler.MemoryProxyClient
+	proxyClient   v1.ProxyClient
 }
 
 type TranslatorSyncerExtensionParams struct {
@@ -71,7 +70,7 @@ func NewTranslatorSyncer(
 	settings *v1.Settings,
 	statusMetrics metrics.ConfigStatusMetrics,
 	gatewaySyncer *gwsyncer.TranslatorSyncer,
-	proxyClient gwreconciler.MemoryProxyClient,
+	proxyClient v1.ProxyClient,
 ) v1snap.ApiSyncer {
 	s := &translatorSyncer{
 		translator:    translator,
@@ -120,7 +119,14 @@ func (s *translatorSyncer) Sync(ctx context.Context, snap *v1snap.ApiSnapshot) e
 		reports.Merge(intermediateReports)
 		s.extensionKeys[nodeID] = struct{}{}
 	}
-	logger.Infof("[ELC] done syncing envoy, about to write reports %v", reports)
+	//TODO this block is all status setting debug logs and should be removed
+	if len(snap.Proxies) >0 {
+		logger.Infof("[ELC] gloo sync, proxy status %v ", snap.Proxies[0].GetNamespacedStatuses())
+		proxy, _ := s.proxyClient.Read("gloo-system", snap.Proxies[0].GetMetadata().GetName(), clients.ReadOpts{})
+		logger.Infof("proxy from client status %v proxy %v", proxy.GetNamespacedStatuses(), proxy)
+	} else {
+		logger.Infof("empty proxy list from gloo sync? %v ", snap.Proxies)
+	}
 	if err := s.reporter.WriteReports(ctx, reports, nil); err != nil {
 		logger.Debugf("Failed writing report for proxies: %v", err)
 		multiErr = multierror.Append(multiErr, eris.Wrapf(err, "writing reports"))
@@ -130,7 +136,6 @@ func (s *translatorSyncer) Sync(ctx context.Context, snap *v1snap.ApiSnapshot) e
 		status := s.reporter.StatusFromReport(report, nil)
 		s.statusMetrics.SetResourceStatus(ctx, resource, status)
 	}
-
 	return multiErr.ErrorOrNil()
 }
 
@@ -144,8 +149,8 @@ func (s *translatorSyncer) translateProxies(ctx context.Context, snap *v1snap.Ap
 	}
 	logger := contextutils.LoggerFrom(ctx)
 	s.gatewaySyncer.Sync(ctx, gwSnap)
+	//TODO: delete extra logs and listing proxies after debugging is done
 	proxyList, _ := s.proxyClient.List("gloo-system", clients.ListOpts{})
-	//TODO: delete extra logs after debugging is done
 	for _, proxy := range proxyList {
 		if proxy != nil {
 			logger.Infof("ELC logging statuses %s", proxy.GetNamespacedStatuses().String())

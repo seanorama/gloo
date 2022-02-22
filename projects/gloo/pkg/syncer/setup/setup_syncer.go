@@ -540,7 +540,7 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 	apiCache := v1snap.NewApiEmitterWithEmit(
 		artifactClient,
 		endpointClient,
-		proxyClient,
+		memoryProxyClient,
 		upstreamGroupClient,
 		secretClient,
 		hybridUsClient,
@@ -563,6 +563,7 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		upstreamGroupClient.BaseClient(),
 		authConfigClient.BaseClient(),
 		gatewayClient.BaseClient(),
+		virtualServiceClient.BaseClient(),
 		rtClient.BaseClient(),
 		virtualHostOptionClient.BaseClient(),
 		routeOptionClient.BaseClient(),
@@ -667,7 +668,7 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		allowWarnings,
 	))
 	proxyReconciler := gwreconciler.NewProxyReconciler(validationClient, memoryProxyClient, statusClient)
-	gwTranslatorSyncer := gwsyncer.NewTranslatorSyncer(opts.WatchOpts.Ctx, opts.WriteNamespace, proxyReconciler, rpt, gatewayTranslator, statusClient, statusMetrics)
+	gwTranslatorSyncer := gwsyncer.NewTranslatorSyncer(opts.WatchOpts.Ctx, opts.WriteNamespace, memoryProxyClient, proxyReconciler, rpt, gatewayTranslator, statusClient, statusMetrics)
 	routeReplacingSanitizer, err := sanitizer.NewRouteReplacingSanitizer(opts.Settings.GetGloo().GetInvalidConfigPolicy())
 	if err != nil {
 		return err

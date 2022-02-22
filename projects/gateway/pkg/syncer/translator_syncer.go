@@ -2,6 +2,8 @@ package syncer
 import (
 	"context"
 	"fmt"
+	"github.com/solo-io/solo-kit/pkg/api/v1/clients"
+	"github.com/solo-io/solo-kit/pkg/errors"
 	"sort"
 	"sync"
 	"time"
@@ -37,13 +39,13 @@ type TranslatorSyncer struct {
 	managedProxyLabels map[string]string
 }
 
-func NewTranslatorSyncer(ctx context.Context, writeNamespace string, proxyReconciler reconciler.ProxyReconciler, reporter reporter.StatusReporter, translator translator.Translator, statusClient resources.StatusClient, statusMetrics metrics.ConfigStatusMetrics) *TranslatorSyncer {
+func NewTranslatorSyncer(ctx context.Context, writeNamespace string, proxyWatcher gloov1.ProxyWatcher, proxyReconciler reconciler.ProxyReconciler, reporter reporter.StatusReporter, translator translator.Translator, statusClient resources.StatusClient, statusMetrics metrics.ConfigStatusMetrics) *TranslatorSyncer {
 	t := &TranslatorSyncer{
 		writeNamespace:  writeNamespace,
 		reporter:        reporter,
 		proxyReconciler: proxyReconciler,
 		translator:      translator,
-		statusSyncer:    newStatusSyncer(writeNamespace, reporter, statusClient, statusMetrics),
+		statusSyncer:    newStatusSyncer(writeNamespace, proxyWatcher, reporter, statusClient, statusMetrics),
 		managedProxyLabels: map[string]string{
 			"created_by": "gateway",
 		},
@@ -91,7 +93,7 @@ func (s *TranslatorSyncer) GeneratedDesiredProxies(ctx context.Context, snap *v1
 			}
 
 			logger.Infof("desired proxy %v", proxy.GetMetadata().Ref())
-			logger.Infof("[ELC] reports %v", reports)
+			logger.Infof("[ELC] proxy status %v", proxy.GetNamespacedStatuses())
 			proxy.GetMetadata().Labels = s.managedProxyLabels
 			desiredProxies[proxy] = reports
 		} else {
@@ -122,30 +124,34 @@ func (s *TranslatorSyncer) reconcile(ctx context.Context, desiredProxies reconci
 	s.statusSyncer.forceSync()
 	return nil
 }
-
+//TODO: replace with watch
+func (s *TranslatorSyncer) SetStatuses(list gloov1.ProxyList) {
+	s.statusSyncer.setStatuses(list)
+}
 type reportsAndStatus struct {
 	Status  *core.Status
 	Reports reporter.ResourceReports
 }
 type statusSyncer struct {
 	proxyToLastStatus       map[string]reportsAndStatus
-	//Not clear that this is ever written
 	inputResourceLastStatus map[resources.InputResource]*core.Status
 	currentGeneratedProxies []*core.ResourceRef
 	mapLock                 sync.RWMutex
 	reporter                reporter.StatusReporter
 
+	proxyWatcher   gloov1.ProxyWatcher
 	writeNamespace string
 	statusClient   resources.StatusClient
 	statusMetrics  metrics.ConfigStatusMetrics
 	syncNeeded     chan struct{}
 }
 
-func newStatusSyncer(writeNamespace string, reporter reporter.StatusReporter, statusClient resources.StatusClient, statusMetrics metrics.ConfigStatusMetrics) statusSyncer {
+func newStatusSyncer(writeNamespace string, proxyWatcher gloov1.ProxyWatcher, reporter reporter.StatusReporter, statusClient resources.StatusClient, statusMetrics metrics.ConfigStatusMetrics) statusSyncer {
 	return statusSyncer{
 		proxyToLastStatus:       map[string]reportsAndStatus{},
 		currentGeneratedProxies: nil,
 		reporter:                reporter,
+		proxyWatcher:            proxyWatcher,
 		writeNamespace:          writeNamespace,
 		statusClient:            statusClient,
 		statusMetrics:           statusMetrics,
@@ -201,7 +207,57 @@ func (s *statusSyncer) setCurrentProxies(desiredProxies reconciler.GeneratedProx
 		return refi.GetName() < refj.GetName()
 	})
 }
+// run this in the background
+//TODO: we do need to maintain our map of proxies although it might be possible to integrate this into the gloo translation loop
+// Probably better to make this change after merging the feature branch
+func (s *statusSyncer) watchProxies(ctx context.Context) error {
+	ctx = contextutils.WithLogger(ctx, "proxy-err-watcher")
+	logger := contextutils.LoggerFrom(ctx)
+	defer logger.Debugw("done watching proxies")
+	proxies, errs, err := s.proxyWatcher.Watch(s.writeNamespace, clients.WatchOpts{
+		Ctx: ctx,
+	})
+	if err != nil {
+		return errors.Wrapf(err, "creating watch for proxies in %v", s.writeNamespace)
+	}
+	return s.watchProxiesFromChannel(ctx, proxies, errs)
+}
 
+func (s *statusSyncer) watchProxiesFromChannel(ctx context.Context, proxies <-chan gloov1.ProxyList, errs <-chan error) error {
+
+	logger := contextutils.LoggerFrom(ctx)
+	var previousHash uint64
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case err, ok := <-errs:
+			if !ok {
+				return nil
+			}
+			logger.Error(err)
+		case proxyList, ok := <-proxies:
+			if !ok {
+				return nil
+			}
+
+			currentHash, err := s.hashStatuses(proxyList)
+			if err != nil {
+				logger.DPanicw("error while hashing, this should never happen", zap.Error(err))
+			}
+			// We use hashing here to be compatible with the memory client used in
+			// the local e2e; it fires a watch update too all watch object, on any change,
+			// this means that setting by the status of a virtual service we will get another
+			// proxyList from the channel. This results in excessive CPU usage in CI.
+			if currentHash != previousHash {
+				logger.Debugw("proxy list updated", "len(proxyList)", len(proxyList), "currentHash", currentHash, "previousHash", previousHash)
+				previousHash = currentHash
+				s.setStatuses(proxyList)
+				s.forceSync()
+			}
+		}
+	}
+}
 //This was called by watchProxiesFromChannel which was removed
 //Not currently called
 func (s *statusSyncer) hashStatuses(proxyList gloov1.ProxyList) (uint64, error) {
@@ -336,11 +392,13 @@ func (s *statusSyncer) syncStatus(ctx context.Context) error {
 		reports := reporter.ResourceReports{clonedInputResource: subresourceStatuses}
 		currentStatuses := inputResourceBySubresourceStatuses[inputResource]
 		if err := s.reporter.WriteReports(ctx, reports, currentStatuses); err != nil {
+			contextutils.LoggerFrom(ctx).Infof("[ELC] error writing reports %v", err)
 			errs = multierror.Append(errs, err)
 		} else {
 			// The inputResource's status was successfully written, update the cache and metric with that status
 			status := s.reporter.StatusFromReport(subresourceStatuses, currentStatuses)
 			localInputResourceLastStatus[inputResource] = status
+			contextutils.LoggerFrom(ctx).Infof("[ELC] successfully wrote reports  resource %v current statuses: %v", inputResource.GetMetadata(), currentStatuses)
 		}
 		status := s.reporter.StatusFromReport(subresourceStatuses, currentStatuses)
 		s.statusMetrics.SetResourceStatus(ctx, inputResource, status)
