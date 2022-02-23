@@ -642,10 +642,9 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		ignoreProxyValidationFailure bool
 		allowWarnings                bool
 	)
-	gatewayMode := false
-	if gwOpts.Validation != nil && gatewayMode {
+	//TODO: also check if running in gateway mode before creating gateway validation client
+	if gwOpts.Validation != nil {
 		//TODO: this can be in memory
-		logger.Infof("[ELC]creating validation client %s", gwOpts.Validation.ProxyValidationServerAddress)
 		validationClient, err = gwvalidation.NewConnectionRefreshingValidationClient(
 			gwvalidation.RetryOnUnavailableClientConstructor(opts.WatchOpts.Ctx, gwOpts.Validation.ProxyValidationServerAddress),
 		)
@@ -653,10 +652,10 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 			return errors.Wrapf(err, "failed to initialize grpc connection to validation server.")
 		}
 
-		ignoreProxyValidationFailure = gwOpts.Validation.IgnoreProxyValidationFailure
-		allowWarnings = gwOpts.Validation.AllowWarnings
 	}
 
+	ignoreProxyValidationFailure = gwOpts.Validation.IgnoreProxyValidationFailure
+	allowWarnings = gwOpts.Validation.AllowWarnings
 	t := translator.NewTranslator(sslutils.NewSslConfigTranslator(), opts.Settings, pluginRegistryFactory)
 
 	gatewayTranslator := gwtranslator.NewDefaultTranslator(gwOpts)

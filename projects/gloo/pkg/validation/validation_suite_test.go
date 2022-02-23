@@ -14,5 +14,5 @@ func TestValidation(t *testing.T) {
 	T = t
 	RegisterFailHandler(Fail)
 	junitReporter := reporters.NewJUnitReporter("junit.xml")
-	RunSpecsWithDefaultAndCustomReporters(t, "ValidationOpts Suite", []Reporter{junitReporter})
+	RunSpecsWithDefaultAndCustomReporters(t, "Validation Suite", []Reporter{junitReporter})
 }

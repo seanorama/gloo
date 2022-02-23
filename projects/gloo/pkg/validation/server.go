@@ -149,8 +149,12 @@ func (s *validator) Sync(ctx context.Context, snap *v1snap.ApiSnapshot) error {
 			VirtualHostOptions: snap.VirtualHostOptions,
 			RouteOptions:       snap.RouteOptions,
 		}
-		contextutils.LoggerFrom(ctx).Infof("[ELC]Update to gateway type %v", gwSnap.VirtualServices)
-		s.gwValidator.Sync(ctx, gwSnap)
+		contextutils.LoggerFrom(ctx).Infof("[ELC]Update to gateway type, running gateway validation")
+		err := s.gwValidator.Sync(ctx, gwSnap)
+		if err!= nil {
+			//TODO: better log, do something with error
+			contextutils.LoggerFrom(ctx).Errorf("Error running gateway validation, %v", err)
+		}
 	}
 	if s.shouldNotify(snap) || gatewayChange {
 		s.pushNotifications()
