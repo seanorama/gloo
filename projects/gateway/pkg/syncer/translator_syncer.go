@@ -50,7 +50,7 @@ func NewTranslatorSyncer(ctx context.Context, writeNamespace string, proxyWatche
 			"created_by": "gateway",
 		},
 	}
-
+    go t.statusSyncer.watchProxies(ctx)
 	go t.statusSyncer.syncStatusOnEmit(ctx)
 	return t
 }
@@ -123,10 +123,6 @@ func (s *TranslatorSyncer) reconcile(ctx context.Context, desiredProxies reconci
 	s.statusSyncer.setCurrentProxies(desiredProxies, invalidProxies)
 	s.statusSyncer.forceSync()
 	return nil
-}
-//TODO: replace with watch
-func (s *TranslatorSyncer) SetStatuses(list gloov1.ProxyList) {
-	s.statusSyncer.setStatuses(list)
 }
 type reportsAndStatus struct {
 	Status  *core.Status
@@ -268,8 +264,7 @@ func (s *statusSyncer) hashStatuses(proxyList gloov1.ProxyList) (uint64, error) 
 	}
 	return hashutils.HashAllSafe(nil, statuses...)
 }
-//This was called by watchProxiesFromChannel which was removed
-//Not currently called
+//This is called by watchProxiesFromChannel - TODO: call when gloo translation finishes instead
 func (s *statusSyncer) setStatuses(list gloov1.ProxyList) {
 	s.mapLock.Lock()
 	defer s.mapLock.Unlock()
@@ -277,7 +272,6 @@ func (s *statusSyncer) setStatuses(list gloov1.ProxyList) {
 		ref := proxy.GetMetadata().Ref()
 		refKey := gloo_translator.UpstreamToClusterName(ref)
 		status := s.statusClient.GetStatus(proxy)
-
 		if current, ok := s.proxyToLastStatus[refKey]; ok {
 			current.Status = status
 			s.proxyToLastStatus[refKey] = current
@@ -398,7 +392,7 @@ func (s *statusSyncer) syncStatus(ctx context.Context) error {
 			// The inputResource's status was successfully written, update the cache and metric with that status
 			status := s.reporter.StatusFromReport(subresourceStatuses, currentStatuses)
 			localInputResourceLastStatus[inputResource] = status
-			contextutils.LoggerFrom(ctx).Infof("[ELC] successfully wrote reports  resource %v current statuses: %v", inputResource.GetMetadata(), currentStatuses)
+		//	contextutils.LoggerFrom(ctx).Infof("[ELC] successfully wrote reports  resource %v current statuses: %v", inputResource.GetMetadata(), currentStatuses)
 		}
 		status := s.reporter.StatusFromReport(subresourceStatuses, currentStatuses)
 		s.statusMetrics.SetResourceStatus(ctx, inputResource, status)

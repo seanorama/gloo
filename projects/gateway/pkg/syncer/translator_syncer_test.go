@@ -28,6 +28,7 @@ import (
 var _ = Describe("TranslatorSyncer", func() {
 
 	var (
+		fakeWatcher = &fakeWatcher{}
 		mockReporter *fakeReporter
 		syncer       *statusSyncer
 
@@ -40,7 +41,7 @@ var _ = Describe("TranslatorSyncer", func() {
 		statusClient = statusutils.GetStatusClientFromEnvOrDefault(defaults.GlooSystem)
 		statusMetrics, err := metrics.NewConfigStatusMetrics(metrics.GetDefaultConfigStatusOptions())
 		Expect(err).NotTo(HaveOccurred())
-		curSyncer := newStatusSyncer(defaults.GlooSystem, mockReporter, statusClient, statusMetrics)
+		curSyncer := newStatusSyncer(defaults.GlooSystem, fakeWatcher, mockReporter, statusClient, statusMetrics)
 		syncer = &curSyncer
 	})
 
@@ -168,7 +169,7 @@ var _ = Describe("TranslatorSyncer", func() {
 		proxies := make(chan gloov1.ProxyList)
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-	//	go syncer.watchProxiesFromChannel(ctx, proxies, nil)
+		go syncer.watchProxiesFromChannel(ctx, proxies, nil)
 		go syncer.syncStatusOnEmit(ctx)
 
 		syncer.setCurrentProxies(desiredProxies, make(reconciler.InvalidProxies))
@@ -205,7 +206,7 @@ var _ = Describe("TranslatorSyncer", func() {
 		proxies := make(chan gloov1.ProxyList)
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
-	//	go syncer.watchProxiesFromChannel(ctx, proxies, nil)
+		go syncer.watchProxiesFromChannel(ctx, proxies, nil)
 		go syncer.syncStatusOnEmit(ctx)
 
 		syncer.setCurrentProxies(desiredProxies, make(reconciler.InvalidProxies))

@@ -149,7 +149,6 @@ func (s *validator) Sync(ctx context.Context, snap *v1snap.ApiSnapshot) error {
 			VirtualHostOptions: snap.VirtualHostOptions,
 			RouteOptions:       snap.RouteOptions,
 		}
-		contextutils.LoggerFrom(ctx).Infof("[ELC]Update to gateway type, running gateway validation")
 		err := s.gwValidator.Sync(ctx, gwSnap)
 		if err!= nil {
 			//TODO: better log, do something with error
@@ -248,7 +247,6 @@ func (s *validator) Validate(ctx context.Context, req *validation.GlooValidation
 
 		validationReports = append(validationReports, convertToValidationReport(proxyReport, resourceReports, proxy))
 	}
-
 	return &validation.GlooValidationServiceResponse{
 		ValidationReports: validationReports,
 	}, nil

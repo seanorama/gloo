@@ -124,8 +124,6 @@ func (s *translatorSyncer) Sync(ctx context.Context, snap *v1snap.ApiSnapshot) e
 		logger.Infof("[ELC] gloo sync, proxy status %v ", snap.Proxies[0].GetNamespacedStatuses())
 		proxy, _ := s.proxyClient.Read("gloo-system", snap.Proxies[0].GetMetadata().GetName(), clients.ReadOpts{})
 		logger.Infof("proxy from client status %v proxy %v", proxy.GetNamespacedStatuses(), proxy)
-	} else {
-		logger.Infof("empty proxy list from gloo sync? %v ", snap.Proxies)
 	}
 	if err := s.reporter.WriteReports(ctx, reports, nil); err != nil {
 		logger.Debugf("Failed writing report for proxies: %v", err)

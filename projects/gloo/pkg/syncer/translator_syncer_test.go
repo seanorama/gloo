@@ -385,8 +385,6 @@ var _ = Describe("Translate mulitple proxies with errors", func() {
 		rep := reporter.NewReporter(ref, statusClient, proxyClient.BaseClient(), usClient)
 
 		xdsHasher := &xds.ProxyKeyHasher{}
-//		proxyReconciler := gwreconciler.NewProxyReconciler(nil, proxyClient, statusClient)
-//		gatewaySyncer := gatewaysyncer.NewTranslatorSyncer(context.Background(), ns, proxyReconciler, rep, gatewayTranslator, statusClient, statusMetrics)
 		syncer = NewTranslatorSyncer(&mockTranslator{true, true, nil}, xdsCache, xdsHasher, sanitizer, rep, false, nil, settings, statusMetrics, nil, proxyClient)
 		snap = &v1snap.ApiSnapshot{
 			Proxies: v1.ProxyList{
