@@ -776,7 +776,6 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		go func() {
 			// close out validation server when context is cancelled
 			<-watchOpts.Ctx.Done()
-			logger.Infof("[ELC] closing validation webhook server")
 			validationWebhook.Close()
 		}()
 		go func() {

@@ -155,6 +155,7 @@ func (s *validator) Sync(ctx context.Context, snap *v1snap.ApiSnapshot) error {
 			contextutils.LoggerFrom(ctx).Errorf("Error running gateway validation, %v", err)
 		}
 	}
+	//TODO: if s.shouldNotify(snap) || (gatewayChange && gwMode)
 	if s.shouldNotify(snap) || gatewayChange {
 		s.pushNotifications()
 	}

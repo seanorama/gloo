@@ -130,7 +130,6 @@ func (v *validator) ready() bool {
 
 func (v *validator) Sync(ctx context.Context, snap *v1.ApiSnapshot) error {
 	snapCopy := snap.Clone()
-	contextutils.LoggerFrom(ctx).Infof("[ELC] calling gateway validator sync")
 	gatewaysByProxy := utils.GatewaysByProxyName(snap.Gateways)
 	var errs error
 	for proxyName, gatewayList := range gatewaysByProxy {

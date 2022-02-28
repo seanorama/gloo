@@ -119,12 +119,6 @@ func (s *translatorSyncer) Sync(ctx context.Context, snap *v1snap.ApiSnapshot) e
 		reports.Merge(intermediateReports)
 		s.extensionKeys[nodeID] = struct{}{}
 	}
-	//TODO this block is all status setting debug logs and should be removed
-	if len(snap.Proxies) >0 {
-		logger.Infof("[ELC] gloo sync, proxy status %v ", snap.Proxies[0].GetNamespacedStatuses())
-		proxy, _ := s.proxyClient.Read("gloo-system", snap.Proxies[0].GetMetadata().GetName(), clients.ReadOpts{})
-		logger.Infof("proxy from client status %v proxy %v", proxy.GetNamespacedStatuses(), proxy)
-	}
 	if err := s.reporter.WriteReports(ctx, reports, nil); err != nil {
 		logger.Debugf("Failed writing report for proxies: %v", err)
 		multiErr = multierror.Append(multiErr, eris.Wrapf(err, "writing reports"))
@@ -134,10 +128,14 @@ func (s *translatorSyncer) Sync(ctx context.Context, snap *v1snap.ApiSnapshot) e
 		status := s.reporter.StatusFromReport(report, nil)
 		s.statusMetrics.SetResourceStatus(ctx, resource, status)
 	}
+	//After reports are written for proxies, save in gateway syncer (previously gw watched for status changes to proxies)
+	if s.gatewaySyncer != nil {
+		s.gatewaySyncer.UpdateProxies(ctx)
+	}
 	return multiErr.ErrorOrNil()
 }
 
-func (s *translatorSyncer) translateProxies(ctx context.Context, snap *v1snap.ApiSnapshot) {
+func (s *translatorSyncer) translateProxies(ctx context.Context, snap *v1snap.ApiSnapshot) error {
 	gwSnap := &gatewayv1.ApiSnapshot{
 		VirtualServices:    snap.VirtualServices,
 		Gateways:           snap.Gateways,
@@ -146,9 +144,12 @@ func (s *translatorSyncer) translateProxies(ctx context.Context, snap *v1snap.Ap
 		VirtualHostOptions: snap.VirtualHostOptions,
 	}
 	logger := contextutils.LoggerFrom(ctx)
-	s.gatewaySyncer.Sync(ctx, gwSnap)
+	err := s.gatewaySyncer.Sync(ctx, gwSnap)
+	if err != nil {
+		return err
+	}
 	//TODO: delete extra logs and listing proxies after debugging is done
-	proxyList, _ := s.proxyClient.List("gloo-system", clients.ListOpts{})
+	proxyList, err := s.proxyClient.List("gloo-system", clients.ListOpts{})
 	for _, proxy := range proxyList {
 		if proxy != nil {
 			logger.Infof("ELC logging statuses %s", proxy.GetNamespacedStatuses().String())
@@ -159,4 +160,5 @@ func (s *translatorSyncer) translateProxies(ctx context.Context, snap *v1snap.Ap
 	logger.Infof("Done generating proxies, total %d", len(proxyList))
 	// END block of logs
 	snap.Proxies = proxyList
+	return err
 }

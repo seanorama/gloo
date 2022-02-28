@@ -388,6 +388,7 @@ func (wh *gatewayValidationWebhook) validate(
 	rawJson []byte,
 	isDelete, dryRun bool,
 ) (*validation.Reports, *multierror.Error) {
+	contextutils.LoggerFrom(ctx).Infof("[ELC] validation webhook- validating gvk %v", gvk)
 	switch gvk {
 	case ListGVK:
 		return wh.validateList(ctx, rawJson, dryRun)
