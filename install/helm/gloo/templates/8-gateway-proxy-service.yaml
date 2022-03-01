@@ -73,10 +73,6 @@ spec:
     nodePort: {{ $spec.failover.nodePort }}
 {{- end }} {{- /* if failover.enabled */}}
 {{- end }} {{- /* if failover */}}
-{{- if .Values.global.glooStats.serviceMonitor }}
-  - name: http-monitoring
-    port: 8081
-{{- end }}
 {{- if $spec.service.customPorts }}
 {{ toYaml $spec.service.customPorts | indent 2 }}
 {{- end}}
@@ -123,18 +119,43 @@ spec:
       port: 8082
 {{- end }} {{/* with (first .) */}}
 {{- end }} {{/* define gatewayProxy.configDumpServiceSpec */}}
-
+{{- define "gatewayProxy.monitoringServiceSpec" }}
+{{- $name := (index . 1) }}
+{{- with (first .) }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name | kebabcase }}-monitoring-service
+  namespace: {{ .Release.Namespace }}
+  labels:
+    gloo: gateway-proxy
+    gateway-proxy-id: {{ $name | kebabcase }}
+spec:
+  type: ClusterIP
+  selector:
+    gloo: gateway-proxy
+    gateway-proxy-id: {{ $name | kebabcase }}
+  ports:
+  - name: http-monitoring
+    port: 8081
+{{- end }} {{/* with (first .) */}}
+{{- end }} {{/* define gatewayProxy.monitoringServiceSpec */}}
 {{- if .Values.gateway.enabled }}
 {{- $gatewayProxy := .Values.gatewayProxies.gatewayProxy -}}
 {{- range $name, $gatewaySpec := .Values.gatewayProxies }}
 {{- $defaultGatewayProxySafe := deepCopy $gatewayProxy -}}
 {{- $_ := unset $defaultGatewayProxySafe.service "extraAnnotations" -}}
 {{- $spec := deepCopy $gatewaySpec | mergeOverwrite $defaultGatewayProxySafe -}}
-{{/* Render each gatewayProxy template with it's yaml overrides */}}
+{{- $serviceMonitorEnabled := merge $spec.service.monitoringService.enabled .Values.global.glooStats.serviceMonitor }}
+{{/* Render each gatewayProxy template with its yaml overrides */}}
 {{- $serviceYamlOverride := dict -}}
+{{- $monitoringServiceYamlOverride := dict -}}
 {{- $configDumpServiceYamlOverride := dict -}}
 {{- if $gatewaySpec.service -}}
 {{- $serviceYamlOverride = $spec.service.kubeResourceOverride  -}}
+{{- if $gatewaySpec.service.monitoringService -}}
+{{- $monitoringServiceYamlOverride = $spec.service.monitoringService.kubeResourceOverride  -}}
+{{- end -}}{{/* if $gatewaySpec.service.monitoringService */}}
 {{- if $gatewaySpec.service.configDumpService -}}
 {{- $configDumpServiceYamlOverride = $spec.service.configDumpService.kubeResourceOverride  -}}
 {{- end -}}{{/* if $gatewaySpec.service.configDumpService */}}
@@ -143,6 +164,10 @@ spec:
 {{- if not $spec.disabled }}
 ---
 {{- include "gloo.util.merge" (list $ctx $serviceYamlOverride "gatewayProxy.serviceSpec") -}}
+{{- if serviceMonitorEnabled }}
+---
+{{- include "gloo.util.merge" (list $ctx $monitoringServiceYamlOverride "gatewayProxy.monitoringServiceSpec") -}}
+{{- end }} {{/* if serviceMonitorEnabled */}}
 {{- if and $spec.readConfig $spec.readConfigMulticluster }}
 ---
 {{- include "gloo.util.merge" (list $ctx $configDumpServiceYamlOverride "gatewayProxy.configDumpServiceSpec") -}}
