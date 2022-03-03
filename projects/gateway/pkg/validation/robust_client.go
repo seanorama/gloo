@@ -37,7 +37,6 @@ func RetryOnUnavailableClientConstructor(ctx context.Context, serverAddress stri
 		clientCtx, cancel = context.WithCancel(ctx)
 
 		cc, err := grpc.DialContext(clientCtx, serverAddress, grpc.WithInsecure(), grpc.WithBlock())
-		contextutils.LoggerFrom(ctx).Infof("[ELC] completed grpc.dialcontext",)
 		if err != nil {
 			return nil, eris.Wrapf(err, "failed to initialize grpc connection to validation server.")
 		}

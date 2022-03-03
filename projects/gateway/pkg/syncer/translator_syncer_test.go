@@ -28,7 +28,7 @@ import (
 var _ = Describe("TranslatorSyncer", func() {
 
 	var (
-		fakeWatcher = &fakeWatcher{}
+		fakeWatcher  = &fakeWatcher{}
 		mockReporter *fakeReporter
 		syncer       *statusSyncer
 

@@ -16,10 +16,10 @@ metadata:
     {{ $key | quote }}: {{ $value | quote }}
     {{- end }}
 webhooks:
-- name: gateway.{{ .Release.Namespace }}.svc  # must be a domain with at least three segments separated by dots
+- name: gloo.{{ .Release.Namespace }}.svc  # must be a domain with at least three segments separated by dots
   clientConfig:
     service:
-      name: gateway
+      name: gloo
       namespace: {{ .Release.Namespace }}
       path: "/validation"
     caBundle: "" # update manually or use certgen job or cert-manager's ca-injector

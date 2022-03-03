@@ -1,12 +1,14 @@
 package syncer
+
 import (
 	"context"
 	"fmt"
-	"github.com/solo-io/solo-kit/pkg/api/v1/clients"
-	"github.com/solo-io/solo-kit/pkg/errors"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/solo-io/solo-kit/pkg/api/v1/clients"
+	"github.com/solo-io/solo-kit/pkg/errors"
 
 	"github.com/solo-io/gloo/projects/gateway/pkg/utils/metrics"
 	gloo_translator "github.com/solo-io/gloo/projects/gloo/pkg/translator"
@@ -50,7 +52,7 @@ func NewTranslatorSyncer(ctx context.Context, writeNamespace string, proxyWatche
 			"created_by": "gateway",
 		},
 	}
-   // go t.statusSyncer.watchProxies(ctx)
+	// go t.statusSyncer.watchProxies(ctx)
 	go t.statusSyncer.syncStatusOnEmit(ctx)
 	return t
 }
@@ -124,6 +126,7 @@ func (s *TranslatorSyncer) reconcile(ctx context.Context, desiredProxies reconci
 	s.statusSyncer.forceSync()
 	return nil
 }
+
 type reportsAndStatus struct {
 	Status  *core.Status
 	Reports reporter.ResourceReports
@@ -205,6 +208,7 @@ func (s *statusSyncer) setCurrentProxies(desiredProxies reconciler.GeneratedProx
 		return refi.GetName() < refj.GetName()
 	})
 }
+
 // run this in the background
 //TODO: we do need to maintain our map of proxies although it might be possible to integrate this into the gloo translation loop
 // Probably better to make this change after merging the feature branch
@@ -241,6 +245,7 @@ func (s *statusSyncer) watchProxiesFromChannel(ctx context.Context, proxies <-ch
 		}
 	}
 }
+
 //Separate this functionality out so it can be called outside of the watch (hopefully remove watch too)
 func (s *statusSyncer) handleUpdatedProxies(ctx context.Context, proxyList gloov1.ProxyList) {
 	logger := contextutils.LoggerFrom(ctx)
@@ -265,6 +270,7 @@ func (s *statusSyncer) handleUpdatedProxies(ctx context.Context, proxyList gloov
 		s.forceSync()
 	}
 }
+
 //This was called by watchProxiesFromChannel which was removed
 //Not currently called
 func (s *statusSyncer) hashStatuses(proxyList gloov1.ProxyList) (uint64, error) {
@@ -275,6 +281,7 @@ func (s *statusSyncer) hashStatuses(proxyList gloov1.ProxyList) (uint64, error) 
 	}
 	return hashutils.HashAllSafe(nil, statuses...)
 }
+
 //This is called by watchProxiesFromChannel - TODO: call when gloo translation finishes instead
 func (s *statusSyncer) setStatuses(list gloov1.ProxyList) {
 	s.mapLock.Lock()

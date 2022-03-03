@@ -384,15 +384,14 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		return err
 	}
 
-	//TODO: opts.Proxies can have the correct factory depending on the install mode
-	proxyClient, err := v1.NewProxyClient(watchOpts.Ctx, opts.Proxies)
+	memoryProxyClient, err := v1.NewProxyClient(watchOpts.Ctx, opts.Proxies)
 	if err != nil {
 		return err
 	}
-	if err := proxyClient.Register(); err != nil {
+	if err := memoryProxyClient.Register(); err != nil {
 		return err
 	}
-	memoryProxyClient, err := v1.NewProxyClient(watchOpts.Ctx, endpointsFactory)
+	//memoryProxyClient, err := v1.NewProxyClient(watchOpts.Ctx, endpointsFactory)
 
 	upstreamGroupClient, err := v1.NewUpstreamGroupClient(watchOpts.Ctx, opts.UpstreamGroups)
 	if err != nil {
@@ -628,6 +627,7 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		RouteOptions:            opts.RouteOptions,
 		VirtualHostOptions:      opts.VirtualHostOptions,
 		WatchOpts:               opts.WatchOpts,
+		// TODO: remove because validation server is started as part of gloo set up
 		ValidationServerAddress: "",
 		DevMode:                 opts.DevMode,
 		//TODO: set correctly
@@ -730,9 +730,6 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 			}
 		}
 	}()
-//TODO: starting grpc server goes here
-
-
 
 	//Start the validation webhook
 	validationServerErr := make(chan error, 1)
@@ -872,7 +869,6 @@ func startRestXdsServer(opts bootstrap.Opts) {
 		}
 	}()
 }
-
 func constructOpts(ctx context.Context, clientset *kubernetes.Interface, kubeCache kube.SharedCache, consulClient *consulapi.Client, vaultClient *vaultapi.Client, memCache memory.InMemoryResourceCache, settings *v1.Settings) (bootstrap.Opts, error) {
 
 	var (
@@ -905,9 +901,17 @@ func constructOpts(ctx context.Context, clientset *kubernetes.Interface, kubeCac
 		return bootstrap.Opts{}, err
 	}
 
-	proxyFactory, err := bootstrap.ConfigFactoryForSettings(params, v1.ProxyCrd)
-	if err != nil {
-		return bootstrap.Opts{}, err
+	var proxyFactory factory.ResourceClientFactory
+	if settings.GetGateway().GetPersistProxySpec() {
+		proxyFactory, err = bootstrap.ConfigFactoryForSettings(params, v1.ProxyCrd)
+		if err != nil {
+			return bootstrap.Opts{}, err
+		}
+	} else {
+		proxyFactory = &factory.MemoryResourceClientFactory{
+			Cache: memory.NewInMemoryResourceCache(),
+		}
+		contextutils.LoggerFrom(ctx).Infof("ELC would use memory client here")
 	}
 
 	secretFactory, err := bootstrap.SecretFactoryForSettings(
@@ -998,6 +1002,7 @@ func constructOpts(ctx context.Context, clientset *kubernetes.Interface, kubeCac
 			allowWarnings = allowWarning.GetValue()
 		}
 
+		contextutils.LoggerFrom(ctx).Infof("[ELC] default settings persistProxies %v alwaysAccept %v  allowWarnings %v", settings.GetGateway().GetPersistProxySpec(), alwaysAcceptResources, allowWarnings)
 		validation = gwtranslator.ValidationOpts{
 			ProxyValidationServerAddress: validationCfg.GetProxyValidationServerAddr(),
 			ValidatingWebhookPort:        gwdefaults.ValidationWebhookBindPort,

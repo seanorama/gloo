@@ -9,6 +9,8 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/onsi/gomega/format"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/golang/protobuf/ptypes/wrappers"
@@ -3459,6 +3461,7 @@ metadata:
 						labels         map[string]string
 					)
 					BeforeEach(func() {
+						format.MaxLength = 0
 						labels = map[string]string{
 							"gloo": "gloo",
 							"app":  "gloo",
@@ -3489,12 +3492,22 @@ metadata:
 									}},
 								},
 							},
-						}}
+						},
+							{
+								Name: "validation-certs",
+								VolumeSource: v1.VolumeSource{
+									Secret: &v1.SecretVolumeSource{
+										SecretName:  "gateway-validation-certs",
+										DefaultMode: proto.Int(420),
+									},
+								},
+							}}
 						deploy.Spec.Template.Spec.Containers[0].VolumeMounts = []v1.VolumeMount{{
-							Name:      "labels-volume",
-							MountPath: "/etc/gloo",
-							ReadOnly:  true,
+							Name:      "validation-certs",
+							MountPath: "/etc/gateway/validation-certs",
+							ReadOnly:  false,
 						}}
+
 						deploy.Spec.Template.Spec.Containers[0].Ports = glooPorts
 						deploy.Spec.Template.Spec.Containers[0].Resources = v1.ResourceRequirements{
 							Requests: v1.ResourceList{
@@ -4474,14 +4487,23 @@ metadata:
 												}},
 											},
 										},
-									}},
+									},
+										{
+											Name: "validation-certs",
+											VolumeSource: v1.VolumeSource{
+												Secret: &v1.SecretVolumeSource{
+													SecretName:  "gateway-validation-certs",
+													DefaultMode: proto.Int(420),
+												},
+											},
+										}},
 									ServiceAccountName: "gloo",
 									Containers: []v1.Container{
 										{
 											VolumeMounts: []v1.VolumeMount{{
-												Name:      "labels-volume",
-												MountPath: "/etc/gloo",
-												ReadOnly:  true,
+												Name:      "validation-certs",
+												MountPath: "/etc/gateway/validation-certs",
+												ReadOnly:  false,
 											}},
 											Name: "gloo",
 											// Note: this was NOT overwritten

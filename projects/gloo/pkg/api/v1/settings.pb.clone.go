@@ -441,6 +441,8 @@ func (m *GatewayOptions) Clone() proto.Message {
 		target.VirtualServiceOptions = proto.Clone(m.GetVirtualServiceOptions()).(*VirtualServiceOptions)
 	}
 
+	target.PersistProxySpec = m.GetPersistProxySpec()
+
 	return target
 }
 

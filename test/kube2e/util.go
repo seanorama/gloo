@@ -60,7 +60,6 @@ func GetHelmValuesOverrideFile() (filename string, cleanup func()) {
 	// but we don't want to report usage in CI since we only care about how our users are actually using Gloo.
 	// install to a single namespace so we can run multiple invocations of the regression tests against the
 	// same cluster in CI.
-	//TODO: added httpPort, etc to aid in debugging after running tests
 	_, err = values.Write([]byte(`
 global:
   image:
@@ -72,16 +71,21 @@ settings:
   singleNamespace: true
   create: true
   replaceInvalidRoutes: true
+gateway:
+  persistProxySpec: true
 gatewayProxies:
   gatewayProxy:
     healthyPanicThreshold: 0
-    service:
-      type: NodePort
-      httpPort: 31500
-      httpsPort: 32500
-      httpNodePort: 31500
-      httpsNodePort: 32500
 `))
+	/*
+		service:
+			type: NodePort
+		httpPort: 31500
+		httpsPort: 32500
+		httpNodePort: 31500
+		httpsNodePort: 32500
+
+	*/
 	Expect(err).NotTo(HaveOccurred())
 
 	err = values.Close()

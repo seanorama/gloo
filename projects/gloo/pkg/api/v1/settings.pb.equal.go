@@ -686,6 +686,10 @@ func (m *GatewayOptions) Equal(that interface{}) bool {
 		}
 	}
 
+	if m.GetPersistProxySpec() != target.GetPersistProxySpec() {
+		return false
+	}
+
 	return true
 }
 

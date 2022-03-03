@@ -2,6 +2,7 @@ package syncer_test
 
 import (
 	"context"
+
 	envoy_config_cluster_v3 "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
 	envoy_config_endpoint_v3 "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
 	envoy_config_listener_v3 "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
@@ -29,20 +30,20 @@ import (
 var _ = Describe("Translate Proxy", func() {
 
 	var (
-		xdsCache          *MockXdsCache
-		sanitizer         *MockXdsSanitizer
-		syncer            v1snap.ApiSyncer
-		snap              *v1snap.ApiSnapshot
-		settings          *v1.Settings
-		upstreamClient    clients.ResourceClient
-		proxyClient       v1.ProxyClient
-		ctx               context.Context
-		cancel            context.CancelFunc
-		proxyName         = "proxy-name"
-		ns                = "any-ns"
-		ref               = "syncer-test"
-		statusClient      resources.StatusClient
-		statusMetrics     metrics.ConfigStatusMetrics
+		xdsCache       *MockXdsCache
+		sanitizer      *MockXdsSanitizer
+		syncer         v1snap.ApiSyncer
+		snap           *v1snap.ApiSnapshot
+		settings       *v1.Settings
+		upstreamClient clients.ResourceClient
+		proxyClient    v1.ProxyClient
+		ctx            context.Context
+		cancel         context.CancelFunc
+		proxyName      = "proxy-name"
+		ns             = "any-ns"
+		ref            = "syncer-test"
+		statusClient   resources.StatusClient
+		statusMetrics  metrics.ConfigStatusMetrics
 	)
 
 	BeforeEach(func() {
@@ -172,21 +173,21 @@ var _ = Describe("Translate Proxy", func() {
 var _ = Describe("Empty cache", func() {
 
 	var (
-		xdsCache          *MockXdsCache
-		sanitizer         *MockXdsSanitizer
-		syncer            v1snap.ApiSyncer
-		settings          *v1.Settings
-		upstreamClient    clients.ResourceClient
-		proxyClient       v1.ProxyClient
-		ctx               context.Context
-		cancel            context.CancelFunc
-		proxy             *v1.Proxy
-		snapshot          envoycache.Snapshot
-		proxyName         = "proxy-name"
-		ns                = "any-ns"
-		ref               = "syncer-test"
-		statusClient      resources.StatusClient
-		statusMetrics     metrics.ConfigStatusMetrics
+		xdsCache       *MockXdsCache
+		sanitizer      *MockXdsSanitizer
+		syncer         v1snap.ApiSyncer
+		settings       *v1.Settings
+		upstreamClient clients.ResourceClient
+		proxyClient    v1.ProxyClient
+		ctx            context.Context
+		cancel         context.CancelFunc
+		proxy          *v1.Proxy
+		snapshot       envoycache.Snapshot
+		proxyName      = "proxy-name"
+		ns             = "any-ns"
+		ref            = "syncer-test"
+		statusClient   resources.StatusClient
+		statusMetrics  metrics.ConfigStatusMetrics
 	)
 
 	BeforeEach(func() {
@@ -297,19 +298,19 @@ var _ = Describe("Empty cache", func() {
 var _ = Describe("Translate mulitple proxies with errors", func() {
 
 	var (
-		xdsCache          *MockXdsCache
-		sanitizer         *MockXdsSanitizer
-		syncer            v1snap.ApiSyncer
-		snap              *v1snap.ApiSnapshot
-		settings          *v1.Settings
-		proxyClient       v1.ProxyClient
-		upstreamClient    v1.UpstreamClient
-		proxyName         = "proxy-name"
-		upstreamName      = "upstream-name"
-		ns                = "any-ns"
-		ref               = "syncer-test"
-		statusClient      resources.StatusClient
-		statusMetrics     metrics.ConfigStatusMetrics
+		xdsCache       *MockXdsCache
+		sanitizer      *MockXdsSanitizer
+		syncer         v1snap.ApiSyncer
+		snap           *v1snap.ApiSnapshot
+		settings       *v1.Settings
+		proxyClient    v1.ProxyClient
+		upstreamClient v1.UpstreamClient
+		proxyName      = "proxy-name"
+		upstreamName   = "upstream-name"
+		ns             = "any-ns"
+		ref            = "syncer-test"
+		statusClient   resources.StatusClient
+		statusMetrics  metrics.ConfigStatusMetrics
 	)
 
 	proxiesShouldHaveErrors := func(proxies v1.ProxyList, numProxies int) {

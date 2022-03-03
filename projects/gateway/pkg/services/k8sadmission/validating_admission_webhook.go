@@ -192,7 +192,7 @@ func NewGatewayValidationHandler(ctx context.Context, validator validation.Valid
 func (wh *gatewayValidationWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	logger := contextutils.LoggerFrom(wh.ctx)
 
-	logger.Infow("received validation request")
+	logger.Infow("received validation request on webhook")
 
 	b, _ := httputil.DumpRequest(r, true)
 	logger.Debugf("validation request dump:\n %s", string(b))
@@ -265,8 +265,8 @@ func (wh *gatewayValidationWebhook) ServeHTTP(w http.ResponseWriter, r *http.Req
 		logger.Errorf("Can't write response: %v", err)
 		http.Error(w, fmt.Sprintf("could not write response: %v", err), http.StatusInternalServerError)
 	}
-
-	logger.Debugf("responded with review: %s", resp)
+	//TODO: should be debug
+	logger.Infof("responded with review: %s", resp)
 }
 
 func (wh *gatewayValidationWebhook) makeAdmissionResponse(ctx context.Context, review *AdmissionReviewWithProxies) *AdmissionResponseWithProxies {

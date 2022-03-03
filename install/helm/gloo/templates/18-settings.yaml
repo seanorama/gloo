@@ -87,6 +87,7 @@ spec:
 
   gateway:
     readGatewaysFromAllNamespaces: {{ .Values.gateway.readGatewaysFromAllNamespaces }}
+    persistProxySpec: {{ .Values.gateway.persistProxySpec }}
 {{- if .Values.gateway.compressedProxySpec}}
     compressedProxySpec: {{ .Values.gateway.compressedProxySpec}}
 {{- end}}
