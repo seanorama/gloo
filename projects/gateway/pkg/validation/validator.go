@@ -83,6 +83,7 @@ type Validator interface {
 	ValidateUpstream(ctx context.Context, us *gloov1.Upstream, dryRun bool) (*Reports, error)
 	ValidateDeleteUpstream(ctx context.Context, us *core.ResourceRef, dryRun bool) error
 	ValidateDeleteSecret(ctx context.Context, secret *core.ResourceRef, dryRun bool) error
+	Ready() bool
 }
 
 type validator struct {
@@ -124,7 +125,7 @@ func NewValidator(cfg ValidatorConfig) *validator {
 	}
 }
 
-func (v *validator) ready() bool {
+func (v *validator) Ready() bool {
 	return v.latestSnapshot != nil
 }
 
@@ -133,13 +134,11 @@ func (v *validator) Sync(ctx context.Context, snap *v1.ApiSnapshot) error {
 	gatewaysByProxy := utils.GatewaysByProxyName(snap.Gateways)
 	var errs error
 	for proxyName, gatewayList := range gatewaysByProxy {
-		contextutils.LoggerFrom(ctx).Infof("ELC validator.sync proxyname %s num vs %d", proxyName, len(snapCopy.VirtualServices))
+		contextutils.LoggerFrom(ctx).Infof("ELC validator sync proxyname %s num vs %d", proxyName, len(snapCopy.VirtualServices))
 		_, reports := v.translator.Translate(ctx, proxyName, v.writeNamespace, snap, gatewayList)
 		validate := reports.ValidateStrict
-		contextutils.LoggerFrom(ctx).Infof("ELC validation translator reports %v", reports)
 		if v.allowWarnings {
 			validate = reports.Validate
-			contextutils.LoggerFrom(ctx).Infof("ELC validating with warnings allowed")
 		}
 		if err := validate(); err != nil {
 			errs = multierr.Append(errs, err)
@@ -147,12 +146,15 @@ func (v *validator) Sync(ctx context.Context, snap *v1.ApiSnapshot) error {
 		}
 	}
 
+	contextutils.LoggerFrom(ctx).Infof("[ELC] trying to grab lock from sync")
 	v.lock.Lock()
+	contextutils.LoggerFrom(ctx).Infof("[ELC] grabbed lock in sync")
 	defer v.lock.Unlock()
 
 	v.latestSnapshotErr = errs
 	v.latestSnapshot = &snapCopy
 
+	contextutils.LoggerFrom(ctx).Infof("[ELC] released lock in sync")
 	if errs != nil {
 		return errors.Wrapf(errs, InvalidSnapshotErrMessage)
 	}
@@ -186,9 +188,12 @@ func (v *validator) deleteFromLocalSnapshot(resource resources.Resource) {
 
 func (v *validator) validateSnapshotThreadSafe(ctx context.Context, apply applyResource, dryRun bool) (*Reports, error) {
 	// thread-safe implementation of validateSnapshot
+
+	contextutils.LoggerFrom(ctx).Infof("[ELC] trying to grab lock in validate snapshot")
 	v.lock.Lock()
 	defer v.lock.Unlock()
 
+	contextutils.LoggerFrom(ctx).Infof("[ELC] grabbed lock in validate snapshot")
 	return v.validateSnapshot(ctx, apply, dryRun)
 }
 
@@ -204,8 +209,8 @@ func (v *validator) validateSnapshot(ctx context.Context, apply applyResource, d
 	//		during a dry run, we don't want to actually apply the change, since this will modify the internal
 	//		state of the validator, which is shared across requests. Therefore, only if we are not in a dry run,
 	//		we apply the mutation.
-	if !v.ready() {
-		contextutils.LoggerFrom(ctx).Infof("ELC gw validator not ready")
+	if !v.Ready() {
+		contextutils.LoggerFrom(ctx).Infof("ELC gw validator not Ready")
 		return nil, NotReadyErr
 	}
 
@@ -258,11 +263,12 @@ func (v *validator) validateSnapshot(ctx context.Context, apply applyResource, d
 		}
 
 		proxies = append(proxies, proxy)
-
+		contextutils.LoggerFrom(ctx).Infof("[ELC] before sendGlooValidationServiceRequest for proxy %v", proxy.Metadata.Name)
 		// validate the proxy with gloo
 		glooValidationResponse, err := v.sendGlooValidationServiceRequest(ctx, &validation.GlooValidationServiceRequest{
 			Proxy: proxy,
 		})
+		contextutils.LoggerFrom(ctx).Infof("[ELC] after sendGlooValidationServiceRequest for proxy %v", proxy.Metadata.Name)
 		if err != nil {
 			err = errors.Wrapf(err, "failed to communicate with Gloo validation server")
 			if v.ignoreProxyValidationFailure {
@@ -313,6 +319,7 @@ func (v *validator) validateSnapshot(ctx context.Context, apply applyResource, d
 		apply(v.latestSnapshot)
 	}
 
+	contextutils.LoggerFrom(ctx).Infof("[ELC] releasing lock from validateSnapshot")
 	return &Reports{ProxyReports: &proxyReports, Proxies: proxies}, nil
 }
 
@@ -442,7 +449,7 @@ func (v *validator) validateVirtualServiceInternal(ctx context.Context, vs *v1.V
 }
 
 func (v *validator) ValidateDeleteVirtualService(ctx context.Context, vsRef *core.ResourceRef, dryRun bool) error {
-	if !v.ready() {
+	if !v.Ready() {
 		return errors.Errorf("Gateway validation is yet not available. Waiting for first snapshot")
 	}
 	v.lock.Lock()
@@ -526,7 +533,7 @@ func (v *validator) validateRouteTableInternal(ctx context.Context, rt *v1.Route
 }
 
 func (v *validator) ValidateDeleteRouteTable(ctx context.Context, rtRef *core.ResourceRef, dryRun bool) error {
-	if !v.ready() {
+	if !v.Ready() {
 		return errors.Errorf("Gateway validation is yet not available. Waiting for first snapshot")
 	}
 	v.lock.Lock()

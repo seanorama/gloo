@@ -562,20 +562,20 @@ var _ = Describe("Kube2e: gateway", func() {
 			})
 
 			AfterEach(func() {
-				//	_ = virtualServiceClient.Delete(testHelper.InstallNamespace, invalidVsName, clients.DeleteOpts{})
-				//	helpers.EventuallyResourceDeleted(func() (resources.InputResource, error) {
-				//		return virtualServiceClient.Read(testHelper.InstallNamespace, invalidVsName, clients.ReadOpts{})
-				//	}, "15s", "0.5s")
+					_ = virtualServiceClient.Delete(testHelper.InstallNamespace, invalidVsName, clients.DeleteOpts{})
+					helpers.EventuallyResourceDeleted(func() (resources.InputResource, error) {
+						return virtualServiceClient.Read(testHelper.InstallNamespace, invalidVsName, clients.ReadOpts{})
+					}, "15s", "0.5s")
 
 				_ = virtualServiceClient.Delete(testHelper.InstallNamespace, validVsName, clients.DeleteOpts{})
 				helpers.EventuallyResourceDeleted(func() (resources.InputResource, error) {
 					return virtualServiceClient.Read(testHelper.InstallNamespace, validVsName, clients.ReadOpts{})
 				}, "15s", "0.5s")
 
-				//	_ = virtualServiceClient.Delete(testHelper.InstallNamespace, petstoreName, clients.DeleteOpts{})
-				//	helpers.EventuallyResourceDeleted(func() (resources.InputResource, error) {
-				//		return virtualServiceClient.Read(testHelper.InstallNamespace, petstoreName, clients.ReadOpts{})
-				//	}, "15s", "0.5s")
+					_ = virtualServiceClient.Delete(testHelper.InstallNamespace, petstoreName, clients.DeleteOpts{})
+					helpers.EventuallyResourceDeleted(func() (resources.InputResource, error) {
+						return virtualServiceClient.Read(testHelper.InstallNamespace, petstoreName, clients.ReadOpts{})
+					}, "15s", "0.5s")
 
 				// important that we update the always accept setting after removing resources, or else we can have:
 				// "validation is disabled due to an invalid resource which has been written to storage.

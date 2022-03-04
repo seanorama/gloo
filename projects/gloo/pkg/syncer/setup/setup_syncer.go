@@ -557,7 +557,6 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 	rpt := reporter.NewReporter("gloo",
 		statusClient,
 		hybridUsClient.BaseClient(),
-		//TODO: client impl passed here will depend on install mode
 		memoryProxyClient.BaseClient(),
 		upstreamGroupClient.BaseClient(),
 		authConfigClient.BaseClient(),
@@ -707,7 +706,7 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 	}
 	syncerExtensions = reconcileUpgradedTranslatorSyncerExtensions(syncerExtensions, upgradedExtensions)
 
-	translationSync := syncer.NewTranslatorSyncer(t, opts.ControlPlane.SnapshotCache, xdsHasher, xdsSanitizer, rpt, opts.DevMode, syncerExtensions, opts.Settings, statusMetrics, gwTranslatorSyncer, memoryProxyClient)
+	translationSync := syncer.NewTranslatorSyncer(t, opts.ControlPlane.SnapshotCache, xdsHasher, xdsSanitizer, rpt, opts.DevMode, syncerExtensions, opts.Settings, statusMetrics, gwTranslatorSyncer, gwValidationSyncer, memoryProxyClient)
 
 	syncers := v1snap.ApiSyncers{
 		translationSync,

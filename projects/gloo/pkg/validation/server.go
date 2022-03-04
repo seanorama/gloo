@@ -2,6 +2,7 @@ package validation
 
 import (
 	"context"
+	gatewayv1 "github.com/solo-io/gloo/projects/gateway/pkg/api/v1"
 	"sync"
 
 	"github.com/hashicorp/go-multierror"
@@ -9,7 +10,7 @@ import (
 	"github.com/solo-io/gloo/pkg/utils/syncutil"
 	"github.com/solo-io/gloo/projects/gloo/pkg/api/grpc/validation"
 
-	gatewayv1 "github.com/solo-io/gloo/projects/gateway/pkg/api/v1"
+	gatewayvalidation "github.com/solo-io/gloo/projects/gateway/pkg/validation"
 	v1 "github.com/solo-io/gloo/projects/gloo/pkg/api/v1"
 	v1snap "github.com/solo-io/gloo/projects/gloo/pkg/api/v1/gloosnapshot"
 	"github.com/solo-io/gloo/projects/gloo/pkg/plugins"
@@ -39,10 +40,10 @@ type validator struct {
 	xdsSanitizer   sanitizer.XdsSanitizers
 	//TODO: after the feature branch is merged we can move the code into this package
 	//I'm leaving it where it is for now to avoid losing changes that happen on main while I am working on a branch
-	gwValidator gatewayv1.ApiSyncer
+	gwValidator   gatewayvalidation.Validator
 }
 
-func NewValidator(ctx context.Context, translator translator.Translator, xdsSanitizer sanitizer.XdsSanitizers, gwValidator gatewayv1.ApiSyncer) *validator {
+func NewValidator(ctx context.Context, translator translator.Translator, xdsSanitizer sanitizer.XdsSanitizers, gwValidator gatewayvalidation.Validator) *validator {
 	return &validator{
 		translator:   translator,
 		notifyResync: make(map[*validation.NotifyOnResyncRequest]chan struct{}, 1),
@@ -141,7 +142,9 @@ func (s *validator) Sync(ctx context.Context, snap *v1snap.ApiSnapshot) error {
 	snapCopy := snap.Clone()
 	s.lock.Lock()
 	gatewayChange := s.gatewayUpdate(snap)
-	if gatewayChange {
+	var err error
+	contextutils.LoggerFrom(ctx).Infof("[ELC] gloo validation sync ready? %v", s.gwValidator.Ready())
+	if !s.gwValidator.Ready() || gatewayChange{
 		gwSnap := &gatewayv1.ApiSnapshot{
 			VirtualServices:    snap.VirtualServices,
 			RouteTables:        snap.RouteTables,
@@ -149,11 +152,11 @@ func (s *validator) Sync(ctx context.Context, snap *v1snap.ApiSnapshot) error {
 			VirtualHostOptions: snap.VirtualHostOptions,
 			RouteOptions:       snap.RouteOptions,
 		}
-		err := s.gwValidator.Sync(ctx, gwSnap)
+		err = s.gwValidator.Sync(ctx, gwSnap)
 		if err != nil {
 			//TODO: better log, do something with error
 			contextutils.LoggerFrom(ctx).Errorf("Error running gateway validation, %v", err)
-			return err
+		//	return err
 		}
 	}
 	//TODO: if s.shouldNotify(snap) || (gatewayChange && gwMode)
@@ -162,7 +165,7 @@ func (s *validator) Sync(ctx context.Context, snap *v1snap.ApiSnapshot) error {
 	}
 	s.latestSnapshot = &snapCopy
 	s.lock.Unlock()
-	return nil
+	return err
 }
 
 func (s *validator) NotifyOnResync(req *validation.NotifyOnResyncRequest, stream validation.GlooValidationService_NotifyOnResyncServer) error {

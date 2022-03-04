@@ -2,7 +2,6 @@ package syncer
 
 import (
 	"context"
-
 	"github.com/rotisserie/eris"
 	gatewayv1 "github.com/solo-io/gloo/projects/gateway/pkg/api/v1"
 	"github.com/solo-io/gloo/projects/gateway/pkg/utils/metrics"
@@ -19,6 +18,8 @@ import (
 	"github.com/solo-io/gloo/projects/gloo/pkg/xds"
 	envoycache "github.com/solo-io/solo-kit/pkg/api/v1/control-plane/cache"
 	"github.com/solo-io/solo-kit/pkg/api/v2/reporter"
+
+	gatewayvalidation "github.com/solo-io/gloo/projects/gateway/pkg/validation"
 )
 
 type translatorSyncer struct {
@@ -35,6 +36,7 @@ type translatorSyncer struct {
 	settings      *v1.Settings
 	statusMetrics metrics.ConfigStatusMetrics
 	gatewaySyncer *gwsyncer.TranslatorSyncer
+	gatewayValidator gatewayvalidation.Validator
 	proxyClient   v1.ProxyClient
 }
 
@@ -70,6 +72,7 @@ func NewTranslatorSyncer(
 	settings *v1.Settings,
 	statusMetrics metrics.ConfigStatusMetrics,
 	gatewaySyncer *gwsyncer.TranslatorSyncer,
+	gatewayValidator gatewayvalidation.Validator,
 	proxyClient v1.ProxyClient,
 ) v1snap.ApiSyncer {
 	s := &translatorSyncer{
@@ -83,6 +86,7 @@ func NewTranslatorSyncer(
 		statusMetrics: statusMetrics,
 		gatewaySyncer: gatewaySyncer,
 		proxyClient:   proxyClient,
+		gatewayValidator: gatewayValidator,
 	}
 	if devMode {
 		// TODO(ilackarms): move this somewhere else?
@@ -99,7 +103,6 @@ func (s *translatorSyncer) Sync(ctx context.Context, snap *v1snap.ApiSnapshot) e
 
 	logger.Infof("translation for snapshot %v", snap.Proxies)
 	//generate proxies
-	// TODO: check whether we are running in gateway mode
 	// TODO: only run if there was an update to a gw type
 	if s.gatewaySyncer != nil {
 		s.translateProxies(ctx, snap)
