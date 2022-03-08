@@ -156,11 +156,9 @@ func (s *validator) Sync(ctx context.Context, snap *v1snap.ApiSnapshot) error {
 		if err != nil {
 			//TODO: better log, do something with error
 			contextutils.LoggerFrom(ctx).Errorf("Error running gateway validation, %v", err)
-		//	return err
 		}
 	}
-	//TODO: if s.shouldNotify(snap) || (gatewayChange && gwMode)
-	if s.shouldNotify(snap) || gatewayChange {
+	if s.shouldNotify(snap) {
 		s.pushNotifications()
 	}
 	s.latestSnapshot = &snapCopy
@@ -239,19 +237,21 @@ func (s *validator) Validate(ctx context.Context, req *validation.GlooValidation
 		// if no proxy was passed in, call translate for all proxies in snapshot
 		proxiesToValidate = snapCopy.Proxies
 	}
+	logger.Infof("[ELC] validating %d proxies (snapcopy)  %d", len(proxiesToValidate), len(snapCopy.Proxies))
 	for _, proxy := range proxiesToValidate {
 		xdsSnapshot, resourceReports, proxyReport, err := s.translator.Translate(params, proxy)
 		if err != nil {
 			logger.Errorw("failed to validate proxy", zap.Error(err))
 			return nil, err
 		}
-
+		logger.Infof("ELC about to sanitize snapshot")
 		// Sanitize routes before sending report to gateway
 		s.xdsSanitizer.SanitizeSnapshot(ctx, &snapCopy, xdsSnapshot, resourceReports)
 		routeErrorToWarnings(resourceReports, proxyReport)
 
 		validationReports = append(validationReports, convertToValidationReport(proxyReport, resourceReports, proxy))
 	}
+	logger.Infof("[ELC]respoonding to validation request %v", validationReports)
 	return &validation.GlooValidationServiceResponse{
 		ValidationReports: validationReports,
 	}, nil

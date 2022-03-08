@@ -3170,10 +3170,10 @@ metadata:
     "helm.sh/hook": pre-install
     "helm.sh/hook-weight": "5" # should come before cert-gen job
 webhooks:
- - name: gateway.` + namespace + `.svc  # must be a domain with at least three segments separated by dots
+ - name: gloo.` + namespace + `.svc  # must be a domain with at least three segments separated by dots
    clientConfig:
      service:
-       name: gateway
+       name: gloo
        namespace: ` + namespace + `
        path: "/validation"
      caBundle: "" # update manually or use certgen job
@@ -3323,7 +3323,7 @@ spec:
               memory: 128Mi
           args:
             - "--secret-name=gateway-validation-certs"
-            - "--svc-name=gateway"
+            - "--svc-name=gloo"
             - "--validating-webhook-configuration-name=gloo-gateway-validation-webhook-` + namespace + `"
       restartPolicy: OnFailure
 

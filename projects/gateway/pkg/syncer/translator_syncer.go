@@ -144,6 +144,7 @@ type statusSyncer struct {
 	statusClient   resources.StatusClient
 	statusMetrics  metrics.ConfigStatusMetrics
 	syncNeeded     chan struct{}
+	previousHash   uint64
 }
 
 func newStatusSyncer(writeNamespace string, proxyWatcher gloov1.ProxyClient, reporter reporter.StatusReporter, statusClient resources.StatusClient, statusMetrics metrics.ConfigStatusMetrics) statusSyncer {
@@ -254,7 +255,6 @@ func (s *statusSyncer) handleUpdatedProxies(ctx context.Context, proxyList gloov
 			Ctx: ctx,
 		})
 	}
-	var previousHash uint64
 	currentHash, err := s.hashStatuses(proxyList)
 	if err != nil {
 		logger.DPanicw("error while hashing, this should never happen", zap.Error(err))
@@ -263,9 +263,9 @@ func (s *statusSyncer) handleUpdatedProxies(ctx context.Context, proxyList gloov
 	// the local e2e; it fires a watch update too all watch object, on any change,
 	// this means that setting by the status of a virtual service we will get another
 	// proxyList from the channel. This results in excessive CPU usage in CI.
-	if currentHash != previousHash {
-		logger.Debugw("proxy list updated", "len(proxyList)", len(proxyList), "currentHash", currentHash, "previousHash", previousHash)
-		previousHash = currentHash
+	if currentHash != s.previousHash {
+		logger.Debugw("proxy list updated", "len(proxyList)", len(proxyList), "currentHash", currentHash, "previousHash", s.previousHash)
+		s.previousHash = currentHash
 		s.setStatuses(proxyList)
 		s.forceSync()
 	}
