@@ -3215,7 +3215,7 @@ metadata:
   name: gateway
   namespace: ` + namespace + `
 spec:
-  replicas: 1
+  replicas: 0
   selector:
     matchLabels:
       gloo: gateway
@@ -3747,7 +3747,7 @@ metadata:
 							PeriodSeconds:       2,
 							FailureThreshold:    10,
 						}
-
+						deploy.Spec.Replicas = pointer.Int32Ptr(0)
 						gatewayDeployment = deploy
 					})
 
@@ -4324,7 +4324,7 @@ metadata:
 					It("can parse multiple config maps", func() {
 						prepareMakefile(namespace, helmValues{
 							valuesArgs: []string{
-								"gatewayProxies.gatewayProxyInternal.kind.deployment.replicas=1",
+								"gatewayProxies.gatewayProxyInternal.kind.deployment.replicas=0",
 								"gatewayProxies.gatewayProxyInternal.configMap.data=null",
 								"gatewayProxies.gatewayProxyInternal.service.extraAnnotations=null",
 								"gatewayProxies.gatewayProxyInternal.service.type=ClusterIP",

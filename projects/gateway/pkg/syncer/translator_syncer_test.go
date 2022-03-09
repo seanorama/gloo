@@ -18,6 +18,7 @@ import (
 	"github.com/solo-io/gloo/projects/gloo/pkg/api/compress"
 	gloov1 "github.com/solo-io/gloo/projects/gloo/pkg/api/v1"
 	"github.com/solo-io/gloo/projects/gloo/pkg/defaults"
+	gloomocks "github.com/solo-io/gloo/projects/gloo/pkg/mocks"
 	"github.com/solo-io/gloo/projects/gloo/pkg/translator"
 	"github.com/solo-io/solo-kit/pkg/api/v1/clients"
 	"github.com/solo-io/solo-kit/pkg/api/v1/resources"
@@ -28,7 +29,7 @@ import (
 var _ = Describe("TranslatorSyncer", func() {
 
 	var (
-		fakeWatcher  = &fakeWatcher{}
+		fakeProxyClient = &gloomocks.MockProxyClient{}
 		mockReporter *fakeReporter
 		syncer       *statusSyncer
 
@@ -41,7 +42,7 @@ var _ = Describe("TranslatorSyncer", func() {
 		statusClient = statusutils.GetStatusClientFromEnvOrDefault(defaults.GlooSystem)
 		statusMetrics, err := metrics.NewConfigStatusMetrics(metrics.GetDefaultConfigStatusOptions())
 		Expect(err).NotTo(HaveOccurred())
-		curSyncer := newStatusSyncer(defaults.GlooSystem, fakeWatcher, mockReporter, statusClient, statusMetrics)
+		curSyncer := newStatusSyncer(defaults.GlooSystem, fakeProxyClient, mockReporter, statusClient, statusMetrics)
 		syncer = &curSyncer
 	})
 

@@ -134,7 +134,6 @@ func (v *validator) Sync(ctx context.Context, snap *v1.ApiSnapshot) error {
 	gatewaysByProxy := utils.GatewaysByProxyName(snap.Gateways)
 	var errs error
 	for proxyName, gatewayList := range gatewaysByProxy {
-		contextutils.LoggerFrom(ctx).Infof("ELC validator sync proxyname %s num vs %d", proxyName, len(snapCopy.VirtualServices))
 		_, reports := v.translator.Translate(ctx, proxyName, v.writeNamespace, snap, gatewayList)
 		validate := reports.ValidateStrict
 		if v.allowWarnings {
@@ -142,19 +141,15 @@ func (v *validator) Sync(ctx context.Context, snap *v1.ApiSnapshot) error {
 		}
 		if err := validate(); err != nil {
 			errs = multierr.Append(errs, err)
-			contextutils.LoggerFrom(ctx).Infof("ELC errors on proxy %v", err)
 		}
 	}
 
-	contextutils.LoggerFrom(ctx).Infof("[ELC] trying to grab lock from sync")
 	v.lock.Lock()
-	contextutils.LoggerFrom(ctx).Infof("[ELC] grabbed lock in sync")
 	defer v.lock.Unlock()
 
 	v.latestSnapshotErr = errs
 	v.latestSnapshot = &snapCopy
 
-	contextutils.LoggerFrom(ctx).Infof("[ELC] released lock in sync")
 	if errs != nil {
 		return errors.Wrapf(errs, InvalidSnapshotErrMessage)
 	}
@@ -189,11 +184,9 @@ func (v *validator) deleteFromLocalSnapshot(resource resources.Resource) {
 func (v *validator) validateSnapshotThreadSafe(ctx context.Context, apply applyResource, dryRun bool) (*Reports, error) {
 	// thread-safe implementation of validateSnapshot
 
-	contextutils.LoggerFrom(ctx).Infof("[ELC] trying to grab lock in validate snapshot")
 	v.lock.Lock()
 	defer v.lock.Unlock()
 
-	contextutils.LoggerFrom(ctx).Infof("[ELC] grabbed lock in validate snapshot")
 	return v.validateSnapshot(ctx, apply, dryRun)
 }
 
@@ -210,14 +203,12 @@ func (v *validator) validateSnapshot(ctx context.Context, apply applyResource, d
 	//		state of the validator, which is shared across requests. Therefore, only if we are not in a dry run,
 	//		we apply the mutation.
 	if !v.Ready() {
-		contextutils.LoggerFrom(ctx).Infof("ELC gw validator not Ready")
 		return nil, NotReadyErr
 	}
 
 	ctx = contextutils.WithLogger(ctx, "gateway-validator")
 
 	snapshotClone := v.latestSnapshot.Clone()
-	contextutils.LoggerFrom(ctx).Infof("ELC cloned snapshot about to validate")
 	if v.latestSnapshotErr != nil {
 		if !dryRun {
 			utils2.MeasureZero(ctx, mValidConfig)
@@ -245,7 +236,6 @@ func (v *validator) validateSnapshot(ctx context.Context, apply applyResource, d
 			validate = reports.Validate
 		}
 		if err := validate(); err != nil {
-			contextutils.LoggerFrom(ctx).Infof("[ELC] validateSnapshot errors in reports %v", err)
 			errs = multierr.Append(errs, errors.Wrapf(err, "could not render proxy"))
 			continue
 		}
@@ -263,12 +253,10 @@ func (v *validator) validateSnapshot(ctx context.Context, apply applyResource, d
 		}
 
 		proxies = append(proxies, proxy)
-		contextutils.LoggerFrom(ctx).Infof("[ELC] before sendGlooValidationServiceRequest for proxy %v", proxy.Metadata.Name)
 		// validate the proxy with gloo
 		glooValidationResponse, err := v.sendGlooValidationServiceRequest(ctx, &validation.GlooValidationServiceRequest{
 			Proxy: proxy,
 		})
-		contextutils.LoggerFrom(ctx).Infof("[ELC] after sendGlooValidationServiceRequest for proxy %v", proxy.Metadata.Name)
 		if err != nil {
 			err = errors.Wrapf(err, "failed to communicate with Gloo validation server")
 			if v.ignoreProxyValidationFailure {
@@ -286,7 +274,6 @@ func (v *validator) validateSnapshot(ctx context.Context, apply applyResource, d
 		}
 
 		proxyReport := glooValidationResponse.GetValidationReports()[0].GetProxyReport()
-		contextutils.LoggerFrom(ctx).Infof("[ELC] got validation response %v", proxyReport)
 		proxyReports = append(proxyReports, proxyReport)
 		if err := validationutils.GetProxyError(proxyReport); err != nil {
 			errs = multierr.Append(errs, errors.Wrapf(err, "failed to validate Proxy with Gloo validation server"))
@@ -319,7 +306,6 @@ func (v *validator) validateSnapshot(ctx context.Context, apply applyResource, d
 		apply(v.latestSnapshot)
 	}
 
-	contextutils.LoggerFrom(ctx).Infof("[ELC] releasing lock from validateSnapshot")
 	return &Reports{ProxyReports: &proxyReports, Proxies: proxies}, nil
 }
 
@@ -415,7 +401,6 @@ func (v *validator) processItem(ctx context.Context, item unstructured.Unstructu
 }
 
 func (v *validator) ValidateVirtualService(ctx context.Context, vs *v1.VirtualService, dryRun bool) (*Reports, error) {
-	contextutils.LoggerFrom(ctx).Infof("ELC validating VS from webhook")
 	return v.validateVirtualServiceInternal(ctx, vs, dryRun, true)
 }
 

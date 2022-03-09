@@ -497,9 +497,11 @@ var _ = Describe("Kube2e: gateway", func() {
 						Upstream: ref,
 					},
 				}
-
-				_, err := virtualServiceClient.Write(getVirtualService(dest, nil), clients.WriteOpts{})
-				Expect(err).NotTo(HaveOccurred())
+				//TODO: This used to work immediately
+				Eventually(func() error {
+					_, err := virtualServiceClient.Write(getVirtualService(dest, nil), clients.WriteOpts{})
+					return err
+				}, time.Second*10).ShouldNot(HaveOccurred())
 
 				responseString := fmt.Sprintf(`"%s":"%s.%s.svc.cluster.local:%v"`,
 					linkerd.HeaderKey, helper.HttpEchoName, testHelper.InstallNamespace, helper.HttpEchoPort)
@@ -525,7 +527,7 @@ var _ = Describe("Kube2e: gateway", func() {
 			)
 
 			BeforeEach(func() {
-				valid := withName(validVsName, withDomains([]string{"valid.com"},
+				valid := withName(validVsName, withDomains([]string{"valid1.com"},
 					getVirtualService(&gloov1.Destination{
 						DestinationType: &gloov1.Destination_Upstream{
 							Upstream: &core.ResourceRef{
@@ -562,20 +564,20 @@ var _ = Describe("Kube2e: gateway", func() {
 			})
 
 			AfterEach(func() {
-					_ = virtualServiceClient.Delete(testHelper.InstallNamespace, invalidVsName, clients.DeleteOpts{})
-					helpers.EventuallyResourceDeleted(func() (resources.InputResource, error) {
-						return virtualServiceClient.Read(testHelper.InstallNamespace, invalidVsName, clients.ReadOpts{})
-					}, "15s", "0.5s")
+				_ = virtualServiceClient.Delete(testHelper.InstallNamespace, invalidVsName, clients.DeleteOpts{})
+				helpers.EventuallyResourceDeleted(func() (resources.InputResource, error) {
+					return virtualServiceClient.Read(testHelper.InstallNamespace, invalidVsName, clients.ReadOpts{})
+				}, "15s", "0.5s")
 
 				_ = virtualServiceClient.Delete(testHelper.InstallNamespace, validVsName, clients.DeleteOpts{})
 				helpers.EventuallyResourceDeleted(func() (resources.InputResource, error) {
 					return virtualServiceClient.Read(testHelper.InstallNamespace, validVsName, clients.ReadOpts{})
 				}, "15s", "0.5s")
 
-					_ = virtualServiceClient.Delete(testHelper.InstallNamespace, petstoreName, clients.DeleteOpts{})
-					helpers.EventuallyResourceDeleted(func() (resources.InputResource, error) {
-						return virtualServiceClient.Read(testHelper.InstallNamespace, petstoreName, clients.ReadOpts{})
-					}, "15s", "0.5s")
+				_ = virtualServiceClient.Delete(testHelper.InstallNamespace, petstoreName, clients.DeleteOpts{})
+				helpers.EventuallyResourceDeleted(func() (resources.InputResource, error) {
+					return virtualServiceClient.Read(testHelper.InstallNamespace, petstoreName, clients.ReadOpts{})
+				}, "15s", "0.5s")
 
 				// important that we update the always accept setting after removing resources, or else we can have:
 				// "validation is disabled due to an invalid resource which has been written to storage.
@@ -588,7 +590,7 @@ var _ = Describe("Kube2e: gateway", func() {
 					Protocol:          "http",
 					Path:              "/",
 					Method:            "GET",
-					Host:              "valid.com",
+					Host:              "valid1.com",
 					Service:           gatewayProxy,
 					Port:              gatewayPort,
 					ConnectionTimeout: 1, // this is important, as sometimes curl hangs
@@ -609,11 +611,23 @@ var _ = Describe("Kube2e: gateway", func() {
 
 			It("preserves the valid virtual services in envoy when a virtual service has been made invalid", func() {
 				invalidVs, err := virtualServiceClient.Read(testHelper.InstallNamespace, invalidVsName, clients.ReadOpts{})
+
 				Expect(err).NotTo(HaveOccurred())
 
 				validVs, err := virtualServiceClient.Read(testHelper.InstallNamespace, validVsName, clients.ReadOpts{})
 				Expect(err).NotTo(HaveOccurred())
 
+				// the original virtual service should work (before changes)
+				testHelper.CurlEventuallyShouldRespond(helper.CurlOpts{
+					Protocol:          "http",
+					Path:              "/",
+					Method:            "GET",
+					Host:              "valid1.com",
+					Service:           gatewayProxy,
+					Port:              gatewayPort,
+					ConnectionTimeout: 1, // this is important, as sometimes curl hangs
+					WithoutStats:      true,
+				}, kube2e.SimpleTestRunnerHttpResponse, 1, 60*time.Second, 1*time.Second)
 				// make the invalid vs valid and the valid vs invalid
 				invalidVh := invalidVs.VirtualHost
 				validVh := validVs.VirtualHost
@@ -621,7 +635,6 @@ var _ = Describe("Kube2e: gateway", func() {
 
 				invalidVs.VirtualHost = validVh
 				validVs.VirtualHost = invalidVh
-
 				virtualServiceReconciler := gatewayv1.NewVirtualServiceReconciler(virtualServiceClient, statusClient)
 				err = virtualServiceReconciler.Reconcile(testHelper.InstallNamespace, gatewayv1.VirtualServiceList{validVs, invalidVs}, nil, clients.ListOpts{})
 				Expect(err).NotTo(HaveOccurred())
@@ -631,7 +644,7 @@ var _ = Describe("Kube2e: gateway", func() {
 					Protocol:          "http",
 					Path:              "/",
 					Method:            "GET",
-					Host:              "valid.com",
+					Host:              "valid1.com",
 					Service:           gatewayProxy,
 					Port:              gatewayPort,
 					ConnectionTimeout: 1, // this is important, as sometimes curl hangs
@@ -690,7 +703,6 @@ var _ = Describe("Kube2e: gateway", func() {
 
 				It("when updating an upstream makes them valid", func() {
 					upstreamName := fmt.Sprintf("%s-%s-%v", testHelper.InstallNamespace, petstoreName, 8080)
-
 					// the vs will be invalid
 					vsWithFunctionRoute := withName(petstoreName, withDomains([]string{"petstore.com"},
 						getVirtualService(&gloov1.Destination{
@@ -708,7 +720,8 @@ var _ = Describe("Kube2e: gateway", func() {
 								},
 							},
 						}, nil)))
-
+					// TODO: there seems to be some sort of delay after applying settings before this works correctly
+					time.Sleep(3 * time.Second)
 					vsWithFunctionRoute, err = virtualServiceClient.Write(vsWithFunctionRoute, clients.WriteOpts{})
 					Expect(err).NotTo(HaveOccurred())
 

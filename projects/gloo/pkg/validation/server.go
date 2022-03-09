@@ -2,8 +2,9 @@ package validation
 
 import (
 	"context"
-	gatewayv1 "github.com/solo-io/gloo/projects/gateway/pkg/api/v1"
 	"sync"
+
+	gatewayv1 "github.com/solo-io/gloo/projects/gateway/pkg/api/v1"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/rotisserie/eris"
@@ -40,7 +41,7 @@ type validator struct {
 	xdsSanitizer   sanitizer.XdsSanitizers
 	//TODO: after the feature branch is merged we can move the code into this package
 	//I'm leaving it where it is for now to avoid losing changes that happen on main while I am working on a branch
-	gwValidator   gatewayvalidation.Validator
+	gwValidator gatewayvalidation.Validator
 }
 
 func NewValidator(ctx context.Context, translator translator.Translator, xdsSanitizer sanitizer.XdsSanitizers, gwValidator gatewayvalidation.Validator) *validator {
@@ -144,7 +145,7 @@ func (s *validator) Sync(ctx context.Context, snap *v1snap.ApiSnapshot) error {
 	gatewayChange := s.gatewayUpdate(snap)
 	var err error
 	contextutils.LoggerFrom(ctx).Infof("[ELC] gloo validation sync ready? %v", s.gwValidator.Ready())
-	if !s.gwValidator.Ready() || gatewayChange{
+	if !s.gwValidator.Ready() || gatewayChange {
 		gwSnap := &gatewayv1.ApiSnapshot{
 			VirtualServices:    snap.VirtualServices,
 			RouteTables:        snap.RouteTables,

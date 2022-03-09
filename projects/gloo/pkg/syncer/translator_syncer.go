@@ -2,6 +2,7 @@ package syncer
 
 import (
 	"context"
+
 	"github.com/rotisserie/eris"
 	gatewayv1 "github.com/solo-io/gloo/projects/gateway/pkg/api/v1"
 	"github.com/solo-io/gloo/projects/gateway/pkg/utils/metrics"
@@ -18,8 +19,6 @@ import (
 	"github.com/solo-io/gloo/projects/gloo/pkg/xds"
 	envoycache "github.com/solo-io/solo-kit/pkg/api/v1/control-plane/cache"
 	"github.com/solo-io/solo-kit/pkg/api/v2/reporter"
-
-	gatewayvalidation "github.com/solo-io/gloo/projects/gateway/pkg/validation"
 )
 
 type translatorSyncer struct {
@@ -32,12 +31,11 @@ type translatorSyncer struct {
 	latestSnap *v1snap.ApiSnapshot
 	extensions []TranslatorSyncerExtension
 	// used to track which envoy node IDs exist without belonging to a proxy
-	extensionKeys map[string]struct{}
-	settings      *v1.Settings
-	statusMetrics metrics.ConfigStatusMetrics
-	gatewaySyncer *gwsyncer.TranslatorSyncer
-	gatewayValidator gatewayvalidation.Validator
-	proxyClient   v1.ProxyClient
+	extensionKeys    map[string]struct{}
+	settings         *v1.Settings
+	statusMetrics    metrics.ConfigStatusMetrics
+	gatewaySyncer    *gwsyncer.TranslatorSyncer
+	proxyClient      v1.ProxyClient
 }
 
 type TranslatorSyncerExtensionParams struct {
@@ -72,21 +70,19 @@ func NewTranslatorSyncer(
 	settings *v1.Settings,
 	statusMetrics metrics.ConfigStatusMetrics,
 	gatewaySyncer *gwsyncer.TranslatorSyncer,
-	gatewayValidator gatewayvalidation.Validator,
 	proxyClient v1.ProxyClient,
 ) v1snap.ApiSyncer {
 	s := &translatorSyncer{
-		translator:    translator,
-		xdsCache:      xdsCache,
-		xdsHasher:     xdsHasher,
-		reporter:      reporter,
-		extensions:    extensions,
-		sanitizer:     sanitizer,
-		settings:      settings,
-		statusMetrics: statusMetrics,
-		gatewaySyncer: gatewaySyncer,
-		proxyClient:   proxyClient,
-		gatewayValidator: gatewayValidator,
+		translator:       translator,
+		xdsCache:         xdsCache,
+		xdsHasher:        xdsHasher,
+		reporter:         reporter,
+		extensions:       extensions,
+		sanitizer:        sanitizer,
+		settings:         settings,
+		statusMetrics:    statusMetrics,
+		gatewaySyncer:    gatewaySyncer,
+		proxyClient:      proxyClient,
 	}
 	if devMode {
 		// TODO(ilackarms): move this somewhere else?
