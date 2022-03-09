@@ -4,9 +4,7 @@ import (
 	"context"
 	"sort"
 	"sync"
-	"time"
 
-	"github.com/avast/retry-go"
 	"github.com/hashicorp/go-multierror"
 	errors "github.com/rotisserie/eris"
 	utils2 "github.com/solo-io/gloo/pkg/utils"
@@ -48,10 +46,13 @@ var (
 	NotReadyErr = errors.Errorf("validation is not yet available. Waiting for first snapshot")
 
 	RouteTableDeleteErr = func(parentVirtualServices, parentRouteTables []*core.ResourceRef) error {
-		return errors.Errorf("Deletion blocked because active Routes delegate to this Route Table. Remove delegate actions to this route table from the virtual services: %v and the route tables: %v, then try again", parentVirtualServices, parentRouteTables)
+		return errors.Errorf("Deletion blocked because active Routes delegate to this Route Table. Remove delegate actions to this route table from the virtual services: %v and the route tables: %v, then try again",
+			parentVirtualServices,
+			parentRouteTables)
 	}
 	VirtualServiceDeleteErr = func(parentGateways []*core.ResourceRef) error {
-		return errors.Errorf("Deletion blocked because active Gateways reference this Virtual Service. Remove refs to this virtual service from the gateways: %v, then try again", parentGateways)
+		return errors.Errorf("Deletion blocked because active Gateways reference this Virtual Service. Remove refs to this virtual service from the gateways: %v, then try again",
+			parentGateways)
 	}
 	unmarshalErrMsg     = "could not unmarshal raw object"
 	WrappedUnmarshalErr = func(err error) error {
@@ -59,10 +60,12 @@ var (
 	}
 
 	GlooValidationResponseLengthError = func(resp *validation.GlooValidationServiceResponse) error {
-		return errors.Errorf("Expected Gloo validation response to contain 1 report, but contained %d", len(resp.GetValidationReports()))
+		return errors.Errorf("Expected Gloo validation response to contain 1 report, but contained %d",
+			len(resp.GetValidationReports()))
 	}
 
-	mValidConfig = utils2.MakeGauge("validation.gateway.solo.io/valid_config", "A boolean indicating whether gloo config is valid")
+	mValidConfig = utils2.MakeGauge("validation.gateway.solo.io/valid_config",
+		"A boolean indicating whether gloo config is valid")
 )
 
 const (
@@ -86,12 +89,20 @@ type Validator interface {
 	Ready() bool
 }
 
+type ValidatorFunc = func(
+	context.Context,
+	*validation.GlooValidationServiceRequest,
+) (*validation.GlooValidationServiceResponse, error)
+
 type validator struct {
-	lock                         sync.RWMutex
-	latestSnapshot               *v1.ApiSnapshot
-	latestSnapshotErr            error
-	translator                   translator.Translator
-	validationClient             validation.GlooValidationServiceClient
+	lock              sync.RWMutex
+	latestSnapshot    *v1.ApiSnapshot
+	latestSnapshotErr error
+	translator        translator.Translator
+	validationFunc    func(
+		context.Context,
+		*validation.GlooValidationServiceRequest,
+	) (*validation.GlooValidationServiceResponse, error)
 	ignoreProxyValidationFailure bool
 	allowWarnings                bool
 	writeNamespace               string
@@ -99,16 +110,21 @@ type validator struct {
 
 type ValidatorConfig struct {
 	translator                   translator.Translator
-	validationClient             validation.GlooValidationServiceClient
+	validatorFunc                ValidatorFunc
 	writeNamespace               string
 	ignoreProxyValidationFailure bool
 	allowWarnings                bool
 }
 
-func NewValidatorConfig(translator translator.Translator, validationClient validation.GlooValidationServiceClient, writeNamespace string, ignoreProxyValidationFailure, allowWarnings bool) ValidatorConfig {
+func NewValidatorConfig(
+	translator translator.Translator,
+	validatorFunc ValidatorFunc,
+	writeNamespace string,
+	ignoreProxyValidationFailure, allowWarnings bool,
+) ValidatorConfig {
 	return ValidatorConfig{
 		translator:                   translator,
-		validationClient:             validationClient,
+		validatorFunc:                validatorFunc,
 		writeNamespace:               writeNamespace,
 		ignoreProxyValidationFailure: ignoreProxyValidationFailure,
 		allowWarnings:                allowWarnings,
@@ -118,7 +134,7 @@ func NewValidatorConfig(translator translator.Translator, validationClient valid
 func NewValidator(cfg ValidatorConfig) *validator {
 	return &validator{
 		translator:                   cfg.translator,
-		validationClient:             cfg.validationClient,
+		validationFunc:               cfg.validatorFunc,
 		writeNamespace:               cfg.writeNamespace,
 		ignoreProxyValidationFailure: cfg.ignoreProxyValidationFailure,
 		allowWarnings:                cfg.allowWarnings,
@@ -167,7 +183,8 @@ func (v *validator) deleteFromLocalSnapshot(resource resources.Resource) {
 	case *v1.VirtualService:
 		for i, rt := range v.latestSnapshot.VirtualServices {
 			if rt.GetMetadata().Ref().Equal(ref) {
-				v.latestSnapshot.VirtualServices = append(v.latestSnapshot.VirtualServices[:i], v.latestSnapshot.VirtualServices[i+1:]...)
+				v.latestSnapshot.VirtualServices = append(v.latestSnapshot.VirtualServices[:i],
+					v.latestSnapshot.VirtualServices[i+1:]...)
 				break
 			}
 		}
@@ -181,7 +198,10 @@ func (v *validator) deleteFromLocalSnapshot(resource resources.Resource) {
 	}
 }
 
-func (v *validator) validateSnapshotThreadSafe(ctx context.Context, apply applyResource, dryRun bool) (*Reports, error) {
+func (v *validator) validateSnapshotThreadSafe(ctx context.Context, apply applyResource, dryRun bool) (
+	*Reports,
+	error,
+) {
 	// thread-safe implementation of validateSnapshot
 
 	v.lock.Lock()
@@ -240,7 +260,7 @@ func (v *validator) validateSnapshot(ctx context.Context, apply applyResource, d
 			continue
 		}
 
-		if v.validationClient == nil {
+		if v.validationFunc == nil {
 			contextutils.LoggerFrom(ctx).Warnf("skipping gloo validation checks as the " +
 				"Gloo validation client has not been initialized. check to ensure that the gateway and gloo processes " +
 				"are configured to communicate.")
@@ -288,12 +308,15 @@ func (v *validator) validateSnapshot(ctx context.Context, apply applyResource, d
 	}
 
 	if errs != nil {
-		//TODO: debug
+		// TODO: debug
 		contextutils.LoggerFrom(ctx).Infof("Rejected %T %v: %v", resource, ref, errs)
 		if !dryRun {
 			utils2.MeasureZero(ctx, mValidConfig)
 		}
-		return &Reports{ProxyReports: &proxyReports, Proxies: proxies}, errors.Wrapf(errs, "validating %T %v", resource, ref)
+		return &Reports{ProxyReports: &proxyReports, Proxies: proxies}, errors.Wrapf(errs,
+			"validating %T %v",
+			resource,
+			ref)
 	}
 
 	contextutils.LoggerFrom(ctx).Debugf("Accepted %T %v", resource, ref)
@@ -309,7 +332,10 @@ func (v *validator) validateSnapshot(ctx context.Context, apply applyResource, d
 	return &Reports{ProxyReports: &proxyReports, Proxies: proxies}, nil
 }
 
-func (v *validator) ValidateList(ctx context.Context, ul *unstructured.UnstructuredList, dryRun bool) (*Reports, *multierror.Error) {
+func (v *validator) ValidateList(ctx context.Context, ul *unstructured.UnstructuredList, dryRun bool) (
+	*Reports,
+	*multierror.Error,
+) {
 	var (
 		proxies      []*gloov1.Proxy
 		proxyReports = ProxyReports{}
@@ -404,7 +430,11 @@ func (v *validator) ValidateVirtualService(ctx context.Context, vs *v1.VirtualSe
 	return v.validateVirtualServiceInternal(ctx, vs, dryRun, true)
 }
 
-func (v *validator) validateVirtualServiceInternal(ctx context.Context, vs *v1.VirtualService, dryRun, acquireLock bool) (*Reports, error) {
+func (v *validator) validateVirtualServiceInternal(
+	ctx context.Context,
+	vs *v1.VirtualService,
+	dryRun, acquireLock bool,
+) (*Reports, error) {
 	apply := func(snap *v1.ApiSnapshot) ([]string, resources.Resource, *core.ResourceRef) {
 		vsRef := vs.GetMetadata().Ref()
 
@@ -486,7 +516,11 @@ func (v *validator) ValidateRouteTable(ctx context.Context, rt *v1.RouteTable, d
 	return v.validateRouteTableInternal(ctx, rt, dryRun, true)
 }
 
-func (v *validator) validateRouteTableInternal(ctx context.Context, rt *v1.RouteTable, dryRun, acquireLock bool) (*Reports, error) {
+func (v *validator) validateRouteTableInternal(
+	ctx context.Context,
+	rt *v1.RouteTable,
+	dryRun, acquireLock bool,
+) (*Reports, error) {
 	apply := func(snap *v1.ApiSnapshot) ([]string, resources.Resource, *core.ResourceRef) {
 		rtRef := rt.GetMetadata().Ref()
 
@@ -570,7 +604,10 @@ func (v *validator) ValidateGateway(ctx context.Context, gw *v1.Gateway, dryRun 
 	return v.validateGatewayInternal(ctx, gw, dryRun, true)
 }
 
-func (v *validator) validateGatewayInternal(ctx context.Context, gw *v1.Gateway, dryRun, acquireLock bool) (*Reports, error) {
+func (v *validator) validateGatewayInternal(ctx context.Context, gw *v1.Gateway, dryRun, acquireLock bool) (
+	*Reports,
+	error,
+) {
 	apply := func(snap *v1.ApiSnapshot) ([]string, resources.Resource, *core.ResourceRef) {
 		gwRef := gw.GetMetadata().Ref()
 
@@ -673,7 +710,10 @@ func (v *validator) ValidateDeleteSecret(ctx context.Context, secretRef *core.Re
 }
 
 // Converts the GlooValidationServiceResponse into Reports.
-func (v *validator) getReportsFromGlooValidationResponse(validationResponse *validation.GlooValidationServiceResponse) (*Reports, error) {
+func (v *validator) getReportsFromGlooValidationResponse(validationResponse *validation.GlooValidationServiceResponse) (
+	*Reports,
+	error,
+) {
 	var (
 		errs            error
 		upstreamReports UpstreamReports
@@ -723,16 +763,7 @@ func (v *validator) sendGlooValidationServiceRequest(
 ) (*validation.GlooValidationServiceResponse, error) {
 	logger := contextutils.LoggerFrom(ctx)
 	logger.Debugf("Sending request to GlooValidationService: %s", req.String())
-	var response *validation.GlooValidationServiceResponse
-	err := retry.Do(func() error {
-		rpt, err := v.validationClient.Validate(ctx, req)
-		response = rpt
-		return err
-	},
-		retry.Attempts(4),
-		retry.Delay(250*time.Millisecond),
-	)
-	return response, err
+	return v.validationFunc(ctx, req)
 }
 
 func proxiesForVirtualService(ctx context.Context, gwList v1.GatewayList, httpGwList v1.MatchableHttpGatewayList, vs *v1.VirtualService) []string {
@@ -808,7 +839,11 @@ func proxiesForRouteTable(ctx context.Context, snap *v1.ApiSnapshot, rt *v1.Rout
 type routeTableSet map[string]*v1.RouteTable
 
 // gets all the virtual services that have the given route table as a descendent via delegation
-func virtualServicesForRouteTable(rt *v1.RouteTable, allVirtualServices v1.VirtualServiceList, allRouteTables v1.RouteTableList) v1.VirtualServiceList {
+func virtualServicesForRouteTable(
+	rt *v1.RouteTable,
+	allVirtualServices v1.VirtualServiceList,
+	allRouteTables v1.RouteTableList,
+) v1.VirtualServiceList {
 	// To determine all the virtual services that delegate to this route table (either directly or via a delegate
 	// chain), we first find all the ancestor route tables that are part of a delegate chain leading to this route
 	// table, and then find all the virtual services that delegate (via ref or selector) to any of those routes.
@@ -821,7 +856,9 @@ func virtualServicesForRouteTable(rt *v1.RouteTable, allVirtualServices v1.Virtu
 		countedRefs = len(relevantRouteTables)
 		for _, candidateRt := range allRouteTables {
 			// for each RT, if it delegates to any of the relevant RTs, add it to the set of relevant RTs
-			if routesContainSelectorsOrRefs(candidateRt.GetRoutes(), candidateRt.GetMetadata().GetNamespace(), relevantRouteTables) {
+			if routesContainSelectorsOrRefs(candidateRt.GetRoutes(),
+				candidateRt.GetMetadata().GetNamespace(),
+				relevantRouteTables) {
 				relevantRouteTables[gloo_translator.UpstreamToClusterName(candidateRt.GetMetadata().Ref())] = candidateRt
 			}
 		}
@@ -830,7 +867,9 @@ func virtualServicesForRouteTable(rt *v1.RouteTable, allVirtualServices v1.Virtu
 	var parentVirtualServices v1.VirtualServiceList
 	for _, candidateVs := range allVirtualServices {
 		// for each VS, check if its routes delegate to any of the relevant RTs
-		if routesContainSelectorsOrRefs(candidateVs.GetVirtualHost().GetRoutes(), candidateVs.GetMetadata().GetNamespace(), relevantRouteTables) {
+		if routesContainSelectorsOrRefs(candidateVs.GetVirtualHost().GetRoutes(),
+			candidateVs.GetMetadata().GetNamespace(),
+			relevantRouteTables) {
 			parentVirtualServices = append(parentVirtualServices, candidateVs)
 		}
 	}

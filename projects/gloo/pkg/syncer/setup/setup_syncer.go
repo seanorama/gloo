@@ -3,19 +3,18 @@ package setup
 import (
 	"context"
 	"fmt"
+	"net"
+	"net/http"
 	"os"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/solo-io/gloo/projects/gateway/pkg/services/k8sadmission"
 
 	gwreconciler "github.com/solo-io/gloo/projects/gateway/pkg/reconciler"
 	gwsyncer "github.com/solo-io/gloo/projects/gateway/pkg/syncer"
 	gwvalidation "github.com/solo-io/gloo/projects/gateway/pkg/validation"
-
-	"net"
-	"net/http"
-	"strconv"
-	"strings"
-	"time"
 
 	validationclients "github.com/solo-io/gloo/projects/gloo/pkg/api/grpc/validation"
 
@@ -658,15 +657,7 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 	t := translator.NewTranslator(sslutils.NewSslConfigTranslator(), opts.Settings, pluginRegistryFactory)
 
 	gatewayTranslator := gwtranslator.NewDefaultTranslator(gwOpts)
-	gwValidationSyncer := gwvalidation.NewValidator(gwvalidation.NewValidatorConfig(
-		gatewayTranslator,
-		validationClient,
-		gwOpts.WriteNamespace,
-		ignoreProxyValidationFailure,
-		allowWarnings,
-	))
-	proxyReconciler := gwreconciler.NewProxyReconciler(validationClient, memoryProxyClient, statusClient)
-	gwTranslatorSyncer := gwsyncer.NewTranslatorSyncer(opts.WatchOpts.Ctx, opts.WriteNamespace, memoryProxyClient, proxyReconciler, rpt, gatewayTranslator, statusClient, statusMetrics)
+
 	routeReplacingSanitizer, err := sanitizer.NewRouteReplacingSanitizer(opts.Settings.GetGloo().GetInvalidConfigPolicy())
 	if err != nil {
 		return err
@@ -677,10 +668,20 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		routeReplacingSanitizer,
 	}
 
-	validator := validation.NewValidator(watchOpts.Ctx, t, xdsSanitizer, gwValidationSyncer)
+	validator := validation.NewValidator(watchOpts.Ctx, t, xdsSanitizer)
 	if opts.ValidationServer.Server != nil {
 		opts.ValidationServer.Server.SetValidator(validator)
 	}
+
+	gwValidationSyncer := gwvalidation.NewValidator(gwvalidation.NewValidatorConfig(
+		gatewayTranslator,
+		validator.Validate,
+		gwOpts.WriteNamespace,
+		ignoreProxyValidationFailure,
+		allowWarnings,
+	))
+	proxyReconciler := gwreconciler.NewProxyReconciler(validationClient, memoryProxyClient, statusClient)
+	gwTranslatorSyncer := gwsyncer.NewTranslatorSyncer(opts.WatchOpts.Ctx, opts.WriteNamespace, memoryProxyClient, proxyReconciler, rpt, gatewayTranslator, statusClient, statusMetrics)
 
 	params := syncer.TranslatorSyncerExtensionParams{
 		RateLimitServiceSettings: ratelimit.ServiceSettings{

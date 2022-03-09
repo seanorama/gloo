@@ -4,14 +4,10 @@ import (
 	"context"
 	"sync"
 
-	gatewayv1 "github.com/solo-io/gloo/projects/gateway/pkg/api/v1"
-
 	"github.com/hashicorp/go-multierror"
 	"github.com/rotisserie/eris"
 	"github.com/solo-io/gloo/pkg/utils/syncutil"
 	"github.com/solo-io/gloo/projects/gloo/pkg/api/grpc/validation"
-
-	gatewayvalidation "github.com/solo-io/gloo/projects/gateway/pkg/validation"
 	v1 "github.com/solo-io/gloo/projects/gloo/pkg/api/v1"
 	v1snap "github.com/solo-io/gloo/projects/gloo/pkg/api/v1/gloosnapshot"
 	"github.com/solo-io/gloo/projects/gloo/pkg/plugins"
@@ -39,18 +35,14 @@ type validator struct {
 	notifyResync   map[*validation.NotifyOnResyncRequest]chan struct{}
 	ctx            context.Context
 	xdsSanitizer   sanitizer.XdsSanitizers
-	//TODO: after the feature branch is merged we can move the code into this package
-	//I'm leaving it where it is for now to avoid losing changes that happen on main while I am working on a branch
-	gwValidator gatewayvalidation.Validator
 }
 
-func NewValidator(ctx context.Context, translator translator.Translator, xdsSanitizer sanitizer.XdsSanitizers, gwValidator gatewayvalidation.Validator) *validator {
+func NewValidator(ctx context.Context, translator translator.Translator, xdsSanitizer sanitizer.XdsSanitizers) *validator {
 	return &validator{
 		translator:   translator,
 		notifyResync: make(map[*validation.NotifyOnResyncRequest]chan struct{}, 1),
 		ctx:          ctx,
 		xdsSanitizer: xdsSanitizer,
-		gwValidator:  gwValidator,
 	}
 }
 
@@ -71,7 +63,6 @@ func (s *validator) shouldNotify(snap *v1snap.ApiSnapshot) bool {
 		toHash = append(toHash, snap.Ratelimitconfigs.AsInterfaces()...)
 		// we also include proxies as this will help
 		// the gateway to resync in case the proxy was deleted
-		// TODO: either remove or only check in ingress mode
 		toHash = append(toHash, snap.Proxies.AsInterfaces()...)
 
 		hash, err := hashutils.HashAllSafe(nil, toHash...)
@@ -89,33 +80,10 @@ func (s *validator) shouldNotify(snap *v1snap.ApiSnapshot) bool {
 	if contextutils.GetLogLevel() == zapcore.DebugLevel {
 		logger.Debugw("last validation snapshot", zap.Any("latestSnapshot", syncutil.StringifySnapshot(s.latestSnapshot)))
 		logger.Debugw("current validation snapshot", zap.Any("currentSnapshot", syncutil.StringifySnapshot(snap)))
-		logger.Debugf("validation hash changed: %v", hashChanged)
 	}
+	logger.Debugf("validation hash changed: %v", hashChanged)
+
 	// notify if the hash of what we care about has changed
-	return hashChanged
-}
-
-//TODO: this might be merged with shouldNotify
-func (s *validator) gatewayUpdate(snap *v1snap.ApiSnapshot) bool {
-
-	if s.latestSnapshot == nil {
-		return true
-	}
-	//look at the hash of resources that affect the gateway snapshot
-	hashFunc := func(snap *v1snap.ApiSnapshot) uint64 {
-		toHash := append([]interface{}{}, snap.VirtualHostOptions.AsInterfaces()...)
-		toHash = append(toHash, snap.VirtualServices.AsInterfaces()...)
-		toHash = append(toHash, snap.Gateways.AsInterfaces()...)
-		toHash = append(toHash, snap.RouteOptions.AsInterfaces()...)
-		toHash = append(toHash, snap.RouteTables.AsInterfaces()...)
-
-		hash, err := hashutils.HashAllSafe(nil, toHash...)
-		if err != nil {
-			panic("this error should never happen, as this is safe hasher")
-		}
-		return hash
-	}
-	hashChanged := hashFunc(s.latestSnapshot) != hashFunc(snap)
 	return hashChanged
 }
 
@@ -137,34 +105,17 @@ func (s *validator) pushNotifications() {
 	}
 }
 
-// the gloo snapshot has change
+// the gloo snapshot has changed.
 // update the local snapshot, notify subscribers
 func (s *validator) Sync(ctx context.Context, snap *v1snap.ApiSnapshot) error {
 	snapCopy := snap.Clone()
 	s.lock.Lock()
-	gatewayChange := s.gatewayUpdate(snap)
-	var err error
-	contextutils.LoggerFrom(ctx).Infof("[ELC] gloo validation sync ready? %v", s.gwValidator.Ready())
-	if !s.gwValidator.Ready() || gatewayChange {
-		gwSnap := &gatewayv1.ApiSnapshot{
-			VirtualServices:    snap.VirtualServices,
-			RouteTables:        snap.RouteTables,
-			Gateways:           snap.Gateways,
-			VirtualHostOptions: snap.VirtualHostOptions,
-			RouteOptions:       snap.RouteOptions,
-		}
-		err = s.gwValidator.Sync(ctx, gwSnap)
-		if err != nil {
-			//TODO: better log, do something with error
-			contextutils.LoggerFrom(ctx).Errorf("Error running gateway validation, %v", err)
-		}
-	}
 	if s.shouldNotify(snap) {
 		s.pushNotifications()
 	}
 	s.latestSnapshot = &snapCopy
 	s.lock.Unlock()
-	return err
+	return nil
 }
 
 func (s *validator) NotifyOnResync(req *validation.NotifyOnResyncRequest, stream validation.GlooValidationService_NotifyOnResyncServer) error {
@@ -238,21 +189,20 @@ func (s *validator) Validate(ctx context.Context, req *validation.GlooValidation
 		// if no proxy was passed in, call translate for all proxies in snapshot
 		proxiesToValidate = snapCopy.Proxies
 	}
-	logger.Infof("[ELC] validating %d proxies (snapcopy)  %d", len(proxiesToValidate), len(snapCopy.Proxies))
 	for _, proxy := range proxiesToValidate {
 		xdsSnapshot, resourceReports, proxyReport, err := s.translator.Translate(params, proxy)
 		if err != nil {
 			logger.Errorw("failed to validate proxy", zap.Error(err))
 			return nil, err
 		}
-		logger.Infof("ELC about to sanitize snapshot")
+
 		// Sanitize routes before sending report to gateway
 		s.xdsSanitizer.SanitizeSnapshot(ctx, &snapCopy, xdsSnapshot, resourceReports)
 		routeErrorToWarnings(resourceReports, proxyReport)
 
 		validationReports = append(validationReports, convertToValidationReport(proxyReport, resourceReports, proxy))
 	}
-	logger.Infof("[ELC]respoonding to validation request %v", validationReports)
+
 	return &validation.GlooValidationServiceResponse{
 		ValidationReports: validationReports,
 	}, nil
