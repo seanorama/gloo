@@ -617,17 +617,6 @@ var _ = Describe("Kube2e: gateway", func() {
 				validVs, err := virtualServiceClient.Read(testHelper.InstallNamespace, validVsName, clients.ReadOpts{})
 				Expect(err).NotTo(HaveOccurred())
 
-				// the original virtual service should work (before changes)
-				testHelper.CurlEventuallyShouldRespond(helper.CurlOpts{
-					Protocol:          "http",
-					Path:              "/",
-					Method:            "GET",
-					Host:              "valid1.com",
-					Service:           gatewayProxy,
-					Port:              gatewayPort,
-					ConnectionTimeout: 1, // this is important, as sometimes curl hangs
-					WithoutStats:      true,
-				}, kube2e.SimpleTestRunnerHttpResponse, 1, 60*time.Second, 1*time.Second)
 				// make the invalid vs valid and the valid vs invalid
 				invalidVh := invalidVs.VirtualHost
 				validVh := validVs.VirtualHost
@@ -682,8 +671,10 @@ var _ = Describe("Kube2e: gateway", func() {
 					Expect(err).NotTo(HaveOccurred())
 					petstoreDeployment, err = kubeClient.AppsV1().Deployments(petstoreDeployment.Namespace).Create(ctx, petstoreDeployment, metav1.CreateOptions{})
 					Expect(err).NotTo(HaveOccurred())
+					helpers.EventuallyResourceAccepted(func() (resources.InputResource, error) {
+						return upstreamClient.Read(testHelper.InstallNamespace, fmt.Sprintf("%s-%s-8080", testHelper.InstallNamespace, petstoreName), clients.ReadOpts{})
+					}, "15s", "5s")
 				})
-
 				AfterEach(func() {
 					_ = virtualServiceClient.Delete(petstoreSvc.Namespace, petstoreName, clients.DeleteOpts{})
 					helpers.EventuallyResourceDeleted(func() (resources.InputResource, error) {
@@ -720,15 +711,13 @@ var _ = Describe("Kube2e: gateway", func() {
 								},
 							},
 						}, nil)))
-					// TODO: there seems to be some sort of delay after applying settings before this works correctly
-					time.Sleep(3 * time.Second)
 					vsWithFunctionRoute, err = virtualServiceClient.Write(vsWithFunctionRoute, clients.WriteOpts{})
 					Expect(err).NotTo(HaveOccurred())
 
 					// the VS should not be rejected since the failure is sanitized by route replacement
 					helpers.EventuallyResourceAccepted(func() (resources.InputResource, error) {
 						return virtualServiceClient.Read(testHelper.InstallNamespace, petstoreName, clients.ReadOpts{})
-					})
+					}, "15s", "5s")
 
 					// wrapped in eventually to get around resource version errors
 					Eventually(func() error {

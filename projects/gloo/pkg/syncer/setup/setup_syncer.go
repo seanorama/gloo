@@ -573,7 +573,6 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 	//TODO: Moved earlier so grpc server is initialzed when creating gw validation syncer, move back when grpc calls are removed
 	if opts.ValidationServer.StartGrpcServer {
 		validationServer := opts.ValidationServer
-		logger.Infof("[ELC]starting validation grpc server %s", validationServer.BindAddr.String())
 		lis, err := net.Listen(validationServer.BindAddr.Network(), validationServer.BindAddr.String())
 		if err != nil {
 			return err
@@ -712,8 +711,8 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 	syncers := v1snap.ApiSyncers{
 		translationSync,
 		validator,
+		gwValidationSyncer,
 	}
-
 	apiEventLoop := v1snap.NewApiEventLoop(apiCache, syncers)
 	apiEventLoopErrs, err := apiEventLoop.Run(opts.WatchNamespaces, watchOpts)
 	if err != nil {

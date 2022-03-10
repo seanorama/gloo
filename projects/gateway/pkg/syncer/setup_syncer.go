@@ -296,7 +296,8 @@ func RunGateway(opts translator.Opts) error {
 
 	validationSyncer := gatewayvalidation.NewValidator(gatewayvalidation.NewValidatorConfig(
 		txlator,
-		validationClient,
+		nil,
+	//	validationClient,
 		opts.WriteNamespace,
 		ignoreProxyValidationFailure,
 		allowWarnings,
@@ -316,7 +317,7 @@ func RunGateway(opts translator.Opts) error {
 
 	gatewaySyncers := v1.ApiSyncers{
 		translatorSyncer,
-		validationSyncer,
+		//validationSyncer,
 	}
 
 	eventLoop := v1.NewApiEventLoop(emitter, gatewaySyncers)

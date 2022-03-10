@@ -2,6 +2,8 @@ package validation
 
 import (
 	"context"
+	gloov1snap "github.com/solo-io/gloo/projects/gloo/pkg/api/v1/gloosnapshot"
+	"github.com/solo-io/go-utils/hashutils"
 	"sort"
 	"sync"
 
@@ -76,7 +78,7 @@ const (
 var _ Validator = &validator{}
 
 type Validator interface {
-	v1.ApiSyncer
+	gloov1snap.ApiSyncer
 	ValidateList(ctx context.Context, ul *unstructured.UnstructuredList, dryRun bool) (*Reports, *multierror.Error)
 	ValidateGateway(ctx context.Context, gw *v1.Gateway, dryRun bool) (*Reports, error)
 	ValidateVirtualService(ctx context.Context, vs *v1.VirtualService, dryRun bool) (*Reports, error)
@@ -145,7 +147,11 @@ func (v *validator) Ready() bool {
 	return v.latestSnapshot != nil
 }
 
-func (v *validator) Sync(ctx context.Context, snap *v1.ApiSnapshot) error {
+func (v *validator) Sync(ctx context.Context, glooSnap *gloov1snap.ApiSnapshot) error {
+	snap := convertSnapshot(glooSnap)
+	if !v.gatewayUpdate(snap) {
+		return nil
+	}
 	snapCopy := snap.Clone()
 	gatewaysByProxy := utils.GatewaysByProxyName(snap.Gateways)
 	var errs error
@@ -174,7 +180,37 @@ func (v *validator) Sync(ctx context.Context, snap *v1.ApiSnapshot) error {
 }
 
 type applyResource func(snap *v1.ApiSnapshot) (proxyNames []string, resource resources.Resource, ref *core.ResourceRef)
+func convertSnapshot(glooSnap *gloov1snap.ApiSnapshot) *v1.ApiSnapshot {
+	return &v1.ApiSnapshot{
+		VirtualServices:    glooSnap.VirtualServices,
+		RouteTables:        glooSnap.RouteTables,
+		Gateways:           glooSnap.Gateways,
+		VirtualHostOptions: glooSnap.VirtualHostOptions,
+		RouteOptions:       glooSnap.RouteOptions,
+	}
+}
+func (v *validator) gatewayUpdate(snap *v1.ApiSnapshot) bool {
 
+	if v.latestSnapshot == nil {
+		return true
+	}
+	//look at the hash of resources that affect the gateway snapshot
+	hashFunc := func(snap *v1.ApiSnapshot) uint64 {
+		toHash := append([]interface{}{}, snap.VirtualHostOptions.AsInterfaces()...)
+		toHash = append(toHash, snap.VirtualServices.AsInterfaces()...)
+		toHash = append(toHash, snap.Gateways.AsInterfaces()...)
+		toHash = append(toHash, snap.RouteOptions.AsInterfaces()...)
+		toHash = append(toHash, snap.RouteTables.AsInterfaces()...)
+
+		hash, err := hashutils.HashAllSafe(nil, toHash...)
+		if err != nil {
+			panic("this error should never happen, as this is safe hasher")
+		}
+		return hash
+	}
+	hashChanged := hashFunc(v.latestSnapshot) != hashFunc(snap)
+	return hashChanged
+}
 // update internal snapshot to handle race where a lot of resources may be deleted at once, before syncer updates
 // should be called within a lock
 func (v *validator) deleteFromLocalSnapshot(resource resources.Resource) {
