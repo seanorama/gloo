@@ -125,7 +125,7 @@ var _ = Describe("ReconcileGatewayProxies", func() {
 		})
 		Context("a virtual service has a reported error", func() {
 			It("only creates the valid virtual hosts", func() {
-				samples.AddVsToSnap(snap, us, ns)
+				samples.AddVsToGwSnap(snap, us, ns)
 				genProxy()
 
 				addErr(snap.VirtualServices[1])
@@ -229,7 +229,7 @@ var _ = Describe("ReconcileGatewayProxies", func() {
 		Context("a virtual service has a reported error", func() {
 
 			It("only updates the valid virtual hosts", func() {
-				samples.AddVsToSnap(snap, us, ns)
+				samples.AddVsToGwSnap(snap, us, ns)
 				genProxy()
 				reconcile()
 
@@ -249,7 +249,7 @@ var _ = Describe("ReconcileGatewayProxies", func() {
 			})
 
 			It("only updates the valid virtual hosts, without duplicating any", func() {
-				samples.AddVsToSnap(snap, us, ns)
+				samples.AddVsToGwSnap(snap, us, ns)
 				genProxy()
 				reconcile()
 
@@ -279,7 +279,7 @@ var _ = Describe("ReconcileGatewayProxies", func() {
 
 		Context("a virtual service has been removed", func() {
 			It("removes the virtual host", func() {
-				samples.AddVsToSnap(snap, us, ns)
+				samples.AddVsToGwSnap(snap, us, ns)
 				genProxy()
 				reconcile()
 

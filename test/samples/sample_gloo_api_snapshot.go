@@ -294,6 +294,16 @@ func AddVsToSnap(snap *v1snap.ApiSnapshot, us *core.ResourceRef, namespace strin
 	return snap
 }
 
+func AddVsToGwSnap(snap *gwv1.ApiSnapshot, us *core.ResourceRef, namespace string) *gwv1.ApiSnapshot {
+	snap.VirtualServices = append(snap.VirtualServices, &gwv1.VirtualService{
+		Metadata: &core.Metadata{Namespace: namespace, Name: "secondary-vs"},
+		VirtualHost: &gwv1.VirtualHost{
+			Domains: []string{"secondary-vs.com"},
+			Routes:  SimpleRoute(us),
+		},
+	})
+	return snap
+}
 func GatewaySnapshotWithDelegates(us *core.ResourceRef, namespace string) *gwv1.ApiSnapshot {
 	rtRoutes := []*gwv1.Route{
 		{
