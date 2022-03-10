@@ -65,7 +65,7 @@ var _ = Describe("ValidationOpts Server", func() {
 
 		params = plugins.Params{
 			Ctx:      context.Background(),
-			Snapshot: samples.SimpleGlooSnapshot(),
+			Snapshot: samples.SimpleGlooSnapshot("gloo-system"),
 		}
 
 		routeReplacingSanitizer, _ := sanitizer.NewRouteReplacingSanitizer(settings.GetGloo().GetInvalidConfigPolicy())
