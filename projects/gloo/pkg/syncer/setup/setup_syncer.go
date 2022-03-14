@@ -626,7 +626,7 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		WatchOpts:               opts.WatchOpts,
 		DevMode:                 opts.DevMode,
 		ReadGatewaysFromAllNamespaces: opts.ReadGatwaysFromAllNamespaces,
-		Validation:             &opts.ValidationOpts,
+		Validation:              opts.ValidationOpts,
 		ConfigStatusMetricOpts: nil,
 	}
 	var (
@@ -636,7 +636,8 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		allowWarnings                bool
 	)
 	//TODO: also check if running in gateway mode before creating gateway validation client
-	if gwOpts.Validation != nil {
+	if gwOpts.Validation != nil && opts.GatewayMode {
+		logger.Infof("[ELC]Starting validation client, options: %v", gwOpts.Validation)
 		//TODO: this can be in memory
 		validationClient, err = gwvalidation.NewConnectionRefreshingValidationClient(
 			gwvalidation.RetryOnUnavailableClientConstructor(opts.WatchOpts.Ctx, gwOpts.Validation.ProxyValidationServerAddress),
@@ -645,10 +646,10 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 			return errors.Wrapf(err, "failed to initialize grpc connection to validation server.")
 		}
 
+		ignoreProxyValidationFailure = gwOpts.Validation.IgnoreProxyValidationFailure
+		allowWarnings = gwOpts.Validation.AllowWarnings
 	}
 
-	ignoreProxyValidationFailure = gwOpts.Validation.IgnoreProxyValidationFailure
-	allowWarnings = gwOpts.Validation.AllowWarnings
 	t := translator.NewTranslator(sslutils.NewSslConfigTranslator(), opts.Settings, pluginRegistryFactory)
 
 
@@ -984,9 +985,10 @@ func constructOpts(ctx context.Context, clientset *kubernetes.Interface, kubeCac
 		return bootstrap.Opts{}, err
 	}
 
-	var validation gwtranslator.ValidationOpts
+	var validation *gwtranslator.ValidationOpts
 	validationCfg := settings.GetGateway().GetValidation()
 	gatewayMode := settings.GetGateway().GatewayMode
+	contextutils.LoggerFrom(ctx).Infof("ELC creating validationConfig %v val %v", validationCfg, validation)
 	if validationCfg != nil && gatewayMode {
 		alwaysAcceptResources := AcceptAllResourcesByDefault
 
@@ -1000,7 +1002,7 @@ func constructOpts(ctx context.Context, clientset *kubernetes.Interface, kubeCac
 			allowWarnings = allowWarning.GetValue()
 		}
 
-		validation = gwtranslator.ValidationOpts{
+		validation = &gwtranslator.ValidationOpts{
 			ProxyValidationServerAddress: validationCfg.GetProxyValidationServerAddr(),
 			ValidatingWebhookPort:        gwdefaults.ValidationWebhookBindPort,
 			ValidatingWebhookCertPath:    validationCfg.GetValidationWebhookTlsCert(),

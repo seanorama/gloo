@@ -49,7 +49,7 @@ type Opts struct {
 	ValidationServer             ValidationServer
 	Settings                     *v1.Settings
 	KubeCoreCache                corecache.KubeCoreCache
-	ValidationOpts               gwtranslator.ValidationOpts
+	ValidationOpts               *gwtranslator.ValidationOpts
 	ReadGatwaysFromAllNamespaces bool
 	GatewayMode                  bool
 }
