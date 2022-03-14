@@ -189,7 +189,7 @@ var _ = Describe("TranslatorSyncer integration test", func() {
 
 		// write the proxy status.
 		AcceptProxy()
-		ts, _ :=ts.(*TranslatorSyncer)
+		ts, _ := ts.(*TranslatorSyncer)
 		ts.UpdateProxies(ctx)
 		// wait for the proxy status to be written in the VS
 		EventuallyProxyStatusInVs().Should(Equal(core.Status_Accepted))

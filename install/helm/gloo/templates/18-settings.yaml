@@ -87,12 +87,13 @@ spec:
 
   gateway:
     readGatewaysFromAllNamespaces: {{ .Values.gateway.readGatewaysFromAllNamespaces }}
-{{- if .Values.gateway.persistProxySpec}}
-    persistProxySpec: {{ .Values.gateway.persistProxySpec }}
+{{- if or .Values.gateway.persistProxySpec (not .Values.gateway.enabled) }}
+    persistProxySpec: true
 {{- end}}
 {{- if .Values.gateway.compressedProxySpec}}
     compressedProxySpec: {{ .Values.gateway.compressedProxySpec}}
 {{- end}}
+    gatewayMode: {{ .Values.gateway.enabled }}
 {{- if .Values.gateway.validation.enabled }}
     validation:
       proxyValidationServerAddr: "gloo:{{ .Values.gloo.deployment.validationPort }}"

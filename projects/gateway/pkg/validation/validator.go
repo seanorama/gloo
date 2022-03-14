@@ -2,10 +2,11 @@ package validation
 
 import (
 	"context"
-	gloov1snap "github.com/solo-io/gloo/projects/gloo/pkg/api/v1/gloosnapshot"
-	"github.com/solo-io/go-utils/hashutils"
 	"sort"
 	"sync"
+
+	gloov1snap "github.com/solo-io/gloo/projects/gloo/pkg/api/v1/gloosnapshot"
+	"github.com/solo-io/go-utils/hashutils"
 
 	"github.com/hashicorp/go-multierror"
 	errors "github.com/rotisserie/eris"
@@ -88,7 +89,6 @@ type Validator interface {
 	ValidateUpstream(ctx context.Context, us *gloov1.Upstream, dryRun bool) (*Reports, error)
 	ValidateDeleteUpstream(ctx context.Context, us *core.ResourceRef, dryRun bool) error
 	ValidateDeleteSecret(ctx context.Context, secret *core.ResourceRef, dryRun bool) error
-	Ready() bool
 }
 
 type ValidatorFunc = func(
@@ -143,7 +143,7 @@ func NewValidator(cfg ValidatorConfig) *validator {
 	}
 }
 
-func (v *validator) Ready() bool {
+func (v *validator) ready() bool {
 	return v.latestSnapshot != nil
 }
 
@@ -180,6 +180,7 @@ func (v *validator) Sync(ctx context.Context, glooSnap *gloov1snap.ApiSnapshot) 
 }
 
 type applyResource func(snap *v1.ApiSnapshot) (proxyNames []string, resource resources.Resource, ref *core.ResourceRef)
+
 func convertSnapshot(glooSnap *gloov1snap.ApiSnapshot) *v1.ApiSnapshot {
 	return &v1.ApiSnapshot{
 		VirtualServices:    glooSnap.VirtualServices,
@@ -211,6 +212,7 @@ func (v *validator) gatewayUpdate(snap *v1.ApiSnapshot) bool {
 	hashChanged := hashFunc(v.latestSnapshot) != hashFunc(snap)
 	return hashChanged
 }
+
 // update internal snapshot to handle race where a lot of resources may be deleted at once, before syncer updates
 // should be called within a lock
 func (v *validator) deleteFromLocalSnapshot(resource resources.Resource) {
@@ -258,7 +260,7 @@ func (v *validator) validateSnapshot(ctx context.Context, apply applyResource, d
 	//		during a dry run, we don't want to actually apply the change, since this will modify the internal
 	//		state of the validator, which is shared across requests. Therefore, only if we are not in a dry run,
 	//		we apply the mutation.
-	if !v.Ready() {
+	if !v.ready() {
 		return nil, NotReadyErr
 	}
 
@@ -500,7 +502,7 @@ func (v *validator) validateVirtualServiceInternal(
 }
 
 func (v *validator) ValidateDeleteVirtualService(ctx context.Context, vsRef *core.ResourceRef, dryRun bool) error {
-	if !v.Ready() {
+	if !v.ready() {
 		return errors.Errorf("Gateway validation is yet not available. Waiting for first snapshot")
 	}
 	v.lock.Lock()
@@ -588,7 +590,7 @@ func (v *validator) validateRouteTableInternal(
 }
 
 func (v *validator) ValidateDeleteRouteTable(ctx context.Context, rtRef *core.ResourceRef, dryRun bool) error {
-	if !v.Ready() {
+	if !v.ready() {
 		return errors.Errorf("Gateway validation is yet not available. Waiting for first snapshot")
 	}
 	v.lock.Lock()

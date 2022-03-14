@@ -30,8 +30,8 @@ var _ = Describe("TranslatorSyncer", func() {
 
 	var (
 		fakeProxyClient = &gloomocks.MockProxyClient{}
-		mockReporter *fakeReporter
-		syncer       *statusSyncer
+		mockReporter    *fakeReporter
+		syncer          *statusSyncer
 
 		statusClient resources.StatusClient
 	)

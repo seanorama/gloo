@@ -624,12 +624,8 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		RouteOptions:            opts.RouteOptions,
 		VirtualHostOptions:      opts.VirtualHostOptions,
 		WatchOpts:               opts.WatchOpts,
-		// TODO: remove because validation server is started as part of gloo set up
-		ValidationServerAddress: "",
 		DevMode:                 opts.DevMode,
-		//TODO: set correctly
-		ReadGatewaysFromAllNamespaces: false,
-		//TODO: probably remove this as it's only used here
+		ReadGatewaysFromAllNamespaces: opts.ReadGatwaysFromAllNamespaces,
 		Validation:             &opts.ValidationOpts,
 		ConfigStatusMetricOpts: nil,
 	}
@@ -655,7 +651,6 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 	allowWarnings = gwOpts.Validation.AllowWarnings
 	t := translator.NewTranslator(sslutils.NewSslConfigTranslator(), opts.Settings, pluginRegistryFactory)
 
-	gatewayTranslator := gwtranslator.NewDefaultTranslator(gwOpts)
 
 	routeReplacingSanitizer, err := sanitizer.NewRouteReplacingSanitizer(opts.Settings.GetGloo().GetInvalidConfigPolicy())
 	if err != nil {
@@ -666,12 +661,15 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		sanitizer.NewUpstreamRemovingSanitizer(),
 		routeReplacingSanitizer,
 	}
-
 	validator := validation.NewValidator(watchOpts.Ctx, t, xdsSanitizer)
 	if opts.ValidationServer.Server != nil {
 		opts.ValidationServer.Server.SetValidator(validator)
 	}
 
+	var (
+		gwTranslatorSyncer *gwsyncer.TranslatorSyncer
+	)
+	gatewayTranslator := gwtranslator.NewDefaultTranslator(gwOpts)
 	gwValidationSyncer := gwvalidation.NewValidator(gwvalidation.NewValidatorConfig(
 		gatewayTranslator,
 		validator.Validate,
@@ -680,7 +678,7 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		allowWarnings,
 	))
 	proxyReconciler := gwreconciler.NewProxyReconciler(validationClient, memoryProxyClient, statusClient)
-	gwTranslatorSyncer := gwsyncer.NewTranslatorSyncer(opts.WatchOpts.Ctx, opts.WriteNamespace, memoryProxyClient, proxyReconciler, rpt, gatewayTranslator, statusClient, statusMetrics)
+	gwTranslatorSyncer = gwsyncer.NewTranslatorSyncer(opts.WatchOpts.Ctx, opts.WriteNamespace, memoryProxyClient, proxyReconciler, rpt, gatewayTranslator, statusClient, statusMetrics)
 
 	params := syncer.TranslatorSyncerExtensionParams{
 		RateLimitServiceSettings: ratelimit.ServiceSettings{
@@ -711,7 +709,9 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 	syncers := v1snap.ApiSyncers{
 		translationSync,
 		validator,
-		gwValidationSyncer,
+	}
+	if opts.GatewayMode {
+		syncers = append(syncers, gwValidationSyncer)
 	}
 	apiEventLoop := v1snap.NewApiEventLoop(apiCache, syncers)
 	apiEventLoopErrs, err := apiEventLoop.Run(opts.WatchNamespaces, watchOpts)
@@ -732,7 +732,6 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 
 	//Start the validation webhook
 	validationServerErr := make(chan error, 1)
-	logger.Infof("[ELC] start validation webhook %v", gwOpts.Validation != nil)
 	if gwOpts.Validation != nil {
 		// make sure non-empty WatchNamespaces contains the gloo instance's own namespace if
 		// ReadGatewaysFromAllNamespaces is false
@@ -910,7 +909,6 @@ func constructOpts(ctx context.Context, clientset *kubernetes.Interface, kubeCac
 		proxyFactory = &factory.MemoryResourceClientFactory{
 			Cache: memory.NewInMemoryResourceCache(),
 		}
-		contextutils.LoggerFrom(ctx).Infof("ELC would use memory client here")
 	}
 
 	secretFactory, err := bootstrap.SecretFactoryForSettings(
@@ -988,7 +986,8 @@ func constructOpts(ctx context.Context, clientset *kubernetes.Interface, kubeCac
 
 	var validation gwtranslator.ValidationOpts
 	validationCfg := settings.GetGateway().GetValidation()
-	if validationCfg != nil {
+	gatewayMode := settings.GetGateway().GatewayMode
+	if validationCfg != nil && gatewayMode {
 		alwaysAcceptResources := AcceptAllResourcesByDefault
 
 		if alwaysAccept := validationCfg.GetAlwaysAccept(); alwaysAccept != nil {
@@ -1001,7 +1000,6 @@ func constructOpts(ctx context.Context, clientset *kubernetes.Interface, kubeCac
 			allowWarnings = allowWarning.GetValue()
 		}
 
-		contextutils.LoggerFrom(ctx).Infof("[ELC] default settings persistProxies %v alwaysAccept %v  allowWarnings %v", settings.GetGateway().GetPersistProxySpec(), alwaysAcceptResources, allowWarnings)
 		validation = gwtranslator.ValidationOpts{
 			ProxyValidationServerAddress: validationCfg.GetProxyValidationServerAddr(),
 			ValidatingWebhookPort:        gwdefaults.ValidationWebhookBindPort,
@@ -1030,7 +1028,7 @@ func constructOpts(ctx context.Context, clientset *kubernetes.Interface, kubeCac
 				"Ensure the v1.Settings %v contains the spec.gateway.validation config", settings.GetMetadata().Ref())
 		}
 	}
-	readGatewaysFromAllNamesapces := settings.GetGateway().GetReadGatewaysFromAllNamespaces()
+	readGatewaysFromAllNamespaces := settings.GetGateway().GetReadGatewaysFromAllNamespaces()
 	return bootstrap.Opts{
 		Upstreams:                    upstreamFactory,
 		KubeServiceClient:            kubeServiceClient,
@@ -1048,6 +1046,7 @@ func constructOpts(ctx context.Context, clientset *kubernetes.Interface, kubeCac
 		Gateways:                     gatewayFactory,
 		KubeCoreCache:                kubeCoreCache,
 		ValidationOpts:               validation,
-		ReadGatwaysFromAllNamespaces: readGatewaysFromAllNamesapces,
+		ReadGatwaysFromAllNamespaces: readGatewaysFromAllNamespaces,
+		GatewayMode:                  gatewayMode,
 	}, nil
 }

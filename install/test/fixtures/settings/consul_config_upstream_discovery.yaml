@@ -10,6 +10,7 @@ spec:
  discovery:
    fdsMode: WHITELIST
  gateway:
+   gatewayMode: true
    readGatewaysFromAllNamespaces: false
    validation:
      alwaysAccept: true

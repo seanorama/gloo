@@ -690,6 +690,10 @@ func (m *GatewayOptions) Equal(that interface{}) bool {
 		return false
 	}
 
+	if m.GetGatewayMode() != target.GetGatewayMode() {
+		return false
+	}
+
 	return true
 }
 

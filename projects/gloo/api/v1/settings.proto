@@ -644,4 +644,6 @@ message GatewayOptions {
     // Proxies can be persisted to etcd to allow external tools and other pods to read the contents the Proxy CRD.
     bool persist_proxy_spec = 8;
 
+    //
+    bool gateway_mode = 9;
 }

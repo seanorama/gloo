@@ -444,7 +444,7 @@ func GatewaySnapshotWithDelegateSelector(us *core.ResourceRef, namespace string)
 	return snap
 }
 
-func GatewayToGlooSnapshot(snap *gwv1.ApiSnapshot) *v1snap.ApiSnapshot{
+func GatewayToGlooSnapshot(snap *gwv1.ApiSnapshot) *v1snap.ApiSnapshot {
 	return &v1snap.ApiSnapshot{
 		VirtualServices:    snap.VirtualServices,
 		RouteTables:        snap.RouteTables,

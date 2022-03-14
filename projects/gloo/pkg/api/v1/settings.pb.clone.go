@@ -443,6 +443,8 @@ func (m *GatewayOptions) Clone() proto.Message {
 
 	target.PersistProxySpec = m.GetPersistProxySpec()
 
+	target.GatewayMode = m.GetGatewayMode()
+
 	return target
 }
 
