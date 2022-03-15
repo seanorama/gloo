@@ -661,7 +661,7 @@ Settings specific to the Gateway controller
 | `compressedProxySpec` | `bool` | If set, compresses proxy space. This can help make the Proxy CRD smaller to fit in etcd. This is an advanced option. Use with care. |
 | `virtualServiceOptions` | [.gloo.solo.io.VirtualServiceOptions](../settings.proto.sk/#virtualserviceoptions) | Default configuration to use for VirtualServices, when not provided by a specific virtual service When these properties are defined on a specific VirtualService, this configuration will be ignored. |
 | `persistProxySpec` | `bool` | Set this to persist the Proxy CRD to etcd. By default, proxies are kept in memory to improve performance. Proxies can be persisted to etcd to allow external tools and other pods to read the contents the Proxy CRD. |
-| `gatewayMode` | `bool` |  |
+| `gatewayMode` | `bool` | This is set based on the install mode. It indicates to gloo whether or not it should run the gateway translations and validation. |
 
 
 

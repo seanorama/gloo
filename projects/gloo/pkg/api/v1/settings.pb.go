@@ -843,7 +843,8 @@ type GatewayOptions struct {
 	// Set this to persist the Proxy CRD to etcd. By default, proxies are kept in memory to improve performance.
 	// Proxies can be persisted to etcd to allow external tools and other pods to read the contents the Proxy CRD.
 	PersistProxySpec bool `protobuf:"varint,8,opt,name=persist_proxy_spec,json=persistProxySpec,proto3" json:"persist_proxy_spec,omitempty"`
-	//
+	// This is set based on the install mode. It indicates to gloo whether or not it should run the gateway
+	// translations and validation.
 	GatewayMode bool `protobuf:"varint,9,opt,name=gateway_mode,json=gatewayMode,proto3" json:"gateway_mode,omitempty"`
 }
 

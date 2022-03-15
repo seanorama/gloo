@@ -628,20 +628,10 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		ConfigStatusMetricOpts:        nil,
 	}
 	var (
-		// this constructor should be called within a lock
-		//validationClient             validationclients.GlooValidationServiceClient
 		ignoreProxyValidationFailure bool
 		allowWarnings                bool
 	)
 	if gwOpts.Validation != nil && opts.GatewayMode {
-		//TODO: this can be in memory
-		/*validationClient, err = gwvalidation.NewConnectionRefreshingValidationClient(
-			gwvalidation.RetryOnUnavailableClientConstructor(opts.WatchOpts.Ctx, gwOpts.Validation.ProxyValidationServerAddress),
-		)
-		if err != nil {
-			return errors.Wrapf(err, "failed to initialize grpc connection to validation server.")
-		}
-		*/
 		ignoreProxyValidationFailure = gwOpts.Validation.IgnoreProxyValidationFailure
 		allowWarnings = gwOpts.Validation.AllowWarnings
 	}
