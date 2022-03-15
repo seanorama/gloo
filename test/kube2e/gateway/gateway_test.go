@@ -561,6 +561,9 @@ var _ = Describe("Kube2e: gateway", func() {
 					return err
 				}, time.Second*10).ShouldNot(HaveOccurred())
 
+				helpers.EventuallyResourceRejected(func() (resources.InputResource, error) {
+					return virtualServiceClient.Read(testHelper.InstallNamespace, invalidVsName, clients.ReadOpts{})
+				})
 			})
 
 			AfterEach(func() {
