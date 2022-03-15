@@ -16,8 +16,6 @@ import (
 	gwsyncer "github.com/solo-io/gloo/projects/gateway/pkg/syncer"
 	gwvalidation "github.com/solo-io/gloo/projects/gateway/pkg/validation"
 
-	validationclients "github.com/solo-io/gloo/projects/gloo/pkg/api/grpc/validation"
-
 	"github.com/solo-io/gloo/projects/gateway/pkg/utils/metrics"
 	"github.com/solo-io/gloo/projects/gloo/pkg/api/v1/enterprise/options/graphql/v1alpha1"
 	v1snap "github.com/solo-io/gloo/projects/gloo/pkg/api/v1/gloosnapshot"
@@ -613,45 +611,42 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 	}
 	//TODO: create these with the gloo opts/verify whether namespaces are always the same
 	gwOpts := gwtranslator.Opts{
-		GlooNamespace:           opts.WriteNamespace,
-		WriteNamespace:          opts.WriteNamespace,
-		StatusReporterNamespace: opts.StatusReporterNamespace,
-		WatchNamespaces:         opts.WatchNamespaces,
-		Gateways:                opts.Gateways,
-		VirtualServices:         opts.VirtualServices,
-		RouteTables:             opts.RouteTables,
-		Proxies:                 opts.Proxies,
-		RouteOptions:            opts.RouteOptions,
-		VirtualHostOptions:      opts.VirtualHostOptions,
-		WatchOpts:               opts.WatchOpts,
-		DevMode:                 opts.DevMode,
+		GlooNamespace:                 opts.WriteNamespace,
+		WriteNamespace:                opts.WriteNamespace,
+		StatusReporterNamespace:       opts.StatusReporterNamespace,
+		WatchNamespaces:               opts.WatchNamespaces,
+		Gateways:                      opts.Gateways,
+		VirtualServices:               opts.VirtualServices,
+		RouteTables:                   opts.RouteTables,
+		Proxies:                       opts.Proxies,
+		RouteOptions:                  opts.RouteOptions,
+		VirtualHostOptions:            opts.VirtualHostOptions,
+		WatchOpts:                     opts.WatchOpts,
+		DevMode:                       opts.DevMode,
 		ReadGatewaysFromAllNamespaces: opts.ReadGatwaysFromAllNamespaces,
-		Validation:              opts.ValidationOpts,
-		ConfigStatusMetricOpts: nil,
+		Validation:                    opts.ValidationOpts,
+		ConfigStatusMetricOpts:        nil,
 	}
 	var (
 		// this constructor should be called within a lock
-		validationClient             validationclients.GlooValidationServiceClient
+		//validationClient             validationclients.GlooValidationServiceClient
 		ignoreProxyValidationFailure bool
 		allowWarnings                bool
 	)
-	//TODO: also check if running in gateway mode before creating gateway validation client
 	if gwOpts.Validation != nil && opts.GatewayMode {
-		logger.Infof("[ELC]Starting validation client, options: %v", gwOpts.Validation)
 		//TODO: this can be in memory
-		validationClient, err = gwvalidation.NewConnectionRefreshingValidationClient(
+		/*validationClient, err = gwvalidation.NewConnectionRefreshingValidationClient(
 			gwvalidation.RetryOnUnavailableClientConstructor(opts.WatchOpts.Ctx, gwOpts.Validation.ProxyValidationServerAddress),
 		)
 		if err != nil {
 			return errors.Wrapf(err, "failed to initialize grpc connection to validation server.")
 		}
-
+		*/
 		ignoreProxyValidationFailure = gwOpts.Validation.IgnoreProxyValidationFailure
 		allowWarnings = gwOpts.Validation.AllowWarnings
 	}
 
 	t := translator.NewTranslator(sslutils.NewSslConfigTranslator(), opts.Settings, pluginRegistryFactory)
-
 
 	routeReplacingSanitizer, err := sanitizer.NewRouteReplacingSanitizer(opts.Settings.GetGloo().GetInvalidConfigPolicy())
 	if err != nil {
@@ -678,7 +673,7 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		ignoreProxyValidationFailure,
 		allowWarnings,
 	))
-	proxyReconciler := gwreconciler.NewProxyReconciler(validationClient, memoryProxyClient, statusClient)
+	proxyReconciler := gwreconciler.NewProxyReconciler(validator.Validate, memoryProxyClient, statusClient)
 	gwTranslatorSyncer = gwsyncer.NewTranslatorSyncer(opts.WatchOpts.Ctx, opts.WriteNamespace, memoryProxyClient, proxyReconciler, rpt, gatewayTranslator, statusClient, statusMetrics)
 
 	params := syncer.TranslatorSyncerExtensionParams{
@@ -987,8 +982,7 @@ func constructOpts(ctx context.Context, clientset *kubernetes.Interface, kubeCac
 
 	var validation *gwtranslator.ValidationOpts
 	validationCfg := settings.GetGateway().GetValidation()
-	gatewayMode := settings.GetGateway().GatewayMode
-	contextutils.LoggerFrom(ctx).Infof("ELC creating validationConfig %v val %v", validationCfg, validation)
+	gatewayMode := settings.GetGateway().GetGatewayMode()
 	if validationCfg != nil && gatewayMode {
 		alwaysAcceptResources := AcceptAllResourcesByDefault
 

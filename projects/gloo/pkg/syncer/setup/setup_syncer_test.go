@@ -65,9 +65,9 @@ var _ = Describe("SetupSyncer", func() {
 			DiscoveryNamespace: "non-existent-namespace",
 			WatchNamespaces:    []string{"non-existent-namespace"},
 			Gateway: &v1.GatewayOptions{
-				GatewayMode: true,
+				GatewayMode:      true,
 				PersistProxySpec: false,
-				Validation: nil,
+				Validation:       nil,
 			},
 		}
 		memcache = memory.NewInMemoryResourceCache()

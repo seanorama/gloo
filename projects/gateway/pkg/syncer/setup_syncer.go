@@ -302,8 +302,8 @@ func RunGateway(opts translator.Opts) error {
 		ignoreProxyValidationFailure,
 		allowWarnings,
 	))
-
-	proxyReconciler := reconciler.NewProxyReconciler(validationClient, proxyClient, statusClient)
+	//TODO: None of this should be called any more
+	proxyReconciler := reconciler.NewProxyReconciler(nil, proxyClient, statusClient)
 
 	translatorSyncer := NewTranslatorSyncer(
 		ctx,
