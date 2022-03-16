@@ -60,10 +60,12 @@ spec:
             - path: "labels"
               fieldRef:
                 fieldPath: metadata.labels
+      {{- if .Values.gateway.enabled }}
       - name: validation-certs
         secret:
           defaultMode: 420
           secretName: {{ .Values.gateway.validation.secretName }}
+      {{- end }}
       containers:
 {{- if .Values.global.glooMtls.enabled }}
       {{- $sdsImage := merge .Values.global.glooMtls.sds.image .Values.global.image }}
@@ -167,7 +169,7 @@ spec:
           containerPort: 9091
         {{- end }}
         volumeMounts:
-        {{- if .Values.gateway.validation.enabled }}
+        {{- if and .Values.gateway.validation.enabled .Values.gateway.enabled }}
         - mountPath: /etc/gateway/validation-certs
           name: validation-certs
         {{- end }}
@@ -208,7 +210,7 @@ spec:
           initialDelaySeconds: 1
           periodSeconds: 2
           failureThreshold: 10
- {{- if .Values.gateway.validation.enabled }}
+ {{- if and .Values.gateway.validation.enabled .Values.gateway.enabled }}
         volumeMounts:
           - mountPath: /etc/gateway/validation-certs
             name: validation-certs

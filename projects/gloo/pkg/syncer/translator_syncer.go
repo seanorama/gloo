@@ -36,6 +36,7 @@ type translatorSyncer struct {
 	statusMetrics metrics.ConfigStatusMetrics
 	gatewaySyncer *gwsyncer.TranslatorSyncer
 	proxyClient   v1.ProxyClient
+	writeNamespace string
 }
 
 type TranslatorSyncerExtensionParams struct {
@@ -71,6 +72,7 @@ func NewTranslatorSyncer(
 	statusMetrics metrics.ConfigStatusMetrics,
 	gatewaySyncer *gwsyncer.TranslatorSyncer,
 	proxyClient v1.ProxyClient,
+	writeNamespace string,
 ) v1snap.ApiSyncer {
 	s := &translatorSyncer{
 		translator:    translator,
@@ -83,6 +85,7 @@ func NewTranslatorSyncer(
 		statusMetrics: statusMetrics,
 		gatewaySyncer: gatewaySyncer,
 		proxyClient:   proxyClient,
+		writeNamespace: writeNamespace,
 	}
 	if devMode {
 		// TODO(ilackarms): move this somewhere else?
@@ -90,6 +93,7 @@ func NewTranslatorSyncer(
 			_ = s.ServeXdsSnapshots()
 		}()
 	}
+
 	return s
 }
 
@@ -142,22 +146,12 @@ func (s *translatorSyncer) translateProxies(ctx context.Context, snap *v1snap.Ap
 		RouteOptions:       snap.RouteOptions,
 		VirtualHostOptions: snap.VirtualHostOptions,
 	}
-	logger := contextutils.LoggerFrom(ctx)
 	err := s.gatewaySyncer.Sync(ctx, gwSnap)
 	if err != nil {
 		return err
 	}
-	//TODO: delete extra logs and listing proxies after debugging is done
-	proxyList, err := s.proxyClient.List("gloo-system", clients.ListOpts{})
-	for _, proxy := range proxyList {
-		if proxy != nil {
-			logger.Infof("ELC logging statuses %s", proxy.GetNamespacedStatuses().String())
-		} else {
-			logger.Infof("result list contains nil proxies??")
-		}
-	}
-	logger.Infof("Done generating proxies, total %d", len(proxyList))
-	// END block of logs
+	//TODO: Consider refactoring gatewaySyncer.Sync so that we do not need to list the proxies here (which may be slow if proxies are persisted)
+	proxyList, err := s.proxyClient.List(s.writeNamespace, clients.ListOpts{})
 	snap.Proxies = proxyList
 	return err
 }

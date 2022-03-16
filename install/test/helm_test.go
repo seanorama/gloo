@@ -4496,22 +4496,14 @@ metadata:
 											},
 										},
 									},
-										{
-											Name: "validation-certs",
-											VolumeSource: v1.VolumeSource{
-												Secret: &v1.SecretVolumeSource{
-													SecretName:  "gateway-validation-certs",
-													DefaultMode: proto.Int(420),
-												},
-											},
-										}},
+										},
 									ServiceAccountName: "gloo",
 									Containers: []v1.Container{
 										{
 											VolumeMounts: []v1.VolumeMount{{
-												Name:      "validation-certs",
-												MountPath: "/etc/gateway/validation-certs",
-												ReadOnly:  false,
+												Name:      "labels-volume",
+												MountPath: "/etc/gloo",
+												ReadOnly:  true,
 											}},
 											Name: "gloo",
 											// Note: this was NOT overwritten
