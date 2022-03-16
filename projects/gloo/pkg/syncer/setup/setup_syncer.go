@@ -461,6 +461,13 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		return err
 	}
 
+	matchableHttpGatewayClient, err := gateway.NewMatchableHttpGatewayClient(watchOpts.Ctx, opts.MatchableHttpGateways)
+	if err != nil {
+		return err
+	}
+	if err := matchableHttpGatewayClient.Register(); err != nil {
+		return err
+	}
 	virtualHostOptionClient, err := gateway.NewVirtualHostOptionClient(watchOpts.Ctx, opts.VirtualHostOptions)
 	if err != nil {
 		return err
@@ -545,6 +552,7 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		virtualServiceClient,
 		rtClient,
 		gatewayClient,
+	//	matchableHttpGatewayClient,
 		virtualHostOptionClient,
 		routeOptionClient,
 		graphqlSchemaClient,
@@ -558,6 +566,7 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		upstreamGroupClient.BaseClient(),
 		authConfigClient.BaseClient(),
 		gatewayClient.BaseClient(),
+		matchableHttpGatewayClient.BaseClient(),
 		virtualServiceClient.BaseClient(),
 		rtClient.BaseClient(),
 		virtualHostOptionClient.BaseClient(),
@@ -970,6 +979,10 @@ func constructOpts(ctx context.Context, clientset *kubernetes.Interface, kubeCac
 		return bootstrap.Opts{}, err
 	}
 
+	matchableHttpGatewayFactory, err := bootstrap.ConfigFactoryForSettings(params, gateway.MatchableHttpGatewayCrd)
+	if err != nil {
+		return bootstrap.Opts{}, err
+	}
 	var validation *gwtranslator.ValidationOpts
 	validationCfg := settings.GetGateway().GetValidation()
 	gatewayMode := settings.GetGateway().GetGatewayMode()
@@ -1030,6 +1043,7 @@ func constructOpts(ctx context.Context, clientset *kubernetes.Interface, kubeCac
 		VirtualHostOptions:           virtualHostOptionFactory,
 		RouteOptions:                 routeOptionFactory,
 		Gateways:                     gatewayFactory,
+		MatchableHttpGateways:        matchableHttpGatewayFactory,
 		KubeCoreCache:                kubeCoreCache,
 		ValidationOpts:               validation,
 		ReadGatwaysFromAllNamespaces: readGatewaysFromAllNamespaces,
