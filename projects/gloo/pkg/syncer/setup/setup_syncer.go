@@ -554,8 +554,7 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		gatewayClient,
 		virtualHostOptionClient,
 		routeOptionClient,
-    matchableHttpGatewayClient,
-		graphqlSchemaClient,
+		matchableHttpGatewayClient,
 		graphqlApiClient,
 		apiEmitterChan,
 	)
@@ -1038,7 +1037,7 @@ func constructOpts(ctx context.Context, clientset *kubernetes.Interface, kubeCac
 		Artifacts:                    artifactFactory,
 		AuthConfigs:                  authConfigFactory,
 		RateLimitConfigs:             rateLimitConfigFactory,
-		GraphQLSchemas:               graphqlSchemaFactory,
+		GraphQLApis:                  graphqlApiFactory,
 		VirtualServices:              virtualServiceFactory,
 		RouteTables:                  routeTableFactory,
 		VirtualHostOptions:           virtualHostOptionFactory,
