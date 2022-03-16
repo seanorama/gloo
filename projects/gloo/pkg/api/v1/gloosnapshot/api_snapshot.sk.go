@@ -34,6 +34,7 @@ type ApiSnapshot struct {
 	VirtualHostOptions gateway_solo_io.VirtualHostOptionList
 	RouteOptions       gateway_solo_io.RouteOptionList
 	GraphqlSchemas     graphql_gloo_solo_io.GraphQLSchemaList
+	HttpGateways       gateway_solo_io.MatchableHttpGatewayList
 }
 
 func (s ApiSnapshot) Clone() ApiSnapshot {
@@ -52,6 +53,7 @@ func (s ApiSnapshot) Clone() ApiSnapshot {
 		VirtualHostOptions: s.VirtualHostOptions.Clone(),
 		RouteOptions:       s.RouteOptions.Clone(),
 		GraphqlSchemas:     s.GraphqlSchemas.Clone(),
+		HttpGateways:       s.HttpGateways.Clone(),
 	}
 }
 
@@ -99,6 +101,9 @@ func (s ApiSnapshot) Hash(hasher hash.Hash64) (uint64, error) {
 		return 0, err
 	}
 	if _, err := s.hashGraphqlSchemas(hasher); err != nil {
+		return 0, err
+	}
+	if _, err := s.hashHttpGateways(hasher); err != nil {
 		return 0, err
 	}
 	return hasher.Sum64(), nil
@@ -166,6 +171,10 @@ func (s ApiSnapshot) hashRouteOptions(hasher hash.Hash64) (uint64, error) {
 
 func (s ApiSnapshot) hashGraphqlSchemas(hasher hash.Hash64) (uint64, error) {
 	return hashutils.HashAllSafe(hasher, s.GraphqlSchemas.AsInterfaces()...)
+}
+
+func (s ApiSnapshot) hashHttpGateways(hasher hash.Hash64) (uint64, error) {
+	return hashutils.HashAllSafe(hasher, s.HttpGateways.AsInterfaces()...)
 }
 
 func (s ApiSnapshot) HashFields() []zap.Field {
@@ -241,6 +250,11 @@ func (s ApiSnapshot) HashFields() []zap.Field {
 		log.Println(eris.Wrapf(err, "error hashing, this should never happen"))
 	}
 	fields = append(fields, zap.Uint64("graphqlSchemas", GraphqlSchemasHash))
+	HttpGatewaysHash, err := s.hashHttpGateways(hasher)
+	if err != nil {
+		log.Println(eris.Wrapf(err, "error hashing, this should never happen"))
+	}
+	fields = append(fields, zap.Uint64("httpGateways", HttpGatewaysHash))
 	snapshotHash, err := s.Hash(hasher)
 	if err != nil {
 		log.Println(eris.Wrapf(err, "error hashing, this should never happen"))
@@ -264,6 +278,7 @@ type ApiSnapshotStringer struct {
 	VirtualHostOptions []string
 	RouteOptions       []string
 	GraphqlSchemas     []string
+	HttpGateways       []string
 }
 
 func (ss ApiSnapshotStringer) String() string {
@@ -339,6 +354,11 @@ func (ss ApiSnapshotStringer) String() string {
 		s += fmt.Sprintf("    %v\n", name)
 	}
 
+	s += fmt.Sprintf("  HttpGateways %v\n", len(ss.HttpGateways))
+	for _, name := range ss.HttpGateways {
+		s += fmt.Sprintf("    %v\n", name)
+	}
+
 	return s
 }
 
@@ -363,5 +383,6 @@ func (s ApiSnapshot) Stringer() ApiSnapshotStringer {
 		VirtualHostOptions: s.VirtualHostOptions.NamespacesDotNames(),
 		RouteOptions:       s.RouteOptions.NamespacesDotNames(),
 		GraphqlSchemas:     s.GraphqlSchemas.NamespacesDotNames(),
+		HttpGateways:       s.HttpGateways.NamespacesDotNames(),
 	}
 }

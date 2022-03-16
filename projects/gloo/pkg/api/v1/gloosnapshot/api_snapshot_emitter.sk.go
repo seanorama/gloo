@@ -100,48 +100,51 @@ type ApiEmitter interface {
 	VirtualHostOption() gateway_solo_io.VirtualHostOptionClient
 	RouteOption() gateway_solo_io.RouteOptionClient
 	GraphQLSchema() graphql_gloo_solo_io.GraphQLSchemaClient
+	MatchableHttpGateway() gateway_solo_io.MatchableHttpGatewayClient
 }
 
-func NewApiEmitter(artifactClient gloo_solo_io.ArtifactClient, endpointClient gloo_solo_io.EndpointClient, proxyClient gloo_solo_io.ProxyClient, upstreamGroupClient gloo_solo_io.UpstreamGroupClient, secretClient gloo_solo_io.SecretClient, upstreamClient gloo_solo_io.UpstreamClient, authConfigClient enterprise_gloo_solo_io.AuthConfigClient, rateLimitConfigClient github_com_solo_io_gloo_projects_gloo_pkg_api_external_solo_ratelimit.RateLimitConfigClient, virtualServiceClient gateway_solo_io.VirtualServiceClient, routeTableClient gateway_solo_io.RouteTableClient, gatewayClient gateway_solo_io.GatewayClient, virtualHostOptionClient gateway_solo_io.VirtualHostOptionClient, routeOptionClient gateway_solo_io.RouteOptionClient, graphQLSchemaClient graphql_gloo_solo_io.GraphQLSchemaClient) ApiEmitter {
-	return NewApiEmitterWithEmit(artifactClient, endpointClient, proxyClient, upstreamGroupClient, secretClient, upstreamClient, authConfigClient, rateLimitConfigClient, virtualServiceClient, routeTableClient, gatewayClient, virtualHostOptionClient, routeOptionClient, graphQLSchemaClient, make(chan struct{}))
+func NewApiEmitter(artifactClient gloo_solo_io.ArtifactClient, endpointClient gloo_solo_io.EndpointClient, proxyClient gloo_solo_io.ProxyClient, upstreamGroupClient gloo_solo_io.UpstreamGroupClient, secretClient gloo_solo_io.SecretClient, upstreamClient gloo_solo_io.UpstreamClient, authConfigClient enterprise_gloo_solo_io.AuthConfigClient, rateLimitConfigClient github_com_solo_io_gloo_projects_gloo_pkg_api_external_solo_ratelimit.RateLimitConfigClient, virtualServiceClient gateway_solo_io.VirtualServiceClient, routeTableClient gateway_solo_io.RouteTableClient, gatewayClient gateway_solo_io.GatewayClient, virtualHostOptionClient gateway_solo_io.VirtualHostOptionClient, routeOptionClient gateway_solo_io.RouteOptionClient, graphQLSchemaClient graphql_gloo_solo_io.GraphQLSchemaClient, matchableHttpGatewayClient gateway_solo_io.MatchableHttpGatewayClient) ApiEmitter {
+	return NewApiEmitterWithEmit(artifactClient, endpointClient, proxyClient, upstreamGroupClient, secretClient, upstreamClient, authConfigClient, rateLimitConfigClient, virtualServiceClient, routeTableClient, gatewayClient, virtualHostOptionClient, routeOptionClient, graphQLSchemaClient, matchableHttpGatewayClient, make(chan struct{}))
 }
 
-func NewApiEmitterWithEmit(artifactClient gloo_solo_io.ArtifactClient, endpointClient gloo_solo_io.EndpointClient, proxyClient gloo_solo_io.ProxyClient, upstreamGroupClient gloo_solo_io.UpstreamGroupClient, secretClient gloo_solo_io.SecretClient, upstreamClient gloo_solo_io.UpstreamClient, authConfigClient enterprise_gloo_solo_io.AuthConfigClient, rateLimitConfigClient github_com_solo_io_gloo_projects_gloo_pkg_api_external_solo_ratelimit.RateLimitConfigClient, virtualServiceClient gateway_solo_io.VirtualServiceClient, routeTableClient gateway_solo_io.RouteTableClient, gatewayClient gateway_solo_io.GatewayClient, virtualHostOptionClient gateway_solo_io.VirtualHostOptionClient, routeOptionClient gateway_solo_io.RouteOptionClient, graphQLSchemaClient graphql_gloo_solo_io.GraphQLSchemaClient, emit <-chan struct{}) ApiEmitter {
+func NewApiEmitterWithEmit(artifactClient gloo_solo_io.ArtifactClient, endpointClient gloo_solo_io.EndpointClient, proxyClient gloo_solo_io.ProxyClient, upstreamGroupClient gloo_solo_io.UpstreamGroupClient, secretClient gloo_solo_io.SecretClient, upstreamClient gloo_solo_io.UpstreamClient, authConfigClient enterprise_gloo_solo_io.AuthConfigClient, rateLimitConfigClient github_com_solo_io_gloo_projects_gloo_pkg_api_external_solo_ratelimit.RateLimitConfigClient, virtualServiceClient gateway_solo_io.VirtualServiceClient, routeTableClient gateway_solo_io.RouteTableClient, gatewayClient gateway_solo_io.GatewayClient, virtualHostOptionClient gateway_solo_io.VirtualHostOptionClient, routeOptionClient gateway_solo_io.RouteOptionClient, graphQLSchemaClient graphql_gloo_solo_io.GraphQLSchemaClient, matchableHttpGatewayClient gateway_solo_io.MatchableHttpGatewayClient, emit <-chan struct{}) ApiEmitter {
 	return &apiEmitter{
-		artifact:          artifactClient,
-		endpoint:          endpointClient,
-		proxy:             proxyClient,
-		upstreamGroup:     upstreamGroupClient,
-		secret:            secretClient,
-		upstream:          upstreamClient,
-		authConfig:        authConfigClient,
-		rateLimitConfig:   rateLimitConfigClient,
-		virtualService:    virtualServiceClient,
-		routeTable:        routeTableClient,
-		gateway:           gatewayClient,
-		virtualHostOption: virtualHostOptionClient,
-		routeOption:       routeOptionClient,
-		graphQLSchema:     graphQLSchemaClient,
-		forceEmit:         emit,
+		artifact:             artifactClient,
+		endpoint:             endpointClient,
+		proxy:                proxyClient,
+		upstreamGroup:        upstreamGroupClient,
+		secret:               secretClient,
+		upstream:             upstreamClient,
+		authConfig:           authConfigClient,
+		rateLimitConfig:      rateLimitConfigClient,
+		virtualService:       virtualServiceClient,
+		routeTable:           routeTableClient,
+		gateway:              gatewayClient,
+		virtualHostOption:    virtualHostOptionClient,
+		routeOption:          routeOptionClient,
+		graphQLSchema:        graphQLSchemaClient,
+		matchableHttpGateway: matchableHttpGatewayClient,
+		forceEmit:            emit,
 	}
 }
 
 type apiEmitter struct {
-	forceEmit         <-chan struct{}
-	artifact          gloo_solo_io.ArtifactClient
-	endpoint          gloo_solo_io.EndpointClient
-	proxy             gloo_solo_io.ProxyClient
-	upstreamGroup     gloo_solo_io.UpstreamGroupClient
-	secret            gloo_solo_io.SecretClient
-	upstream          gloo_solo_io.UpstreamClient
-	authConfig        enterprise_gloo_solo_io.AuthConfigClient
-	rateLimitConfig   github_com_solo_io_gloo_projects_gloo_pkg_api_external_solo_ratelimit.RateLimitConfigClient
-	virtualService    gateway_solo_io.VirtualServiceClient
-	routeTable        gateway_solo_io.RouteTableClient
-	gateway           gateway_solo_io.GatewayClient
-	virtualHostOption gateway_solo_io.VirtualHostOptionClient
-	routeOption       gateway_solo_io.RouteOptionClient
-	graphQLSchema     graphql_gloo_solo_io.GraphQLSchemaClient
+	forceEmit            <-chan struct{}
+	artifact             gloo_solo_io.ArtifactClient
+	endpoint             gloo_solo_io.EndpointClient
+	proxy                gloo_solo_io.ProxyClient
+	upstreamGroup        gloo_solo_io.UpstreamGroupClient
+	secret               gloo_solo_io.SecretClient
+	upstream             gloo_solo_io.UpstreamClient
+	authConfig           enterprise_gloo_solo_io.AuthConfigClient
+	rateLimitConfig      github_com_solo_io_gloo_projects_gloo_pkg_api_external_solo_ratelimit.RateLimitConfigClient
+	virtualService       gateway_solo_io.VirtualServiceClient
+	routeTable           gateway_solo_io.RouteTableClient
+	gateway              gateway_solo_io.GatewayClient
+	virtualHostOption    gateway_solo_io.VirtualHostOptionClient
+	routeOption          gateway_solo_io.RouteOptionClient
+	graphQLSchema        graphql_gloo_solo_io.GraphQLSchemaClient
+	matchableHttpGateway gateway_solo_io.MatchableHttpGatewayClient
 }
 
 func (c *apiEmitter) Register() error {
@@ -185,6 +188,9 @@ func (c *apiEmitter) Register() error {
 		return err
 	}
 	if err := c.graphQLSchema.Register(); err != nil {
+		return err
+	}
+	if err := c.matchableHttpGateway.Register(); err != nil {
 		return err
 	}
 	return nil
@@ -244,6 +250,10 @@ func (c *apiEmitter) RouteOption() gateway_solo_io.RouteOptionClient {
 
 func (c *apiEmitter) GraphQLSchema() graphql_gloo_solo_io.GraphQLSchemaClient {
 	return c.graphQLSchema
+}
+
+func (c *apiEmitter) MatchableHttpGateway() gateway_solo_io.MatchableHttpGatewayClient {
+	return c.matchableHttpGateway
 }
 
 func (c *apiEmitter) Snapshots(watchNamespaces []string, opts clients.WatchOpts) (<-chan *ApiSnapshot, <-chan error, error) {
@@ -374,6 +384,14 @@ func (c *apiEmitter) Snapshots(watchNamespaces []string, opts clients.WatchOpts)
 	graphQLSchemaChan := make(chan graphQLSchemaListWithNamespace)
 
 	var initialGraphQLSchemaList graphql_gloo_solo_io.GraphQLSchemaList
+	/* Create channel for MatchableHttpGateway */
+	type matchableHttpGatewayListWithNamespace struct {
+		list      gateway_solo_io.MatchableHttpGatewayList
+		namespace string
+	}
+	matchableHttpGatewayChan := make(chan matchableHttpGatewayListWithNamespace)
+
+	var initialMatchableHttpGatewayList gateway_solo_io.MatchableHttpGatewayList
 
 	currentSnapshot := ApiSnapshot{}
 
@@ -630,6 +648,24 @@ func (c *apiEmitter) Snapshots(watchNamespaces []string, opts clients.WatchOpts)
 			defer done.Done()
 			errutils.AggregateErrs(ctx, errs, graphQLSchemaErrs, namespace+"-graphqlSchemas")
 		}(namespace)
+		/* Setup namespaced watch for MatchableHttpGateway */
+		{
+			httpGateways, err := c.matchableHttpGateway.List(namespace, clients.ListOpts{Ctx: opts.Ctx, Selector: opts.Selector})
+			if err != nil {
+				return nil, nil, errors.Wrapf(err, "initial MatchableHttpGateway list")
+			}
+			initialMatchableHttpGatewayList = append(initialMatchableHttpGatewayList, httpGateways...)
+		}
+		matchableHttpGatewayNamespacesChan, matchableHttpGatewayErrs, err := c.matchableHttpGateway.Watch(namespace, opts)
+		if err != nil {
+			return nil, nil, errors.Wrapf(err, "starting MatchableHttpGateway watch")
+		}
+
+		done.Add(1)
+		go func(namespace string) {
+			defer done.Done()
+			errutils.AggregateErrs(ctx, errs, matchableHttpGatewayErrs, namespace+"-httpGateways")
+		}(namespace)
 
 		/* Watch for changes and update snapshot */
 		go func(namespace string) {
@@ -763,6 +799,15 @@ func (c *apiEmitter) Snapshots(watchNamespaces []string, opts clients.WatchOpts)
 						return
 					case graphQLSchemaChan <- graphQLSchemaListWithNamespace{list: graphQLSchemaList, namespace: namespace}:
 					}
+				case matchableHttpGatewayList, ok := <-matchableHttpGatewayNamespacesChan:
+					if !ok {
+						return
+					}
+					select {
+					case <-ctx.Done():
+						return
+					case matchableHttpGatewayChan <- matchableHttpGatewayListWithNamespace{list: matchableHttpGatewayList, namespace: namespace}:
+					}
 				}
 			}
 		}(namespace)
@@ -795,6 +840,8 @@ func (c *apiEmitter) Snapshots(watchNamespaces []string, opts clients.WatchOpts)
 	currentSnapshot.RouteOptions = initialRouteOptionList.Sort()
 	/* Initialize snapshot for GraphqlSchemas */
 	currentSnapshot.GraphqlSchemas = initialGraphQLSchemaList.Sort()
+	/* Initialize snapshot for HttpGateways */
+	currentSnapshot.HttpGateways = initialMatchableHttpGatewayList.Sort()
 
 	snapshots := make(chan *ApiSnapshot)
 	go func() {
@@ -840,6 +887,7 @@ func (c *apiEmitter) Snapshots(watchNamespaces []string, opts clients.WatchOpts)
 		virtualHostOptionsByNamespace := make(map[string]gateway_solo_io.VirtualHostOptionList)
 		routeOptionsByNamespace := make(map[string]gateway_solo_io.RouteOptionList)
 		graphqlSchemasByNamespace := make(map[string]graphql_gloo_solo_io.GraphQLSchemaList)
+		httpGatewaysByNamespace := make(map[string]gateway_solo_io.MatchableHttpGatewayList)
 		defer func() {
 			close(snapshots)
 			// we must wait for done before closing the error chan,
@@ -1166,6 +1214,28 @@ func (c *apiEmitter) Snapshots(watchNamespaces []string, opts clients.WatchOpts)
 					graphQLSchemaList = append(graphQLSchemaList, graphqlSchemas...)
 				}
 				currentSnapshot.GraphqlSchemas = graphQLSchemaList.Sort()
+			case matchableHttpGatewayNamespacedList, ok := <-matchableHttpGatewayChan:
+				if !ok {
+					return
+				}
+				record()
+
+				namespace := matchableHttpGatewayNamespacedList.namespace
+
+				skstats.IncrementResourceCount(
+					ctx,
+					namespace,
+					"matchable_http_gateway",
+					mApiResourcesIn,
+				)
+
+				// merge lists by namespace
+				httpGatewaysByNamespace[namespace] = matchableHttpGatewayNamespacedList.list
+				var matchableHttpGatewayList gateway_solo_io.MatchableHttpGatewayList
+				for _, httpGateways := range httpGatewaysByNamespace {
+					matchableHttpGatewayList = append(matchableHttpGatewayList, httpGateways...)
+				}
+				currentSnapshot.HttpGateways = matchableHttpGatewayList.Sort()
 			}
 		}
 	}()

@@ -4496,7 +4496,7 @@ metadata:
 											},
 										},
 									},
-										},
+									},
 									ServiceAccountName: "gloo",
 									Containers: []v1.Container{
 										{

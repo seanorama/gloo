@@ -552,10 +552,10 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		virtualServiceClient,
 		rtClient,
 		gatewayClient,
-	//	matchableHttpGatewayClient,
 		virtualHostOptionClient,
 		routeOptionClient,
 		graphqlSchemaClient,
+		matchableHttpGatewayClient,
 		apiEmitterChan,
 	)
 

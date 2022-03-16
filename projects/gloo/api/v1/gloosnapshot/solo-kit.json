@@ -67,6 +67,11 @@
       {
         "name": "GraphQLSchema",
         "package": "graphql.gloo.solo.io"
+      },
+      {
+        "name": "MatchableHttpGateway",
+        "package": "gateway.solo.io",
+        "version": "v1"
       }
     ]
   },
