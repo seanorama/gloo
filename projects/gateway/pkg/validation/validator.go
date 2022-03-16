@@ -188,6 +188,7 @@ func convertSnapshot(glooSnap *gloov1snap.ApiSnapshot) *v1.ApiSnapshot {
 		Gateways:           glooSnap.Gateways,
 		VirtualHostOptions: glooSnap.VirtualHostOptions,
 		RouteOptions:       glooSnap.RouteOptions,
+		HttpGateways:       glooSnap.HttpGateways,
 	}
 }
 func (v *validator) gatewayUpdate(snap *v1.ApiSnapshot) bool {

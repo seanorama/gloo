@@ -145,6 +145,7 @@ func (s *translatorSyncer) translateProxies(ctx context.Context, snap *v1snap.Ap
 		RouteTables:        snap.RouteTables,
 		RouteOptions:       snap.RouteOptions,
 		VirtualHostOptions: snap.VirtualHostOptions,
+		HttpGateways:       snap.HttpGateways,
 	}
 	err := s.gatewaySyncer.Sync(ctx, gwSnap)
 	if err != nil {
