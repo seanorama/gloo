@@ -33,8 +33,9 @@ type ApiSnapshot struct {
 	Gateways           gateway_solo_io.GatewayList
 	VirtualHostOptions gateway_solo_io.VirtualHostOptionList
 	RouteOptions       gateway_solo_io.RouteOptionList
+  HttpGateways       gateway_solo_io.MatchableHttpGatewayList
 	GraphqlSchemas     graphql_gloo_solo_io.GraphQLSchemaList
-	HttpGateways       gateway_solo_io.MatchableHttpGatewayList
+	GraphqlApis        graphql_gloo_solo_io.GraphQLApiList
 }
 
 func (s ApiSnapshot) Clone() ApiSnapshot {
@@ -52,8 +53,9 @@ func (s ApiSnapshot) Clone() ApiSnapshot {
 		Gateways:           s.Gateways.Clone(),
 		VirtualHostOptions: s.VirtualHostOptions.Clone(),
 		RouteOptions:       s.RouteOptions.Clone(),
+    HttpGateways:       s.HttpGateways.Clone(),
 		GraphqlSchemas:     s.GraphqlSchemas.Clone(),
-		HttpGateways:       s.HttpGateways.Clone(),
+		GraphqlApis:        s.GraphqlApis.Clone(),
 	}
 }
 
@@ -100,7 +102,7 @@ func (s ApiSnapshot) Hash(hasher hash.Hash64) (uint64, error) {
 	if _, err := s.hashRouteOptions(hasher); err != nil {
 		return 0, err
 	}
-	if _, err := s.hashGraphqlSchemas(hasher); err != nil {
+	if _, err := s.hashGraphqlApis(hasher); err != nil {
 		return 0, err
 	}
 	if _, err := s.hashHttpGateways(hasher); err != nil {
@@ -169,8 +171,8 @@ func (s ApiSnapshot) hashRouteOptions(hasher hash.Hash64) (uint64, error) {
 	return hashutils.HashAllSafe(hasher, s.RouteOptions.AsInterfaces()...)
 }
 
-func (s ApiSnapshot) hashGraphqlSchemas(hasher hash.Hash64) (uint64, error) {
-	return hashutils.HashAllSafe(hasher, s.GraphqlSchemas.AsInterfaces()...)
+func (s ApiSnapshot) hashGraphqlApis(hasher hash.Hash64) (uint64, error) {
+	return hashutils.HashAllSafe(hasher, s.GraphqlApis.AsInterfaces()...)
 }
 
 func (s ApiSnapshot) hashHttpGateways(hasher hash.Hash64) (uint64, error) {
@@ -245,16 +247,17 @@ func (s ApiSnapshot) HashFields() []zap.Field {
 		log.Println(eris.Wrapf(err, "error hashing, this should never happen"))
 	}
 	fields = append(fields, zap.Uint64("routeOptions", RouteOptionsHash))
-	GraphqlSchemasHash, err := s.hashGraphqlSchemas(hasher)
-	if err != nil {
-		log.Println(eris.Wrapf(err, "error hashing, this should never happen"))
-	}
-	fields = append(fields, zap.Uint64("graphqlSchemas", GraphqlSchemasHash))
-	HttpGatewaysHash, err := s.hashHttpGateways(hasher)
+  HttpGatewaysHash, err := s.hashHttpGateways(hasher)
 	if err != nil {
 		log.Println(eris.Wrapf(err, "error hashing, this should never happen"))
 	}
 	fields = append(fields, zap.Uint64("httpGateways", HttpGatewaysHash))
+	GraphqlApisHash, err := s.hashGraphqlApis(hasher)
+	if err != nil {
+		log.Println(eris.Wrapf(err, "error hashing, this should never happen"))
+	}
+	fields = append(fields, zap.Uint64("graphqlSchemas", GraphqlSchemasHash))
+	fields = append(fields, zap.Uint64("graphqlApis", GraphqlApisHash))
 	snapshotHash, err := s.Hash(hasher)
 	if err != nil {
 		log.Println(eris.Wrapf(err, "error hashing, this should never happen"))
@@ -277,8 +280,9 @@ type ApiSnapshotStringer struct {
 	Gateways           []string
 	VirtualHostOptions []string
 	RouteOptions       []string
+  HttpGateways       []string
 	GraphqlSchemas     []string
-	HttpGateways       []string
+	GraphqlApis        []string
 }
 
 func (ss ApiSnapshotStringer) String() string {
@@ -349,8 +353,8 @@ func (ss ApiSnapshotStringer) String() string {
 		s += fmt.Sprintf("    %v\n", name)
 	}
 
-	s += fmt.Sprintf("  GraphqlSchemas %v\n", len(ss.GraphqlSchemas))
-	for _, name := range ss.GraphqlSchemas {
+	s += fmt.Sprintf("  GraphqlApis %v\n", len(ss.GraphqlApis))
+	for _, name := range ss.GraphqlApis {
 		s += fmt.Sprintf("    %v\n", name)
 	}
 
@@ -382,7 +386,8 @@ func (s ApiSnapshot) Stringer() ApiSnapshotStringer {
 		Gateways:           s.Gateways.NamespacesDotNames(),
 		VirtualHostOptions: s.VirtualHostOptions.NamespacesDotNames(),
 		RouteOptions:       s.RouteOptions.NamespacesDotNames(),
+    HttpGateways:       s.HttpGateways.NamespacesDotNames(),
 		GraphqlSchemas:     s.GraphqlSchemas.NamespacesDotNames(),
-		HttpGateways:       s.HttpGateways.NamespacesDotNames(),
+		GraphqlApis:        s.GraphqlApis.NamespacesDotNames(),
 	}
 }
