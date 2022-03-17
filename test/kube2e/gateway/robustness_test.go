@@ -2,6 +2,24 @@ package gateway_test
 
 import (
 	"fmt"
+	gloostatusutils "github.com/solo-io/gloo/pkg/utils/statusutils"
+	gatewayv1 "github.com/solo-io/gloo/projects/gateway/pkg/api/v1"
+	"github.com/solo-io/gloo/projects/gateway/pkg/defaults"
+	"github.com/solo-io/gloo/projects/gateway/pkg/services/k8sadmission"
+	gloov1 "github.com/solo-io/gloo/projects/gloo/pkg/api/v1"
+	defaults2 "github.com/solo-io/gloo/projects/gloo/pkg/defaults"
+	"github.com/solo-io/gloo/test/helpers"
+	"github.com/solo-io/go-utils/cliutils"
+	"github.com/solo-io/k8s-utils/kubeutils"
+	"github.com/solo-io/k8s-utils/testutils/helper"
+	"github.com/solo-io/solo-kit/pkg/api/v1/clients"
+	"github.com/solo-io/solo-kit/pkg/api/v1/clients/factory"
+	"github.com/solo-io/solo-kit/pkg/api/v1/clients/kube"
+	"github.com/solo-io/solo-kit/pkg/api/v1/resources"
+	"github.com/solo-io/solo-kit/pkg/api/v1/resources/core"
+	"io/ioutil"
+	"os"
+	"regexp"
 	"sort"
 	"time"
 
@@ -16,7 +34,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
 
-/*var _ = Describe("Robustness tests", func() {
+var _ = Describe("Robustness tests", func() {
 
 	// These tests are used to validate our Endpoint Disovery Service (EDS) functionality
 	// Historically, we had an EDS Test Suite (https://github.com/solo-io/gloo/tree/197272444efae0e6649c798997d6efa94bb7a8d9/test/kube2e/eds)
@@ -513,7 +531,7 @@ import (
 
 })
 
-*/
+
 func expectedResponse(appName string) string {
 	return fmt.Sprintf("Hello from %s!", appName)
 }

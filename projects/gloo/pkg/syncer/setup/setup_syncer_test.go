@@ -178,6 +178,7 @@ var _ = Describe("SetupSyncer", func() {
 					gatewayv1.RouteOptionCrd,
 					gatewayv1.VirtualHostOptionCrd,
 					gatewayv1.RouteTableCrd,
+					gatewayv1.MatchableHttpGatewayCrd,
 				}
 
 				for _, crdToRegister := range crdsToRegister {
