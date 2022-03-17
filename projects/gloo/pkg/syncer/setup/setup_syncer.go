@@ -577,7 +577,6 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 	if err != nil {
 		return err
 	}
-	//TODO: Moved earlier so grpc server is initialzed when creating gw validation syncer, move back when grpc calls are removed
 	if opts.ValidationServer.StartGrpcServer {
 		validationServer := opts.ValidationServer
 		lis, err := net.Listen(validationServer.BindAddr.Network(), validationServer.BindAddr.String())
@@ -601,7 +600,6 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 	if opts.ControlPlane.StartGrpcServer {
 		// copy for the go-routines
 		controlPlane := opts.ControlPlane
-		logger.Infof("[ELC] starting control plane grpc server %s", controlPlane.BindAddr.String())
 		lis, err := net.Listen(opts.ControlPlane.BindAddr.Network(), opts.ControlPlane.BindAddr.String())
 		if err != nil {
 			return err
@@ -618,7 +616,6 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		}()
 		opts.ControlPlane.StartGrpcServer = false
 	}
-	//TODO: create these with the gloo opts/verify whether namespaces are always the same
 	gwOpts := gwtranslator.Opts{
 		GlooNamespace:                 opts.WriteNamespace,
 		WriteNamespace:                opts.WriteNamespace,
