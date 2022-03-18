@@ -451,5 +451,6 @@ func GatewayToGlooSnapshot(snap *gwv1.ApiSnapshot) *v1snap.ApiSnapshot {
 		Gateways:           snap.Gateways,
 		VirtualHostOptions: snap.VirtualHostOptions,
 		RouteOptions:       snap.RouteOptions,
+		HttpGateways:       snap.HttpGateways,
 	}
 }
