@@ -8,8 +8,9 @@ import (
 	"reflect"
 	"strings"
 	"unicode"
-
-	"github.com/onsi/gomega/format"
+	
+  "github.com/onsi/gomega/format"
+	"github.com/ghodss/yaml"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
@@ -2077,6 +2078,36 @@ spec:
 						gatewayProxyDeployment *appsv1.Deployment
 					)
 
+					checkDiscoveryAddressEqual := func(expected string) {
+						testManifest.SelectResources(func(resource *unstructured.Unstructured) bool {
+							return resource.GetKind() == "Deployment" && resource.GetName() == "gateway-proxy"
+						}).ExpectAll(func(deployment *unstructured.Unstructured) {
+							deploymentObject, err := kuberesource.ConvertUnstructured(deployment)
+							Expect(err).NotTo(HaveOccurred(), "Deployment should be able to convert from unstructured")
+							structuredDeployment, ok := deploymentObject.(*appsv1.Deployment)
+							Expect(ok).To(BeTrue(), "Deployment should be able to cast to a structured deployment")
+							isProxyConfigSet := false
+
+							var discoveryAddress interface{}
+							for _, container := range structuredDeployment.Spec.Template.Spec.Containers {
+								for _, env := range container.Env {
+									if env.Name == "PROXY_CONFIG" {
+										isProxyConfigSet = true
+										var proxyConfigMap map[string]interface{}
+										err := yaml.Unmarshal([]byte(env.Value), &proxyConfigMap)
+										Expect(err).ToNot(HaveOccurred())
+										discoveryAddress, ok = proxyConfigMap["discoveryAddress"]
+										Expect(ok).To(BeTrue(), "discoveryAddress should be set in PROXY_CONFIG")
+										Expect(discoveryAddress).To(Equal(expected), fmt.Sprintf("discovery address should be value: %v", expected))
+										break
+									}
+								}
+							}
+
+							Expect(isProxyConfigSet).To(BeTrue(), "Istio's PROXY_CONFIG and discoveryAddress were not set")
+						})
+					}
+
 					BeforeEach(func() {
 						selector = map[string]string{
 							"gloo":             "gateway-proxy",
@@ -2743,6 +2774,33 @@ spec:
 							}
 
 						})
+					})
+
+					It("can set discoveryAddress value in PROXY_CONFIG env var", func() {
+						val := "istiod-1-8-6.istio-system.svc:15012"
+
+						prepareMakefile(namespace, helmValues{
+							valuesArgs: []string{
+								"global.glooMtls.enabled=true",
+								"global.istioSDS.enabled=true",
+								"gatewayProxies.gatewayProxy.istioDiscoveryAddress=" + val,
+							},
+						})
+
+						checkDiscoveryAddressEqual(val)
+					})
+
+					It("istio's discoveryAddress default value set", func() {
+						def := "istiod.istio-system.svc:15012"
+
+						prepareMakefile(namespace, helmValues{
+							valuesArgs: []string{
+								"global.glooMtls.enabled=true",
+								"global.istioSDS.enabled=true",
+							},
+						})
+
+						checkDiscoveryAddressEqual(def)
 					})
 
 					It("can add extra volume mounts to the gateway-proxy container deployment", func() {
