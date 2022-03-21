@@ -3,10 +3,11 @@ package syncer
 import (
 	"context"
 	"fmt"
-	"github.com/solo-io/solo-kit/pkg/errors"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/solo-io/solo-kit/pkg/errors"
 
 	"github.com/solo-io/gloo/projects/gateway/pkg/utils/metrics"
 	gloo_translator "github.com/solo-io/gloo/projects/gloo/pkg/translator"
@@ -208,6 +209,7 @@ func (s *statusSyncer) setCurrentProxies(desiredProxies reconciler.GeneratedProx
 		return refi.GetName() < refj.GetName()
 	})
 }
+
 // run this in the background
 // Currently this isn't run because UpdateProxies is called from the translation loop.
 // We might want to get proxies from multiple sources in which case we do need this watch.

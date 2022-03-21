@@ -215,8 +215,10 @@ spec:
                   compressedProxySpec:
                     type: boolean
                   gatewayMode:
+                    nullable: true
                     type: boolean
                   persistProxySpec:
+                    nullable: true
                     type: boolean
                   readGatewaysFromAllNamespaces:
                     type: boolean

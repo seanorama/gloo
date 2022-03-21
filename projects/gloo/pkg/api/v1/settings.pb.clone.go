@@ -441,9 +441,17 @@ func (m *GatewayOptions) Clone() proto.Message {
 		target.VirtualServiceOptions = proto.Clone(m.GetVirtualServiceOptions()).(*VirtualServiceOptions)
 	}
 
-	target.PersistProxySpec = m.GetPersistProxySpec()
+	if h, ok := interface{}(m.GetPersistProxySpec()).(clone.Cloner); ok {
+		target.PersistProxySpec = h.Clone().(*github_com_golang_protobuf_ptypes_wrappers.BoolValue)
+	} else {
+		target.PersistProxySpec = proto.Clone(m.GetPersistProxySpec()).(*github_com_golang_protobuf_ptypes_wrappers.BoolValue)
+	}
 
-	target.GatewayMode = m.GetGatewayMode()
+	if h, ok := interface{}(m.GetGatewayMode()).(clone.Cloner); ok {
+		target.GatewayMode = h.Clone().(*github_com_golang_protobuf_ptypes_wrappers.BoolValue)
+	} else {
+		target.GatewayMode = proto.Clone(m.GetGatewayMode()).(*github_com_golang_protobuf_ptypes_wrappers.BoolValue)
+	}
 
 	return target
 }

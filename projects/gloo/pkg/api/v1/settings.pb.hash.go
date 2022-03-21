@@ -1009,14 +1009,44 @@ func (m *GatewayOptions) Hash(hasher hash.Hash64) (uint64, error) {
 		}
 	}
 
-	err = binary.Write(hasher, binary.LittleEndian, m.GetPersistProxySpec())
-	if err != nil {
-		return 0, err
+	if h, ok := interface{}(m.GetPersistProxySpec()).(safe_hasher.SafeHasher); ok {
+		if _, err = hasher.Write([]byte("PersistProxySpec")); err != nil {
+			return 0, err
+		}
+		if _, err = h.Hash(hasher); err != nil {
+			return 0, err
+		}
+	} else {
+		if fieldValue, err := hashstructure.Hash(m.GetPersistProxySpec(), nil); err != nil {
+			return 0, err
+		} else {
+			if _, err = hasher.Write([]byte("PersistProxySpec")); err != nil {
+				return 0, err
+			}
+			if err := binary.Write(hasher, binary.LittleEndian, fieldValue); err != nil {
+				return 0, err
+			}
+		}
 	}
 
-	err = binary.Write(hasher, binary.LittleEndian, m.GetGatewayMode())
-	if err != nil {
-		return 0, err
+	if h, ok := interface{}(m.GetGatewayMode()).(safe_hasher.SafeHasher); ok {
+		if _, err = hasher.Write([]byte("GatewayMode")); err != nil {
+			return 0, err
+		}
+		if _, err = h.Hash(hasher); err != nil {
+			return 0, err
+		}
+	} else {
+		if fieldValue, err := hashstructure.Hash(m.GetGatewayMode(), nil); err != nil {
+			return 0, err
+		} else {
+			if _, err = hasher.Write([]byte("GatewayMode")); err != nil {
+				return 0, err
+			}
+			if err := binary.Write(hasher, binary.LittleEndian, fieldValue); err != nil {
+				return 0, err
+			}
+		}
 	}
 
 	return hasher.Sum64(), nil

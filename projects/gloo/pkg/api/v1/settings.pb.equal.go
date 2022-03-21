@@ -686,12 +686,24 @@ func (m *GatewayOptions) Equal(that interface{}) bool {
 		}
 	}
 
-	if m.GetPersistProxySpec() != target.GetPersistProxySpec() {
-		return false
+	if h, ok := interface{}(m.GetPersistProxySpec()).(equality.Equalizer); ok {
+		if !h.Equal(target.GetPersistProxySpec()) {
+			return false
+		}
+	} else {
+		if !proto.Equal(m.GetPersistProxySpec(), target.GetPersistProxySpec()) {
+			return false
+		}
 	}
 
-	if m.GetGatewayMode() != target.GetGatewayMode() {
-		return false
+	if h, ok := interface{}(m.GetGatewayMode()).(equality.Equalizer); ok {
+		if !h.Equal(target.GetGatewayMode()) {
+			return false
+		}
+	} else {
+		if !proto.Equal(m.GetGatewayMode(), target.GetGatewayMode()) {
+			return false
+		}
 	}
 
 	return true

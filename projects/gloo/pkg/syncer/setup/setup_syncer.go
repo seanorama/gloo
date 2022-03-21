@@ -381,14 +381,13 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		return err
 	}
 
-	memoryProxyClient, err := v1.NewProxyClient(watchOpts.Ctx, opts.Proxies)
+	proxyClient, err := v1.NewProxyClient(watchOpts.Ctx, opts.Proxies)
 	if err != nil {
 		return err
 	}
-	if err := memoryProxyClient.Register(); err != nil {
+	if err := proxyClient.Register(); err != nil {
 		return err
 	}
-	//memoryProxyClient, err := v1.NewProxyClient(watchOpts.Ctx, endpointsFactory)
 
 	upstreamGroupClient, err := v1.NewUpstreamGroupClient(watchOpts.Ctx, opts.UpstreamGroups)
 	if err != nil {
@@ -543,7 +542,7 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 	apiCache := v1snap.NewApiEmitterWithEmit(
 		artifactClient,
 		endpointClient,
-		memoryProxyClient,
+		proxyClient,
 		upstreamGroupClient,
 		secretClient,
 		hybridUsClient,
@@ -562,7 +561,7 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 	rpt := reporter.NewReporter("gloo",
 		statusClient,
 		hybridUsClient.BaseClient(),
-		memoryProxyClient.BaseClient(),
+		proxyClient.BaseClient(),
 		upstreamGroupClient.BaseClient(),
 		authConfigClient.BaseClient(),
 		gatewayClient.BaseClient(),
@@ -669,8 +668,8 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		ignoreProxyValidationFailure,
 		allowWarnings,
 	))
-	proxyReconciler := gwreconciler.NewProxyReconciler(validator.Validate, memoryProxyClient, statusClient)
-	gwTranslatorSyncer = gwsyncer.NewTranslatorSyncer(opts.WatchOpts.Ctx, opts.WriteNamespace, memoryProxyClient, proxyReconciler, rpt, gatewayTranslator, statusClient, statusMetrics)
+	proxyReconciler := gwreconciler.NewProxyReconciler(validator.Validate, proxyClient, statusClient)
+	gwTranslatorSyncer = gwsyncer.NewTranslatorSyncer(opts.WatchOpts.Ctx, opts.WriteNamespace, proxyClient, proxyReconciler, rpt, gatewayTranslator, statusClient, statusMetrics)
 
 	params := syncer.TranslatorSyncerExtensionParams{
 		RateLimitServiceSettings: ratelimit.ServiceSettings{
@@ -696,7 +695,7 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 	}
 	syncerExtensions = reconcileUpgradedTranslatorSyncerExtensions(syncerExtensions, upgradedExtensions)
 
-	translationSync := syncer.NewTranslatorSyncer(t, opts.ControlPlane.SnapshotCache, xdsHasher, xdsSanitizer, rpt, opts.DevMode, syncerExtensions, opts.Settings, statusMetrics, gwTranslatorSyncer, memoryProxyClient, opts.WriteNamespace)
+	translationSync := syncer.NewTranslatorSyncer(t, opts.ControlPlane.SnapshotCache, xdsHasher, xdsSanitizer, rpt, opts.DevMode, syncerExtensions, opts.Settings, statusMetrics, gwTranslatorSyncer, proxyClient, opts.WriteNamespace)
 
 	syncers := v1snap.ApiSyncers{
 		translationSync,
@@ -892,7 +891,7 @@ func constructOpts(ctx context.Context, clientset *kubernetes.Interface, kubeCac
 	}
 
 	var proxyFactory factory.ResourceClientFactory
-	if settings.GetGateway().GetPersistProxySpec() {
+	if settings.GetGateway().GetPersistProxySpec().GetValue() {
 		proxyFactory, err = bootstrap.ConfigFactoryForSettings(params, v1.ProxyCrd)
 		if err != nil {
 			return bootstrap.Opts{}, err
@@ -982,7 +981,12 @@ func constructOpts(ctx context.Context, clientset *kubernetes.Interface, kubeCac
 	}
 	var validation *gwtranslator.ValidationOpts
 	validationCfg := settings.GetGateway().GetValidation()
-	gatewayMode := settings.GetGateway().GetGatewayMode()
+	var gatewayMode bool
+	if settings.GetGateway().GetGatewayMode() != nil {
+		gatewayMode = settings.GetGateway().GetGatewayMode().GetValue()
+	} else {
+		gatewayMode = true
+	}
 	if validationCfg != nil && gatewayMode {
 		alwaysAcceptResources := AcceptAllResourcesByDefault
 
