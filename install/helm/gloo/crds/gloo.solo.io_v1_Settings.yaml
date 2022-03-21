@@ -214,7 +214,7 @@ spec:
                     type: boolean
                   compressedProxySpec:
                     type: boolean
-                  gatewayMode:
+                  enableGatewayController:
                     nullable: true
                     type: boolean
                   persistProxySpec:

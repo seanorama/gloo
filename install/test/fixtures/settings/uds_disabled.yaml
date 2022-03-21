@@ -13,7 +13,7 @@ spec:
       enabled: false
   gateway:
     readGatewaysFromAllNamespaces: false
-    gatewayMode: true
+    enableGatewayController: true
     validation:
       alwaysAccept: true
       allowWarnings: true

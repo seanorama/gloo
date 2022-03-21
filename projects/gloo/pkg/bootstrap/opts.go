@@ -51,7 +51,7 @@ type Opts struct {
 	KubeCoreCache                corecache.KubeCoreCache
 	ValidationOpts               *gwtranslator.ValidationOpts
 	ReadGatwaysFromAllNamespaces bool
-	GatewayMode                  bool
+	GatewayControllerEnabled     bool
 }
 
 type Consul struct {

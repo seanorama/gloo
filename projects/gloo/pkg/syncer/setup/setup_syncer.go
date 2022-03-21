@@ -636,7 +636,7 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		ignoreProxyValidationFailure bool
 		allowWarnings                bool
 	)
-	if gwOpts.Validation != nil && opts.GatewayMode {
+	if gwOpts.Validation != nil && opts.GatewayControllerEnabled {
 		ignoreProxyValidationFailure = gwOpts.Validation.IgnoreProxyValidationFailure
 		allowWarnings = gwOpts.Validation.AllowWarnings
 	}
@@ -701,7 +701,7 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		translationSync,
 		validator,
 	}
-	if opts.GatewayMode {
+	if opts.GatewayControllerEnabled {
 		syncers = append(syncers, gwValidationSyncer)
 	}
 	apiEventLoop := v1snap.NewApiEventLoop(apiCache, syncers)
@@ -982,8 +982,8 @@ func constructOpts(ctx context.Context, clientset *kubernetes.Interface, kubeCac
 	var validation *gwtranslator.ValidationOpts
 	validationCfg := settings.GetGateway().GetValidation()
 	var gatewayMode bool
-	if settings.GetGateway().GetGatewayMode() != nil {
-		gatewayMode = settings.GetGateway().GetGatewayMode().GetValue()
+	if settings.GetGateway().GetEnableGatewayController() != nil {
+		gatewayMode = settings.GetGateway().GetEnableGatewayController().GetValue()
 	} else {
 		gatewayMode = true
 	}
@@ -1048,6 +1048,6 @@ func constructOpts(ctx context.Context, clientset *kubernetes.Interface, kubeCac
 		KubeCoreCache:                kubeCoreCache,
 		ValidationOpts:               validation,
 		ReadGatwaysFromAllNamespaces: readGatewaysFromAllNamespaces,
-		GatewayMode:                  gatewayMode,
+		GatewayControllerEnabled:     gatewayMode,
 	}, nil
 }

@@ -3203,7 +3203,7 @@ spec:
 
   gateway:
     readGatewaysFromAllNamespaces: false
-    gatewayMode: true
+    enableGatewayController: true
     validation:
       proxyValidationServerAddr: gloo:9988
       alwaysAccept: true

@@ -1029,18 +1029,18 @@ func (m *GatewayOptions) Hash(hasher hash.Hash64) (uint64, error) {
 		}
 	}
 
-	if h, ok := interface{}(m.GetGatewayMode()).(safe_hasher.SafeHasher); ok {
-		if _, err = hasher.Write([]byte("GatewayMode")); err != nil {
+	if h, ok := interface{}(m.GetEnableGatewayController()).(safe_hasher.SafeHasher); ok {
+		if _, err = hasher.Write([]byte("EnableGatewayController")); err != nil {
 			return 0, err
 		}
 		if _, err = h.Hash(hasher); err != nil {
 			return 0, err
 		}
 	} else {
-		if fieldValue, err := hashstructure.Hash(m.GetGatewayMode(), nil); err != nil {
+		if fieldValue, err := hashstructure.Hash(m.GetEnableGatewayController(), nil); err != nil {
 			return 0, err
 		} else {
-			if _, err = hasher.Write([]byte("GatewayMode")); err != nil {
+			if _, err = hasher.Write([]byte("EnableGatewayController")); err != nil {
 				return 0, err
 			}
 			if err := binary.Write(hasher, binary.LittleEndian, fieldValue); err != nil {

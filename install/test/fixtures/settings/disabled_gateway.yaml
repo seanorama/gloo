@@ -11,7 +11,7 @@ spec:
     fdsMode: WHITELIST
   gateway:
     readGatewaysFromAllNamespaces: false
-    gatewayMode: false
+    enableGatewayController: false
     persistProxySpec: true
     validation:
       alwaysAccept: true

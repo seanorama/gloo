@@ -696,12 +696,12 @@ func (m *GatewayOptions) Equal(that interface{}) bool {
 		}
 	}
 
-	if h, ok := interface{}(m.GetGatewayMode()).(equality.Equalizer); ok {
-		if !h.Equal(target.GetGatewayMode()) {
+	if h, ok := interface{}(m.GetEnableGatewayController()).(equality.Equalizer); ok {
+		if !h.Equal(target.GetEnableGatewayController()) {
 			return false
 		}
 	} else {
-		if !proto.Equal(m.GetGatewayMode(), target.GetGatewayMode()) {
+		if !proto.Equal(m.GetEnableGatewayController(), target.GetEnableGatewayController()) {
 			return false
 		}
 	}

@@ -93,7 +93,7 @@ spec:
 {{- if .Values.gateway.compressedProxySpec}}
     compressedProxySpec: {{ .Values.gateway.compressedProxySpec}}
 {{- end}}
-    gatewayMode: {{ .Values.gateway.enabled }}
+    enableGatewayController: {{ .Values.gateway.enabled }}
 {{- if .Values.gateway.validation.enabled }}
     validation:
       proxyValidationServerAddr: "gloo:{{ .Values.gloo.deployment.validationPort }}"

@@ -447,10 +447,10 @@ func (m *GatewayOptions) Clone() proto.Message {
 		target.PersistProxySpec = proto.Clone(m.GetPersistProxySpec()).(*github_com_golang_protobuf_ptypes_wrappers.BoolValue)
 	}
 
-	if h, ok := interface{}(m.GetGatewayMode()).(clone.Cloner); ok {
-		target.GatewayMode = h.Clone().(*github_com_golang_protobuf_ptypes_wrappers.BoolValue)
+	if h, ok := interface{}(m.GetEnableGatewayController()).(clone.Cloner); ok {
+		target.EnableGatewayController = h.Clone().(*github_com_golang_protobuf_ptypes_wrappers.BoolValue)
 	} else {
-		target.GatewayMode = proto.Clone(m.GetGatewayMode()).(*github_com_golang_protobuf_ptypes_wrappers.BoolValue)
+		target.EnableGatewayController = proto.Clone(m.GetEnableGatewayController()).(*github_com_golang_protobuf_ptypes_wrappers.BoolValue)
 	}
 
 	return target
