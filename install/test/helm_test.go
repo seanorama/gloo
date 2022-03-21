@@ -8,9 +8,9 @@ import (
 	"reflect"
 	"strings"
 	"unicode"
-	
-  "github.com/onsi/gomega/format"
+
 	"github.com/ghodss/yaml"
+	"github.com/onsi/gomega/format"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/empty"
