@@ -2,6 +2,7 @@ package setup_test
 
 import (
 	"context"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 	"net"
 	"os"
 	"sync"
@@ -65,8 +66,8 @@ var _ = Describe("SetupSyncer", func() {
 			DiscoveryNamespace: "non-existent-namespace",
 			WatchNamespaces:    []string{"non-existent-namespace"},
 			Gateway: &v1.GatewayOptions{
-				GatewayMode:      true,
-				PersistProxySpec: false,
+				GatewayMode:      &wrapperspb.BoolValue{Value: true},
+				PersistProxySpec: &wrapperspb.BoolValue{Value: false},
 				Validation:       nil,
 			},
 		}
