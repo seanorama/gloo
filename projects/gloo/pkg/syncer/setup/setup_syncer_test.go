@@ -2,11 +2,12 @@ package setup_test
 
 import (
 	"context"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 	"net"
 	"os"
 	"sync"
 	"time"
+
+	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/solo-io/gloo/projects/gloo/pkg/plugins/registry"
 

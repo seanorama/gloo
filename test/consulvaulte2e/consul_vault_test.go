@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"google.golang.org/protobuf/types/known/wrapperspb"
+
 	gatewaydefaults "github.com/solo-io/gloo/projects/gateway/pkg/defaults"
 	"github.com/solo-io/solo-kit/pkg/api/v1/resources"
 	"github.com/solo-io/solo-kit/pkg/utils/prototime"
@@ -353,6 +355,9 @@ func writeSettings(settingsDir string, glooPort, validationPort, restXdsPort int
 			XdsBindAddr:        fmt.Sprintf("0.0.0.0:%v", glooPort),
 			ValidationBindAddr: fmt.Sprintf("0.0.0.0:%v", validationPort),
 			RestXdsBindAddr:    fmt.Sprintf("0.0.0.0:%v", restXdsPort),
+		},
+		Gateway: &gloov1.GatewayOptions{
+			PersistProxySpec: &wrapperspb.BoolValue{Value: true},
 		},
 		RefreshRate:        prototime.DurationToProto(time.Second * 1),
 		DiscoveryNamespace: writeNamespace,
