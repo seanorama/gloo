@@ -22,7 +22,6 @@ import (
 	consulapi "github.com/hashicorp/consul/api"
 	vaultapi "github.com/hashicorp/vault/api"
 	v1 "github.com/solo-io/gloo/projects/gateway/pkg/api/v1"
-	gatewaysetup "github.com/solo-io/gloo/projects/gateway/pkg/setup"
 	"github.com/solo-io/gloo/projects/gloo/pkg/bootstrap"
 	"github.com/solo-io/gloo/projects/gloo/pkg/setup"
 	"github.com/solo-io/gloo/test/helpers"
@@ -122,12 +121,6 @@ var _ = Describe("Consul + Vault Configuration Happy Path e2e", func() {
 			defer GinkgoRecover()
 			// Start Gloo
 			err = setup.StartGlooInTest(ctx)
-			Expect(err).NotTo(HaveOccurred())
-		}()
-		go func() {
-			defer GinkgoRecover()
-			// Start Gateway
-			err = gatewaysetup.Main(ctx)
 			Expect(err).NotTo(HaveOccurred())
 		}()
 		go func() {
