@@ -127,6 +127,7 @@ func RunGlooGatewayUdsFds(ctx context.Context, runOptions *RunOptions) TestClien
 		DiscoveryNamespace: runOptions.NsToWrite,
 		Gateway: &gloov1.GatewayOptions{
 			PersistProxySpec: &wrappers.BoolValue{Value: true},
+			EnableGatewayController: &wrappers.BoolValue{Value: !runOptions.WhatToRun.DisableGateway},
 		},
 	}
 
