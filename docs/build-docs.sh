@@ -83,7 +83,7 @@ export PATH=$workingDir/_output/.bin:$PATH
 #   - 1.3.32
 
 function generateHugoVersionsYaml() {
-  yamlFile=$repoDir/docs/data/Solo.yaml
+  yamlFile=$repoDir/docs/data/Solo-tmp.yaml
   # Truncate file first.
   echo "LatestVersion: $latestVersion" > $yamlFile
   # /gloo-edge prefix is needed because the site is hosted under a domain name with suffix /gloo-edge
@@ -98,6 +98,13 @@ function generateHugoVersionsYaml() {
   for hugoVersion in "${oldVersions[@]}"
   do
     echo "  - $hugoVersion" >> $yamlFile
+  done
+
+  # copy temporary file line by line, pruning path versions from lines that have them
+  out=$repoDir/docs/data/Solo.yaml
+  rm -f $out
+  cat $yamlFile | while read line || [[ -n $line ]]; do
+      echo $line | rev | cut -d'.' -f2- | rev >> $out
   done
 }
 
@@ -144,6 +151,8 @@ function generateSiteForVersion() {
 
   cat site-latest/index.json | node $workingDir/search/generate-search-index.js > site-latest/search-index.json
   # Copy over versioned static site to firebase content folder.
+  # Folders should only consider minor versions, however.  Therefore, we strip patch version information
+  version=$(echo $version | rev | cut -d'.' -f2- | rev)
   mkdir -p $docsSiteDir/public/gloo-edge/$version
   cp -a site-latest/. $docsSiteDir/public/gloo-edge/$version/
 
