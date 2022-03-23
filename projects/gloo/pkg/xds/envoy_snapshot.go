@@ -18,10 +18,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	envoy_config_cluster_v3 "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
-	envoy_config_endpoint_v3 "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
-	envoy_config_listener_v3 "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
-	envoy_config_route_v3 "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/solo-io/solo-kit/pkg/api/v1/control-plane/cache"
 	"github.com/solo-io/solo-kit/pkg/api/v1/control-plane/resource"
@@ -44,6 +41,42 @@ type EnvoySnapshot struct {
 	Listeners cache.Resources
 }
 
+// Resources is a versioned group of resources.
+type CResources struct {
+	// Version information.
+	Version string
+
+	// Items in the group.
+	Items map[string]resource.EnvoyResource
+}
+
+// Resources is a versioned group of resources.
+type EResources struct {
+	// Version information.
+	Version string
+
+	// Items in the group.
+	Items map[string]resource.EnvoyResource
+}
+
+// Resources is a versioned group of resources.
+type RResources struct {
+	// Version information.
+	Version string
+
+	// Items in the group.
+	Items map[string]resource.EnvoyResource
+}
+
+// Resources is a versioned group of resources.
+type LResources struct {
+	// Version information.
+	Version string
+
+	// Items in the group.
+	Items map[string]resource.EnvoyResource
+}
+
 func (s *EnvoySnapshot) Serialize() []byte {
 	// convert to json then write out
 	b, err := json.Marshal(s)
@@ -54,33 +87,72 @@ func (s *EnvoySnapshot) Serialize() []byte {
 	return b
 }
 
+type EnvoySnapshotToDeserialize struct {
+	// Endpoints are items in the EDS V3 response payload.
+	Endpoints EResources
+
+	// Clusters are items in the CDS response payload.
+	Clusters CResources
+
+	// Routes are items in the RDS response payload.
+	Routes RResources
+
+	// Listeners are items in the LDS response payload.
+	Listeners LResources
+}
+
 func (s *EnvoySnapshot) Deserialize(bytes []byte) {
-	err := json.Unmarshal(bytes, &s)
-	fmt.Printf("err is %v\n", err)
+	es := EnvoySnapshotToDeserialize{}
+	err := json.Unmarshal(bytes, &es)
+	if err != nil {
+		panic(err)
+	}
 	// ignore error, all other fields worked
 	// go through and set resource for each!
 	//for typeurl, resources := range s {
 	//	for b, _ := range resources.Items {
 	//		switch typeurl {
 	//		case "Clusters":
-	for k, _ := range s.Clusters.Items {
-		er := resource.NewEnvoyResource(&envoy_config_cluster_v3.Cluster{
-			Name: "clusterName", // TODO(kdorosh) don't hardcode
-		})
-		s.Clusters.Items[k] = er
+
+	//s.Clusters.Version = es.Clusters.Version
+	for k, v := range es.Clusters.Items {
+		s.Clusters.Items[k] = resource.NewEnvoyResource(v.ResourceProto())
 	}
-	for k, _ := range s.Endpoints.Items {
-		er := resource.NewEnvoyResource(&envoy_config_endpoint_v3.ClusterLoadAssignment{})
-		s.Endpoints.Items[k] = er
+	//s.Endpoints.Version = es.Endpoints.Version
+	for k, v := range es.Endpoints.Items {
+		s.Endpoints.Items[k] = resource.NewEnvoyResource(v.ResourceProto())
 	}
-	for k, _ := range s.Listeners.Items {
-		er := resource.NewEnvoyResource(&envoy_config_listener_v3.Listener{})
-		s.Listeners.Items[k] = er
+	//s.Routes.Version = es.Routes.Version
+	for k, v := range es.Routes.Items {
+		s.Routes.Items[k] = resource.NewEnvoyResource(v.ResourceProto())
 	}
-	for k, _ := range s.Routes.Items {
-		er := resource.NewEnvoyResource(&envoy_config_route_v3.Route{})
-		s.Routes.Items[k] = er
+	//s.Listeners.Version = es.Listeners.Version
+	for k, v := range es.Listeners.Items {
+		s.Listeners.Items[k] = resource.NewEnvoyResource(v.ResourceProto())
 	}
+
+	//for k, _ := range s.Clusters.Items {
+	//	//newCluster := &envoy_config_cluster_v3.Cluster{}
+	//	//err := json.Unmarshal(bytes, newCluster)
+	//	//fmt.Printf("err is %v\n", err)
+	//	//er := resource.NewEnvoyResource(newCluster)
+	//	er := resource.NewEnvoyResource(&envoy_config_cluster_v3.Cluster{
+	//		Name: "clusterName", // TODO(kdorosh) don't hardcode
+	//	})
+	//	s.Clusters.Items[k] = er
+	//}
+	//for k, _ := range s.Endpoints.Items {
+	//	er := resource.NewEnvoyResource(&envoy_config_endpoint_v3.ClusterLoadAssignment{})
+	//	s.Endpoints.Items[k] = er
+	//}
+	//for k, _ := range s.Listeners.Items {
+	//	er := resource.NewEnvoyResource(&envoy_config_listener_v3.Listener{})
+	//	s.Listeners.Items[k] = er
+	//}
+	//for k, _ := range s.Routes.Items {
+	//	er := resource.NewEnvoyResource(&envoy_config_route_v3.Route{})
+	//	s.Routes.Items[k] = er
+	//}
 	//		}
 	//	}
 	//}

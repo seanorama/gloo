@@ -88,10 +88,29 @@ var _ = Describe("EnvoySnapshot", func() {
 
 		snap, err := restoredCache.GetSnapshot(key)
 		Expect(err).ToNot(HaveOccurred())
+
 		rs := snap.GetResources(resource.ClusterTypeV3)
 		Expect(rs.Items).To(HaveLen(1))
 		Expect(snapshot.Clusters.Items).To(HaveLen(1))
 		Expect(rs.Items["clusterName"].ResourceProto()).To(matchers.MatchProto(snapshot.Clusters.Items["clusterName"].ResourceProto()))
 		Expect(rs.Version).To(Equal(snapshot.Clusters.Version))
+
+		rs = snap.GetResources(resource.EndpointTypeV3)
+		Expect(rs.Items).To(HaveLen(1))
+		Expect(snapshot.Endpoints.Items).To(HaveLen(1))
+		Expect(rs.Items["endpointClusterName"].ResourceProto()).To(matchers.MatchProto(snapshot.Endpoints.Items["endpointClusterName"].ResourceProto()))
+		Expect(rs.Version).To(Equal(snapshot.Endpoints.Version))
+
+		rs = snap.GetResources(resource.RouteTypeV3)
+		Expect(rs.Items).To(HaveLen(1))
+		Expect(snapshot.Routes.Items).To(HaveLen(1))
+		Expect(rs.Items["routeName"].ResourceProto()).To(matchers.MatchProto(snapshot.Routes.Items["routeName"].ResourceProto()))
+		Expect(rs.Version).To(Equal(snapshot.Routes.Version))
+
+		rs = snap.GetResources(resource.ListenerTypeV3)
+		Expect(rs.Items).To(HaveLen(1))
+		Expect(snapshot.Listeners.Items).To(HaveLen(1))
+		Expect(rs.Items["listenerName"].ResourceProto()).To(matchers.MatchProto(snapshot.Listeners.Items["listenerName"].ResourceProto()))
+		Expect(rs.Version).To(Equal(snapshot.Listeners.Version))
 	})
 })

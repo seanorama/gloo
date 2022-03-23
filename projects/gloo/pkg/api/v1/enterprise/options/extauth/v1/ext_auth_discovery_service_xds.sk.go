@@ -28,6 +28,14 @@ type ExtAuthConfigXdsResourceWrapper struct {
 	Resource *ExtAuthConfig
 }
 
+func (e *ExtAuthConfigXdsResourceWrapper) MarshalJSON() ([]byte, error) {
+	panic("implement me")
+}
+
+func (e *ExtAuthConfigXdsResourceWrapper) UnmarshalJSON(data []byte) error {
+	panic("implement me")
+}
+
 // Make sure the Resource interface is implemented
 var _ cache.Resource = &ExtAuthConfigXdsResourceWrapper{}
 

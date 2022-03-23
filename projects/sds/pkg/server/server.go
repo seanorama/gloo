@@ -59,6 +59,7 @@ func SetupEnvoySDS(secrets []Secret, sdsClient, serverAddress string) *Server {
 		sdsClient:  sdsClient,
 		address:    serverAddress,
 	}
+	// TODO(kdorosh) not going to work with SDS
 	snapshotCache := cache.NewSnapshotCache(false, sdsServer, nil)
 	sdsServer.snapshotCache = snapshotCache
 
@@ -122,7 +123,7 @@ func (s *Server) UpdateSDSConfig(ctx context.Context) error {
 	}
 	contextutils.LoggerFrom(ctx).Infof("Updating SDS config. sdsClient is %s. Snapshot version is %s", s.sdsClient, snapshotVersion)
 
-	secretSnapshot := cache.Snapshot{}
+	secretSnapshot := cache.Snapshot{} // TODO(kdorosh) not going to work with SDS...
 	secretSnapshot.Resources[cache_types.Secret] = cache.NewResources(snapshotVersion, items)
 	return s.snapshotCache.SetSnapshot(ctx, s.sdsClient, secretSnapshot)
 }
