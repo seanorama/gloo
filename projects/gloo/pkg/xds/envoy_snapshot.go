@@ -15,9 +15,13 @@
 package xds
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
-
+	envoy_config_cluster_v3 "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
+	envoy_config_endpoint_v3 "github.com/envoyproxy/go-control-plane/envoy/config/endpoint/v3"
+	envoy_config_listener_v3 "github.com/envoyproxy/go-control-plane/envoy/config/listener/v3"
+	envoy_config_route_v3 "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 	"github.com/golang/protobuf/proto"
 	"github.com/solo-io/solo-kit/pkg/api/v1/control-plane/cache"
 	"github.com/solo-io/solo-kit/pkg/api/v1/control-plane/resource"
@@ -38,6 +42,53 @@ type EnvoySnapshot struct {
 
 	// Listeners are items in the LDS response payload.
 	Listeners cache.Resources
+}
+
+func (s *EnvoySnapshot) Serialize() []byte {
+	// convert to json then write out
+	b, err := json.Marshal(s)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("output json: %v\n", string(b))
+	return b
+}
+
+func (s *EnvoySnapshot) Deserialize(bytes []byte) {
+	err := json.Unmarshal(bytes, &s)
+	fmt.Printf("err is %v\n", err)
+	// ignore error, all other fields worked
+	// go through and set resource for each!
+	//for typeurl, resources := range s {
+	//	for b, _ := range resources.Items {
+	//		switch typeurl {
+	//		case "Clusters":
+	for k, _ := range s.Clusters.Items {
+		er := resource.NewEnvoyResource(&envoy_config_cluster_v3.Cluster{
+			Name: "clusterName", // TODO(kdorosh) don't hardcode
+		})
+		s.Clusters.Items[k] = er
+	}
+	for k, _ := range s.Endpoints.Items {
+		er := resource.NewEnvoyResource(&envoy_config_endpoint_v3.ClusterLoadAssignment{})
+		s.Endpoints.Items[k] = er
+	}
+	for k, _ := range s.Listeners.Items {
+		er := resource.NewEnvoyResource(&envoy_config_listener_v3.Listener{})
+		s.Listeners.Items[k] = er
+	}
+	for k, _ := range s.Routes.Items {
+		er := resource.NewEnvoyResource(&envoy_config_route_v3.Route{})
+		s.Routes.Items[k] = er
+	}
+	//		}
+	//	}
+	//}
+	fmt.Printf("deserialized %v", s)
+}
+
+func (s *EnvoySnapshot) GetTypeUrl() string {
+	return "envoysnapshot"
 }
 
 var _ cache.Snapshot = &EnvoySnapshot{}
