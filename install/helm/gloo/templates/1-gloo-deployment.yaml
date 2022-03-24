@@ -45,6 +45,9 @@ spec:
       serviceAccountName: gloo
       {{- include "gloo.podSpecStandardFields" .Values.gloo.deployment | nindent 6 -}}
       volumes:
+      - name: xds-snapshot-cache
+        persistentVolumeClaim:
+          claimName: local-path-pvc
 {{- if .Values.global.glooMtls.enabled }}
       - name: gloo-mtls-certs
         secret:
@@ -163,6 +166,8 @@ spec:
           containerPort: 9091
         {{- end }}
         volumeMounts:
+        - name: xds-snapshot-cache
+          mountPath: /xds-snapshot-cache
         - name: labels-volume
           mountPath: /etc/gloo
           readOnly: true

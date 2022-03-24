@@ -114,20 +114,32 @@ func (s *EnvoySnapshot) Deserialize(bytes []byte) {
 	//		switch typeurl {
 	//		case "Clusters":
 
-	//s.Clusters.Version = es.Clusters.Version
+	s.Clusters.Version = es.Clusters.Version // TODO(kdorosh) unneeded?
 	for k, v := range es.Clusters.Items {
+		if s.Clusters.Items == nil {
+			s.Clusters.Items = make(map[string]cache.Resource)
+		}
 		s.Clusters.Items[k] = resource.NewEnvoyResource(v.ResourceProto())
 	}
-	//s.Endpoints.Version = es.Endpoints.Version
+	s.Endpoints.Version = es.Endpoints.Version
 	for k, v := range es.Endpoints.Items {
+		if s.Endpoints.Items == nil {
+			s.Endpoints.Items = make(map[string]cache.Resource)
+		}
 		s.Endpoints.Items[k] = resource.NewEnvoyResource(v.ResourceProto())
 	}
-	//s.Routes.Version = es.Routes.Version
+	s.Routes.Version = es.Routes.Version
 	for k, v := range es.Routes.Items {
+		if s.Routes.Items == nil {
+			s.Routes.Items = make(map[string]cache.Resource)
+		}
 		s.Routes.Items[k] = resource.NewEnvoyResource(v.ResourceProto())
 	}
-	//s.Listeners.Version = es.Listeners.Version
+	s.Listeners.Version = es.Listeners.Version
 	for k, v := range es.Listeners.Items {
+		if s.Listeners.Items == nil {
+			s.Listeners.Items = make(map[string]cache.Resource)
+		}
 		s.Listeners.Items[k] = resource.NewEnvoyResource(v.ResourceProto())
 	}
 
