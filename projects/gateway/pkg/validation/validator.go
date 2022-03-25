@@ -102,7 +102,7 @@ type validator struct {
 	latestSnapshotErr error
 	translator        translator.Translator
 	//This function replaces a grpc client from when gloo and gateway pods were separate.
-	validationFunc    func(
+	validationFunc func(
 		context.Context,
 		*validation.GlooValidationServiceRequest,
 	) (*validation.GlooValidationServiceResponse, error)

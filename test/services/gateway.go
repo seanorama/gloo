@@ -339,7 +339,7 @@ func defaultGlooOpts(ctx context.Context, runOptions *RunOptions) bootstrap.Opts
 			DnsServer:     runOptions.ConsulDnsAddress,
 		},
 		GatewayControllerEnabled: true,
-		ValidationOpts: validationOpts,
+		ValidationOpts:           validationOpts,
 	}
 }
 
