@@ -659,8 +659,16 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 
 	var (
 		gwTranslatorSyncer *gwsyncer.TranslatorSyncer
+		gatewayTranslator  *gwtranslator.GwTranslator
 	)
-	gatewayTranslator := gwtranslator.NewDefaultTranslator(gwOpts)
+	if opts.GatewayControllerEnabled {
+		logger.Debugf("setting up gateway translator")
+		gatewayTranslator = gwtranslator.NewDefaultTranslator(gwOpts)
+		proxyReconciler := gwreconciler.NewProxyReconciler(validator.Validate, proxyClient, statusClient)
+		gwTranslatorSyncer = gwsyncer.NewTranslatorSyncer(opts.WatchOpts.Ctx, opts.WriteNamespace, proxyClient, proxyReconciler, rpt, gatewayTranslator, statusClient, statusMetrics)
+	} else {
+		logger.Debugf("gateway translation disabled")
+	}
 	gwValidationSyncer := gwvalidation.NewValidator(gwvalidation.NewValidatorConfig(
 		gatewayTranslator,
 		validator.Validate,
@@ -668,9 +676,6 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		ignoreProxyValidationFailure,
 		allowWarnings,
 	))
-	proxyReconciler := gwreconciler.NewProxyReconciler(validator.Validate, proxyClient, statusClient)
-	gwTranslatorSyncer = gwsyncer.NewTranslatorSyncer(opts.WatchOpts.Ctx, opts.WriteNamespace, proxyClient, proxyReconciler, rpt, gatewayTranslator, statusClient, statusMetrics)
-
 	params := syncer.TranslatorSyncerExtensionParams{
 		RateLimitServiceSettings: ratelimit.ServiceSettings{
 			Descriptors:    opts.Settings.GetRatelimit().GetDescriptors(),
@@ -698,8 +703,8 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 	translationSync := syncer.NewTranslatorSyncer(t, opts.ControlPlane.SnapshotCache, xdsHasher, xdsSanitizer, rpt, opts.DevMode, syncerExtensions, opts.Settings, statusMetrics, gwTranslatorSyncer, proxyClient, opts.WriteNamespace)
 
 	syncers := v1snap.ApiSyncers{
-		translationSync,
 		validator,
+		translationSync,
 	}
 	if opts.GatewayControllerEnabled {
 		syncers = append(syncers, gwValidationSyncer)

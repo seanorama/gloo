@@ -105,6 +105,7 @@ func (s *translatorSyncer) Sync(ctx context.Context, snap *v1snap.ApiSnapshot) e
 	//generate proxies
 	// TODO: only run if there was an update to a gw type
 	if s.gatewaySyncer != nil {
+		logger.Debugf("getting proxies from gateway translation")
 		s.translateProxies(ctx, snap)
 	}
 	var multiErr *multierror.Error
@@ -148,9 +149,6 @@ func (s *translatorSyncer) translateProxies(ctx context.Context, snap *v1snap.Ap
 		HttpGateways:       snap.HttpGateways,
 	}
 	err := s.gatewaySyncer.Sync(ctx, gwSnap)
-	if err != nil {
-		return err
-	}
 	//TODO: Consider refactoring gatewaySyncer.Sync so that we do not need to list the proxies here (which may be slow if proxies are persisted)
 	proxyList, err := s.proxyClient.List(s.writeNamespace, clients.ListOpts{})
 	snap.Proxies = proxyList

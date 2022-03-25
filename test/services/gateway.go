@@ -7,8 +7,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/golang/protobuf/ptypes/wrappers"
-
 	"github.com/solo-io/gloo/pkg/utils/statusutils"
 
 	"github.com/solo-io/gloo/projects/gloo/pkg/syncer"
@@ -125,12 +123,7 @@ func RunGlooGatewayUdsFds(ctx context.Context, runOptions *RunOptions) TestClien
 	settings := &gloov1.Settings{
 		WatchNamespaces:    runOptions.NsToWatch,
 		DiscoveryNamespace: runOptions.NsToWrite,
-		Gateway: &gloov1.GatewayOptions{
-			PersistProxySpec: &wrappers.BoolValue{Value: true},
-			EnableGatewayController: &wrappers.BoolValue{Value: !runOptions.WhatToRun.DisableGateway},
-		},
 	}
-
 	ctx = settingsutil.WithSettings(ctx, settings)
 
 	glooOpts := defaultGlooOpts(ctx, runOptions)
@@ -155,14 +148,8 @@ func RunGlooGatewayUdsFds(ctx context.Context, runOptions *RunOptions) TestClien
 
 	glooOpts.ControlPlane.StartGrpcServer = true
 	glooOpts.ValidationServer.StartGrpcServer = true
+	glooOpts.GatewayControllerEnabled = !runOptions.WhatToRun.DisableGateway
 	go setup.RunGlooWithExtensions(glooOpts, runOptions.Extensions, make(chan struct{}))
-
-	// gloo is dependency of gateway, needs to run second if we want to test validation
-	// TODO: gateway is run with gloo
-	/*if !runOptions.WhatToRun.DisableGateway {
-		opts := defaultTestConstructOpts(ctx, runOptions)
-		go gatewaysyncer.RunGateway(opts)
-	}*/
 
 	if !runOptions.WhatToRun.DisableFds {
 		go func() {
@@ -292,7 +279,25 @@ func defaultGlooOpts(ctx context.Context, runOptions *RunOptions) bootstrap.Opts
 		kubeCoreCache, err = cache.NewKubeCoreCacheWithOptions(ctx, runOptions.KubeClient, time.Hour, runOptions.NsToWatch)
 		Expect(err).NotTo(HaveOccurred())
 	}
-
+	var validationOpts *translator.ValidationOpts
+	if runOptions.Settings.GetGateway().GetValidation().GetProxyValidationServerAddr() != "" {
+		if validationOpts == nil {
+			validationOpts = &translator.ValidationOpts{}
+		}
+		validationOpts.ProxyValidationServerAddress = runOptions.Settings.GetGateway().GetValidation().GetProxyValidationServerAddr()
+	}
+	if runOptions.Settings.GetGateway().GetValidation().GetAllowWarnings() != nil {
+		if validationOpts == nil {
+			validationOpts = &translator.ValidationOpts{}
+		}
+		validationOpts.AllowWarnings = runOptions.Settings.GetGateway().GetValidation().GetAllowWarnings().GetValue()
+	}
+	if runOptions.Settings.GetGateway().GetValidation().GetAlwaysAccept() != nil {
+		if validationOpts == nil {
+			validationOpts = &translator.ValidationOpts{}
+		}
+		validationOpts.AlwaysAcceptResources = runOptions.Settings.GetGateway().GetValidation().GetAlwaysAccept().GetValue()
+	}
 	return bootstrap.Opts{
 		Settings:                runOptions.Settings,
 		WriteNamespace:          runOptions.NsToWrite,
@@ -334,6 +339,7 @@ func defaultGlooOpts(ctx context.Context, runOptions *RunOptions) bootstrap.Opts
 			DnsServer:     runOptions.ConsulDnsAddress,
 		},
 		GatewayControllerEnabled: true,
+		ValidationOpts: validationOpts,
 	}
 }
 

@@ -62,7 +62,7 @@ func (s *TranslatorSyncer) Sync(ctx context.Context, snap *v1.ApiSnapshot) error
 	ctx = contextutils.WithLogger(ctx, "TranslatorSyncer")
 
 	logger := contextutils.LoggerFrom(ctx)
-	logger.Debugw("begin sync", zap.Any("snapshot", snap.Stringer()))
+	logger.Debugw("(gw)begin sync", zap.Any("snapshot", snap.Stringer()))
 	snapHash := hashutils.MustHash(snap)
 	logger.Infof("begin sync %v (%v virtual services, %v gateways, %v route tables)", snapHash,
 		len(snap.VirtualServices), len(snap.Gateways), len(snap.RouteTables))
