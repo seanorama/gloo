@@ -662,12 +662,12 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		gatewayTranslator  *gwtranslator.GwTranslator
 	)
 	if opts.GatewayControllerEnabled {
-		logger.Debugf("setting up gateway translator")
+		logger.Debugf("Setting up gateway translator")
 		gatewayTranslator = gwtranslator.NewDefaultTranslator(gwOpts)
 		proxyReconciler := gwreconciler.NewProxyReconciler(validator.Validate, proxyClient, statusClient)
 		gwTranslatorSyncer = gwsyncer.NewTranslatorSyncer(opts.WatchOpts.Ctx, opts.WriteNamespace, proxyClient, proxyReconciler, rpt, gatewayTranslator, statusClient, statusMetrics)
 	} else {
-		logger.Debugf("gateway translation disabled")
+		logger.Debugf("Gateway translation is disabled. Proxies are provided from another source")
 	}
 	gwValidationSyncer := gwvalidation.NewValidator(gwvalidation.NewValidatorConfig(
 		gatewayTranslator,

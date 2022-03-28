@@ -778,13 +778,13 @@ var _ = Describe("AWS Lambda", func() {
 			 * the fix is to update the rotated thumbprint on our fake AWS OIDC per
 			 * https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc_verify-thumbprint.html
 			 */
-			//It("should be able to call lambda", testProxy)
+			It("should be able to call lambda", testProxy)
 
-			//It("should be able lambda with response transform", testProxyWithResponseTransform)
+			It("should be able lambda with response transform", testProxyWithResponseTransform)
 
-			//It("should be able to call lambda with request transform", testProxyWithRequestTransform)
+			It("should be able to call lambda with request transform", testProxyWithRequestTransform)
 
-			//It("should be able to call lambda with request and response transforms", testProxyWithRequestAndResponseTransforms)
+			It("should be able to call lambda with request and response transforms", testProxyWithRequestAndResponseTransforms)
 		})
 	    Context("With gateway translation", func() {
 			BeforeEach(func() {
