@@ -50,13 +50,13 @@ type EnvoyResources struct {
 	Items map[string]resource.EnvoyResource
 }
 
-func (s *EnvoySnapshot) Serialize() []byte {
+func (s *EnvoySnapshot) Serialize() ([]byte, error) {
 	// convert to json then write out
 	b, err := json.Marshal(s)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	return b
+	return b, nil
 }
 
 type EnvoySnapshotToDeserialize struct {
@@ -73,11 +73,11 @@ type EnvoySnapshotToDeserialize struct {
 	Listeners EnvoyResources
 }
 
-func (s *EnvoySnapshot) Deserialize(bytes []byte) {
+func (s *EnvoySnapshot) Deserialize(bytes []byte) error {
 	es := EnvoySnapshotToDeserialize{}
 	err := json.Unmarshal(bytes, &es)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	s.Clusters.Version = es.Clusters.Version // TODO(kdorosh) unneeded?
 	for k, v := range es.Clusters.Items {
@@ -107,6 +107,7 @@ func (s *EnvoySnapshot) Deserialize(bytes []byte) {
 		}
 		s.Listeners.Items[k] = resource.NewEnvoyResource(v.ResourceProto())
 	}
+	return nil
 }
 
 func (s *EnvoySnapshot) GetTypeUrl() string {
