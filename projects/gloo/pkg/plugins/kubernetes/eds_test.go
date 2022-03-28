@@ -11,7 +11,7 @@ import (
 	mock_cache "github.com/solo-io/gloo/test/mocks/cache"
 	"github.com/solo-io/solo-kit/pkg/api/v1/clients"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 

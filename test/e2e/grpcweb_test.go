@@ -9,7 +9,7 @@ import (
 
 	envoy_data_accesslog_v3 "github.com/envoyproxy/go-control-plane/envoy/data/accesslog/v3"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	envoyals "github.com/envoyproxy/go-control-plane/envoy/service/accesslog/v3"

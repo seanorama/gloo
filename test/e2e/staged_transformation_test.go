@@ -9,7 +9,7 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 	gatewaydefaults "github.com/solo-io/gloo/projects/gateway/pkg/defaults"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	extauthv1 "github.com/solo-io/gloo/projects/gloo/pkg/api/v1/enterprise/options/extauth/v1"
 	"github.com/solo-io/gloo/test/services"

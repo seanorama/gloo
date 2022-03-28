@@ -18,10 +18,8 @@ import (
 
 	"github.com/solo-io/solo-kit/pkg/utils/statusutils"
 
-	"github.com/onsi/ginkgo/reporters"
-
 	"github.com/ghodss/yaml"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/solo-io/gloo/pkg/cliutil/helm"
 	glooVersion "github.com/solo-io/gloo/pkg/version"
@@ -43,8 +41,7 @@ import (
 func TestHelm(t *testing.T) {
 	RegisterFailHandler(Fail)
 	testutils.RegisterCommonFailHandlers()
-	junitReporter := reporters.NewJUnitReporter("junit.xml")
-	RunSpecsWithDefaultAndCustomReporters(t, "Helm Suite", []Reporter{junitReporter})
+	RunSpecs(t, "Helm Suite")
 }
 
 var _ = BeforeSuite(func() {
