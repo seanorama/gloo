@@ -50,7 +50,7 @@ var _ = Describe("Validator", func() {
 	})
 
 	It("has mValidConfig=1 after Sync is called with valid snapshot", func() {
-		err := v.Sync(context.TODO(), &gatewayv1.ApiSnapshot{})
+		err := v.Sync(context.TODO(), &gloov1snap.ApiSnapshot{})
 		Expect(err).NotTo(HaveOccurred())
 
 		rows, err := view.RetrieveData("validation.gateway.solo.io/valid_config")
@@ -61,7 +61,7 @@ var _ = Describe("Validator", func() {
 
 	It("has mValidConfig=0 after Sync is called with invalid snapshot", func() {
 		us := samples.SimpleUpstream()
-		snap := samples.SimpleGatewaySnapshot(us.Metadata.Ref(), ns)
+		snap := samples.GatewayToGlooSnapshot(samples.SimpleGatewaySnapshot(us.Metadata.Ref(), ns))
 		snap.Gateways.Each(func(element *gatewayv1.Gateway) {
 			http, ok := element.GatewayType.(*gatewayv1.Gateway_HttpGateway)
 			if !ok {
