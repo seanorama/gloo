@@ -8,7 +8,7 @@ import (
 
 	"github.com/solo-io/gloo/pkg/utils/settingsutil"
 
-	. "github.com/onsi/ginkgo/extensions/table"
+	. "github.com/onsi/ginkgo/v2/extensions/table"
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/hashicorp/go-multierror"

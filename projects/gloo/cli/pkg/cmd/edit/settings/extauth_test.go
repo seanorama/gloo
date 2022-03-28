@@ -3,8 +3,8 @@ package settings_test
 import (
 	"context"
 
-	. "github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/ginkgo/v2/extensions/table"
 	. "github.com/onsi/gomega"
 	"github.com/solo-io/gloo/pkg/cliutil/testutil"
 	"github.com/solo-io/gloo/projects/gloo/cli/pkg/helpers"

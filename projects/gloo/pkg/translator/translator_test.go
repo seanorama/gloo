@@ -9,7 +9,7 @@ import (
 
 	v3 "github.com/solo-io/gloo/projects/gloo/pkg/api/external/envoy/config/core/v3"
 
-	"github.com/onsi/ginkgo/extensions/table"
+	"github.com/onsi/ginkgo/v2/extensions/table"
 
 	"github.com/envoyproxy/go-control-plane/pkg/wellknown"
 

@@ -13,8 +13,8 @@ import (
 
 	"github.com/google/go-github/github"
 
-	"github.com/onsi/ginkgo/extensions/table"
 	. "github.com/onsi/ginkgo/v2"
+	"github.com/onsi/ginkgo/v2/extensions/table"
 	. "github.com/onsi/gomega"
 )
 

@@ -21,7 +21,7 @@ import (
 	"github.com/solo-io/gloo/projects/gloo/pkg/defaults"
 
 	"github.com/onsi/ginkgo"
-	"github.com/onsi/ginkgo/config"
+	"github.com/onsi/ginkgo/v2/config"
 	. "github.com/onsi/gomega"
 	errors "github.com/rotisserie/eris"
 
