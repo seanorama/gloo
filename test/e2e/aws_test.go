@@ -60,12 +60,12 @@ var _ = Describe("AWS Lambda", func() {
 		upstream      *gloov1.Upstream
 	)
 
-	setupEnvoy := func() {
+	setupEnvoy := func(justGloo bool) {
 		ctx, cancel = context.WithCancel(context.Background())
 		defaults.HttpPort = services.NextBindPort()
 		defaults.HttpsPort = services.NextBindPort()
 
-		testClients = services.RunGateway(ctx, true)
+		testClients = services.RunGateway(ctx, justGloo)
 
 		err := helpers.WriteDefaultGateways(defaults.GlooSystem, testClients.GatewayClient)
 		Expect(err).NotTo(HaveOccurred(), "Should be able to write default gateways")
@@ -520,10 +520,9 @@ var _ = Describe("AWS Lambda", func() {
 		}
 		cancel()
 	})
-
 	Context("Basic Auth", func() {
 
-		addCredentials := func() {
+		addBasicCredentials := func() {
 
 			localAwsCredentials := credentials.NewSharedCredentials("", "")
 			v, err := localAwsCredentials.Get()
@@ -551,26 +550,32 @@ var _ = Describe("AWS Lambda", func() {
 			_, err = testClients.SecretClient.Write(secret, opts)
 			Expect(err).NotTo(HaveOccurred())
 		}
+		Context("Without gateway translation", func() {
+			BeforeEach(func() {
+				setupEnvoy(true)
+				addBasicCredentials()
+				addUpstream()
+			})
 
-		BeforeEach(func() {
-			setupEnvoy()
-			addCredentials()
-			addUpstream()
+			It("should be able to call lambda", testProxy)
+
+			It("should be able to call lambda with response transform", testProxyWithResponseTransform)
+
+			It("should be able to call lambda with request transform", testProxyWithRequestTransform)
+
+			It("should be able to call lambda with request and response transforms", testProxyWithRequestAndResponseTransforms)
 		})
+		Context("With gateawy translation", func() {
+			BeforeEach(func() {
+				setupEnvoy(false)
+				addBasicCredentials()
+				addUpstream()
+			})
+			It("should be able to call lambda via gateway", testLambdaWithVirtualService)
 
-		It("should be able to call lambda", testProxy)
-
-		It("should be able to call lambda with response transform", testProxyWithResponseTransform)
-
-		It("should be able to call lambda with request transform", testProxyWithRequestTransform)
-
-		It("should be able to call lambda with request and response transforms", testProxyWithRequestAndResponseTransforms)
-		//TODO, set up with gateway translation -flag in BeforeEach()
-		//	It("should be able to call lambda via gateway", testLambdaWithVirtualService)
-
-		//It("should be able to call lambda transformation and regular transformation", testLambdaTransformations)
+			It("should be able to call lambda transformation and regular transformation", testLambdaTransformations)
+		})
 	})
-
 	Context("Temporary Credentials", func() {
 
 		addCredentials := func() {
@@ -601,26 +606,34 @@ var _ = Describe("AWS Lambda", func() {
 			_, err = testClients.SecretClient.Write(secret, opts)
 			Expect(err).NotTo(HaveOccurred())
 		}
+		Context("No gateway translation", func() {
 
-		BeforeEach(func() {
-			setupEnvoy()
-			addCredentials()
-			addUpstream()
+			BeforeEach(func() {
+				setupEnvoy(true)
+				addCredentials()
+				addUpstream()
+			})
+
+			It("should be able to call lambda", testProxy)
+
+			It("should be able lambda with response transform", testProxyWithResponseTransform)
+
+			It("should be able to call lambda with request transform", testProxyWithRequestTransform)
+
+			It("should be able to call lambda with request and response transforms", testProxyWithRequestAndResponseTransforms)
 		})
+		Context("With gateawy translation", func() {
+			BeforeEach(func() {
+				setupEnvoy(false)
+				addCredentials()
+				addUpstream()
+			})
 
-		It("should be able to call lambda", testProxy)
+			It("should be able to call lambda via gateway", testLambdaWithVirtualService)
 
-		It("should be able lambda with response transform", testProxyWithResponseTransform)
-
-		It("should be able to call lambda with request transform", testProxyWithRequestTransform)
-
-		It("should be able to call lambda with request and response transforms", testProxyWithRequestAndResponseTransforms)
-		//TODO: this test requires running gateway translation, will need a slight setup refactor
-		//	It("should be able to call lambda via gateway", testLambdaWithVirtualService)
-
-		It("should be able to call lambda transformation and regular transformation", testLambdaTransformations)
+			It("should be able to call lambda transformation and regular transformation", testLambdaTransformations)
+		})
 	})
-
 	Context("AssumeRoleWithWebIdentity Credentials", func() {
 
 		var (
@@ -714,7 +727,7 @@ var _ = Describe("AWS Lambda", func() {
 			}))
 		}
 
-		setupEnvoySts := func() {
+		setupEnvoySts := func(gatewayTranslation bool) {
 			ctx, cancel = context.WithCancel(context.Background())
 			defaults.HttpPort = services.NextBindPort()
 			defaults.HttpsPort = services.NextBindPort()
@@ -735,6 +748,9 @@ var _ = Describe("AWS Lambda", func() {
 							},
 						},
 					},
+					Gateway: &gloov1.GatewayOptions{
+						EnableGatewayController: &wrapperspb.BoolValue{Value: gatewayTranslation},
+					},
 				},
 			}
 			testClients = services.RunGlooGatewayUdsFds(ctx, ro)
@@ -745,13 +761,6 @@ var _ = Describe("AWS Lambda", func() {
 			envoyInstance, err = envoyFactory.NewEnvoyInstance()
 			Expect(err).NotTo(HaveOccurred())
 		}
-
-		BeforeEach(func() {
-			setupEnvoySts()
-			addCredentialsSts()
-			addUpstreamSts()
-		})
-
 		AfterEach(func() {
 			if tmpFile != nil {
 				os.Remove(tmpFile.Name())
@@ -759,23 +768,35 @@ var _ = Describe("AWS Lambda", func() {
 			os.Unsetenv(webIdentityTokenFile)
 			os.Unsetenv(awsRoleArn)
 		})
+		Context("No gateway translation ", func() {
+			BeforeEach(func() {
+				setupEnvoySts(false)
+				addCredentialsSts()
+				addUpstreamSts()
+			})
+			/*
+			 * these tests can start failing if certs get rotated underneath us.
+			 * the fix is to update the rotated thumbprint on our fake AWS OIDC per
+			 * https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc_verify-thumbprint.html
+			 */
+			It("should be able to call lambda", testProxy)
 
-		/*
-		 * these tests can start failing if certs get rotated underneath us.
-		 * the fix is to update the rotated thumbprint on our fake AWS OIDC per
-		 * https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_create_oidc_verify-thumbprint.html
-		 */
-		It("should be able to call lambda", testProxy)
+			It("should be able lambda with response transform", testProxyWithResponseTransform)
 
-		It("should be able lambda with response transform", testProxyWithResponseTransform)
+			It("should be able to call lambda with request transform", testProxyWithRequestTransform)
 
-		It("should be able to call lambda with request transform", testProxyWithRequestTransform)
+			It("should be able to call lambda with request and response transforms", testProxyWithRequestAndResponseTransforms)
+		})
+	    Context("With gateway translation", func() {
+			BeforeEach(func() {
+				setupEnvoySts(true)
+				addCredentialsSts()
+				addUpstreamSts()
+			})
+			It("should be able to call lambda via gateway", testLambdaWithVirtualService)
 
-		It("should be able to call lambda with request and response transforms", testProxyWithRequestAndResponseTransforms)
-
-		It("should be able to call lambda via gateway", testLambdaWithVirtualService)
-
-		It("should be able to call lambda transformation and regular transformation", testLambdaTransformations)
+			It("should be able to call lambda transformation and regular transformation", testLambdaTransformations)
+		})
 	})
 
 })
