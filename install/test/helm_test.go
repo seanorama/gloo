@@ -15,7 +15,7 @@ import (
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/ginkgo/v2/extensions/table"
+
 	. "github.com/onsi/gomega"
 	values "github.com/solo-io/gloo/install/helm/gloo/generate"
 	gwv1 "github.com/solo-io/gloo/projects/gateway/pkg/api/v1"

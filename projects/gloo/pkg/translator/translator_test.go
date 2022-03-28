@@ -9,8 +9,6 @@ import (
 
 	v3 "github.com/solo-io/gloo/projects/gloo/pkg/api/external/envoy/config/core/v3"
 
-	"github.com/onsi/ginkgo/v2/extensions/table"
-
 	"github.com/envoyproxy/go-control-plane/pkg/wellknown"
 
 	envoy_config_cluster_v3 "github.com/envoyproxy/go-control-plane/envoy/config/cluster/v3"
@@ -3167,7 +3165,7 @@ var _ = Describe("Translator", func() {
 	})
 
 	Context("IgnoreHealthOnHostRemoval", func() {
-		table.DescribeTable("propagates IgnoreHealthOnHostRemoval to Cluster", func(upstreamValue *wrappers.BoolValue, expectedClusterValue bool) {
+		DescribeTable("propagates IgnoreHealthOnHostRemoval to Cluster", func(upstreamValue *wrappers.BoolValue, expectedClusterValue bool) {
 			// Set the value
 			upstream.IgnoreHealthOnHostRemoval = upstreamValue
 
@@ -3184,9 +3182,9 @@ var _ = Describe("Translator", func() {
 			Expect(cluster).NotTo(BeNil())
 			Expect(cluster.IgnoreHealthOnHostRemoval).To(Equal(expectedClusterValue))
 		},
-			table.Entry("When value=true", &wrappers.BoolValue{Value: true}, true),
-			table.Entry("When value=false", &wrappers.BoolValue{Value: false}, false),
-			table.Entry("When value=nil", nil, false))
+			Entry("When value=true", &wrappers.BoolValue{Value: true}, true),
+			Entry("When value=false", &wrappers.BoolValue{Value: false}, false),
+			Entry("When value=nil", nil, false))
 	})
 
 })

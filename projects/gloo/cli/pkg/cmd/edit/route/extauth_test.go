@@ -4,7 +4,6 @@ import (
 	"context"
 
 	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/ginkgo/v2/extensions/table"
 	. "github.com/onsi/gomega"
 	"github.com/solo-io/gloo/projects/gloo/pkg/api/v1/core/matchers"
 	test_matchers "github.com/solo-io/solo-kit/test/matchers"

@@ -19,7 +19,6 @@ import (
 	kubev1 "k8s.io/api/core/v1"
 
 	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/ginkgo/v2/extensions/table"
 	. "github.com/onsi/gomega"
 )
 
