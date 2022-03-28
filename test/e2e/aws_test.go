@@ -565,7 +565,7 @@ var _ = Describe("AWS Lambda", func() {
 
 			It("should be able to call lambda with request and response transforms", testProxyWithRequestAndResponseTransforms)
 		})
-		Context("With gateawy translation", func() {
+		Context("With gateway translation", func() {
 			BeforeEach(func() {
 				setupEnvoy(false)
 				addBasicCredentials()
@@ -727,7 +727,7 @@ var _ = Describe("AWS Lambda", func() {
 			}))
 		}
 
-		setupEnvoySts := func(gatewayTranslation bool) {
+		setupEnvoySts := func(justGloo bool) {
 			ctx, cancel = context.WithCancel(context.Background())
 			defaults.HttpPort = services.NextBindPort()
 			defaults.HttpsPort = services.NextBindPort()
@@ -735,7 +735,9 @@ var _ = Describe("AWS Lambda", func() {
 			ro := &services.RunOptions{
 				NsToWrite:  ns,
 				NsToWatch:  []string{"default", ns},
-				WhatToRun:  services.What{},
+				WhatToRun: services.What{
+					DisableGateway: justGloo,
+				},
 				KubeClient: kube2e.MustKubeClient(),
 				Settings: &gloov1.Settings{
 					Gloo: &gloov1.GlooOptions{
@@ -747,9 +749,6 @@ var _ = Describe("AWS Lambda", func() {
 								},
 							},
 						},
-					},
-					Gateway: &gloov1.GatewayOptions{
-						EnableGatewayController: &wrapperspb.BoolValue{Value: gatewayTranslation},
 					},
 				},
 			}
@@ -770,7 +769,7 @@ var _ = Describe("AWS Lambda", func() {
 		})
 		Context("No gateway translation ", func() {
 			BeforeEach(func() {
-				setupEnvoySts(false)
+				setupEnvoySts(true)
 				addCredentialsSts()
 				addUpstreamSts()
 			})
@@ -789,7 +788,7 @@ var _ = Describe("AWS Lambda", func() {
 		})
 	    Context("With gateway translation", func() {
 			BeforeEach(func() {
-				setupEnvoySts(true)
+				setupEnvoySts(false)
 				addCredentialsSts()
 				addUpstreamSts()
 			})
