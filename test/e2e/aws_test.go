@@ -565,7 +565,7 @@ var _ = Describe("AWS Lambda", func() {
 		It("should be able to call lambda with request transform", testProxyWithRequestTransform)
 
 		It("should be able to call lambda with request and response transforms", testProxyWithRequestAndResponseTransforms)
-		//TODO, set up with gateway translation
+		//TODO, set up with gateway translation -flag in BeforeEach()
 		//	It("should be able to call lambda via gateway", testLambdaWithVirtualService)
 
 		//It("should be able to call lambda transformation and regular transformation", testLambdaTransformations)
