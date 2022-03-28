@@ -28,6 +28,14 @@ type RateLimitConfigXdsResourceWrapper struct {
 	Resource *RateLimitConfig
 }
 
+func (e *RateLimitConfigXdsResourceWrapper) MarshalJSON() ([]byte, error) {
+	panic("implement me")
+}
+
+func (e *RateLimitConfigXdsResourceWrapper) UnmarshalJSON(data []byte) error {
+	panic("implement me")
+}
+
 // Make sure the Resource interface is implemented
 var _ cache.Resource = &RateLimitConfigXdsResourceWrapper{}
 
