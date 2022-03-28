@@ -40,7 +40,7 @@ func NextBindPort() uint32 {
 }
 
 func AdvanceBindPort(p *uint32) uint32 {
-	return atomic.AddUint32(p, 1) + uint32(GinkgoParallelProcess()*1000)
+	return atomic.AddUint32(p, 1) + uint32(ginkgo.GinkgoParallelProcess()*1000)
 }
 
 type EnvoyBootstrapBuilder interface {
@@ -397,7 +397,7 @@ func (ef *EnvoyFactory) NewEnvoyInstance() (*EnvoyInstance, error) {
 		UseDocker:     ef.useDocker,
 		GlooAddr:      gloo,
 		AccessLogAddr: gloo,
-		AdminPort:     atomic.AddUint32(&adminPort, 1) + uint32(GinkgoParallelProcess()*1000),
+		AdminPort:     atomic.AddUint32(&adminPort, 1) + uint32(ginkgo.GinkgoParallelProcess()*1000),
 		ApiVersion:    "V3",
 	}
 	ef.instances = append(ef.instances, ei)
