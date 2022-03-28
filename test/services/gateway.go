@@ -46,7 +46,6 @@ import (
 	grpc_ctxtags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
 
 	. "github.com/onsi/ginkgo/v2"
-	"github.com/onsi/ginkgo/v2/config"
 	. "github.com/onsi/gomega"
 	"github.com/solo-io/gloo/pkg/utils/settingsutil"
 	fds_syncer "github.com/solo-io/gloo/projects/discovery/pkg/fds/syncer"
@@ -69,7 +68,7 @@ type TestClients struct {
 var glooPortBase = int32(30400)
 
 func AllocateGlooPort() int32 {
-	return atomic.AddInt32(&glooPortBase, 1) + int32(config.GinkgoConfig.ParallelNode*1000)
+	return atomic.AddInt32(&glooPortBase, 1) + int32(GinkgoParallelProcess()*1000)
 }
 
 func RunGateway(ctx context.Context, justGloo bool) TestClients {

@@ -14,7 +14,6 @@ import (
 	"github.com/fgrosse/zaptest"
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	. "github.com/onsi/ginkgo/v2"
-	"github.com/onsi/ginkgo/v2/config"
 	. "github.com/onsi/gomega"
 	errors "github.com/rotisserie/eris"
 	"github.com/solo-io/gloo/projects/accesslogger/pkg/loggingservice"
@@ -114,7 +113,7 @@ var _ = Describe("Access Log", func() {
 				)
 
 				BeforeEach(func() {
-					accessLogPort := atomic.AddUint32(&baseAccessLogPort, 1) + uint32(config.GinkgoConfig.ParallelNode*1000)
+					accessLogPort := atomic.AddUint32(&baseAccessLogPort, 1) + uint32(GinkgoParallelProcess()*1000)
 
 					logger := zaptest.LoggerWriter(GinkgoWriter)
 					contextutils.SetFallbackLogger(logger.Sugar())
