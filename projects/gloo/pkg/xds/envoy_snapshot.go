@@ -41,35 +41,8 @@ type EnvoySnapshot struct {
 	Listeners cache.Resources
 }
 
-// Resources is a versioned group of resources.
-type CResources struct {
-	// Version information.
-	Version string
-
-	// Items in the group.
-	Items map[string]resource.EnvoyResource
-}
-
-// Resources is a versioned group of resources.
-type EResources struct {
-	// Version information.
-	Version string
-
-	// Items in the group.
-	Items map[string]resource.EnvoyResource
-}
-
-// Resources is a versioned group of resources.
-type RResources struct {
-	// Version information.
-	Version string
-
-	// Items in the group.
-	Items map[string]resource.EnvoyResource
-}
-
-// Resources is a versioned group of resources.
-type LResources struct {
+// EnvoyResources is a versioned group of envoy resources.
+type EnvoyResources struct {
 	// Version information.
 	Version string
 
@@ -83,22 +56,21 @@ func (s *EnvoySnapshot) Serialize() []byte {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("output json: %v\n", string(b))
 	return b
 }
 
 type EnvoySnapshotToDeserialize struct {
 	// Endpoints are items in the EDS V3 response payload.
-	Endpoints EResources
+	Endpoints EnvoyResources
 
 	// Clusters are items in the CDS response payload.
-	Clusters CResources
+	Clusters EnvoyResources
 
 	// Routes are items in the RDS response payload.
-	Routes RResources
+	Routes EnvoyResources
 
 	// Listeners are items in the LDS response payload.
-	Listeners LResources
+	Listeners EnvoyResources
 }
 
 func (s *EnvoySnapshot) Deserialize(bytes []byte) {
@@ -107,13 +79,6 @@ func (s *EnvoySnapshot) Deserialize(bytes []byte) {
 	if err != nil {
 		panic(err)
 	}
-	// ignore error, all other fields worked
-	// go through and set resource for each!
-	//for typeurl, resources := range s {
-	//	for b, _ := range resources.Items {
-	//		switch typeurl {
-	//		case "Clusters":
-
 	s.Clusters.Version = es.Clusters.Version // TODO(kdorosh) unneeded?
 	for k, v := range es.Clusters.Items {
 		if s.Clusters.Items == nil {
@@ -142,33 +107,6 @@ func (s *EnvoySnapshot) Deserialize(bytes []byte) {
 		}
 		s.Listeners.Items[k] = resource.NewEnvoyResource(v.ResourceProto())
 	}
-
-	//for k, _ := range s.Clusters.Items {
-	//	//newCluster := &envoy_config_cluster_v3.Cluster{}
-	//	//err := json.Unmarshal(bytes, newCluster)
-	//	//fmt.Printf("err is %v\n", err)
-	//	//er := resource.NewEnvoyResource(newCluster)
-	//	er := resource.NewEnvoyResource(&envoy_config_cluster_v3.Cluster{
-	//		Name: "clusterName", // TODO(kdorosh) don't hardcode
-	//	})
-	//	s.Clusters.Items[k] = er
-	//}
-	//for k, _ := range s.Endpoints.Items {
-	//	er := resource.NewEnvoyResource(&envoy_config_endpoint_v3.ClusterLoadAssignment{})
-	//	s.Endpoints.Items[k] = er
-	//}
-	//for k, _ := range s.Listeners.Items {
-	//	er := resource.NewEnvoyResource(&envoy_config_listener_v3.Listener{})
-	//	s.Listeners.Items[k] = er
-	//}
-	//for k, _ := range s.Routes.Items {
-	//	er := resource.NewEnvoyResource(&envoy_config_route_v3.Route{})
-	//	s.Routes.Items[k] = er
-	//}
-	//		}
-	//	}
-	//}
-	fmt.Printf("deserialized %v", s)
 }
 
 func (s *EnvoySnapshot) GetTypeUrl() string {
