@@ -568,7 +568,7 @@ var _ = Describe("AWS Lambda", func() {
 		//TODO, set up with gateway translation
 		//	It("should be able to call lambda via gateway", testLambdaWithVirtualService)
 
-		It("should be able to call lambda transformation and regular transformation", testLambdaTransformations)
+		//It("should be able to call lambda transformation and regular transformation", testLambdaTransformations)
 	})
 
 	Context("Temporary Credentials", func() {
