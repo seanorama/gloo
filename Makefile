@@ -79,6 +79,8 @@ print-git-info:
 	@echo ON_DEFAULT_BRANCH: $(ON_DEFAULT_BRANCH)
 	@echo ASSETS_ONLY_RELEASE: $(ASSETS_ONLY_RELEASE)
 
+UNAME_P ?= $(shell uname -p)
+
 LDFLAGS := "-X github.com/solo-io/gloo/pkg/version.Version=$(VERSION)"
 GCFLAGS := all="-N -l"
 
@@ -87,6 +89,8 @@ GCFLAGS := all="-N -l"
 ifeq ($(GOARCH),)
 	GOARCH := amd64
 endif
+
+
 
 GO_BUILD_FLAGS := GO111MODULE=on CGO_ENABLED=0 GOARCH=$(GOARCH)
 
@@ -137,16 +141,24 @@ install-go-tools: mod-download
 	GOBIN=$(DEPSGOBIN) go install github.com/cratonica/2goarray
 	GOBIN=$(DEPSGOBIN) go install github.com/golang/mock/gomock
 	GOBIN=$(DEPSGOBIN) go install github.com/golang/mock/mockgen
-	GOBIN=$(DEPSGOBIN) go install github.com/onsi/ginkgo/ginkgo
+	GOBIN=$(DEPSGOBIN) go install github.com/onsi/ginkgo/v2/ginkgo@v2.1.1
 	GOBIN=$(DEPSGOBIN) go install github.com/saiskee/gettercheck
 
 # command to run regression tests with guaranteed access to $(DEPSGOBIN)/ginkgo
 # requires the environment variable KUBE2E_TESTS to be set to the test type you wish to run
 
+# run tests
+GINKGOFLAGS= -r --fail-fast --randomize-all --trace -progress --junit-report=junit.xml -v
+# In case of non-ARM add -race
+ifneq ($(UNAME_P),arm)
+GINKGOFLAGS += --race
+endif
+
 .PHONY: run-tests
 run-tests:
 ifneq ($(RELEASE), "true")
-	$(DEPSGOBIN)/ginkgo -ldflags=$(LDFLAGS) -r -failFast -trace -progress -race -compilers=4 -failOnPending -noColor $(TEST_PKG)
+	$(DEPSGOBIN)/ginkgo -ldflags=$(LDFLAGS) $(GINKGOFLAGS) $(USER_GINKGOFLAGS) \
+						-compilers=4 $(TEST_PKG)
 endif
 
 .PHONY: run-ci-regression-tests
