@@ -129,9 +129,19 @@ type setupSyncer struct {
 
 func NewControlPlane(ctx context.Context, grpcServer *grpc.Server, bindAddr net.Addr, callbacks xdsserver.Callbacks, start bool) bootstrap.ControlPlane {
 	hasher := &xds.ProxyKeyHasher{}
-	emptySnapshot := &xds.EnvoySnapshot{}
+	emptySnapshot := &xds.EnvoySnapshot{} // used for envoy snapshot types
+	emptyTypedResources := map[string]cache.Resources{
+		extauth.ExtAuthConfigType: {
+			Version: "empty",
+			Items:   map[string]cache.Resource{},
+		},
+	}
+	emptyGenericSnapshot := cache.NewGenericSnapshot(emptyTypedResources) // used for generic types, e.g. enterprise extensions like extauth or ratelimit
 	// TODO(kdorosh) smoke test this
-	snapshotCache := cache.NewSnapshotCacheFromBackup(true, hasher, contextutils.LoggerFrom(ctx), "/xds-snapshot-cache/xdscache", map[string]cache.Snapshot{emptySnapshot.GetTypeUrl(): emptySnapshot})
+	snapshotCache := cache.NewSnapshotCacheFromBackup(true, hasher, contextutils.LoggerFrom(ctx), "/xds-snapshot-cache/xdscache", map[string]cache.Snapshot{
+		emptySnapshot.GetTypeUrl(): emptySnapshot,
+		emptyGenericSnapshot.GetTypeUrl(): emptyGenericSnapshot,
+	})
 	xdsServer := server.NewServer(ctx, snapshotCache, callbacks)
 	reflection.Register(grpcServer)
 

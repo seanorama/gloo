@@ -3,9 +3,13 @@
 package v1
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/any"
 
 	discovery "github.com/solo-io/solo-kit/pkg/api/external/envoy/api/v2"
 	core "github.com/solo-io/solo-kit/pkg/api/external/envoy/api/v2/core"
@@ -28,12 +32,36 @@ type ExtAuthConfigXdsResourceWrapper struct {
 	Resource *ExtAuthConfig
 }
 
+var jsonpbMarshaler = &jsonpb.Marshaler{OrigName: false}
+var jsonpbUnmarshaler = &jsonpb.Unmarshaler{
+	AllowUnknownFields: false,
+	AnyResolver:        nil,
+}
+
 func (e *ExtAuthConfigXdsResourceWrapper) MarshalJSON() ([]byte, error) {
-	panic("implement me")
+	anyProto, err := ptypes.MarshalAny(e.ResourceProto())
+	if err != nil {
+		return nil, err
+	}
+	buf := &bytes.Buffer{}
+	err = jsonpbMarshaler.Marshal(buf, anyProto)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 func (e *ExtAuthConfigXdsResourceWrapper) UnmarshalJSON(data []byte) error {
-	panic("implement me")
+	anyProto := &any.Any{}
+	err := jsonpbUnmarshaler.Unmarshal(bytes.NewBuffer(data), anyProto)
+	if err != nil {
+		return err
+	}
+	err = ptypes.UnmarshalAny(anyProto, e.Resource)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // Make sure the Resource interface is implemented
