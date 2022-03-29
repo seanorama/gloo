@@ -9,12 +9,23 @@ import (
 	"github.com/solo-io/solo-kit/pkg/api/v2/reporter"
 )
 
+// compile-time assertion
+var _ envoycache.SnapshotCache = &MockXdsCache{}
+
 type MockXdsCache struct {
 	Called bool
 	// Snap that is set
 	SetSnap envoycache.Snapshot
 	// Snap that is returned
 	GetSnap envoycache.Snapshot
+}
+
+func (c *MockXdsCache) Serialize() ([]byte, error) {
+	panic("implement me")
+}
+
+func (c *MockXdsCache) Deserialize(bytes []byte) error {
+	panic("implement me")
 }
 
 func (*MockXdsCache) CreateWatch(envoycache.Request) (value chan envoycache.Response, cancel func()) {

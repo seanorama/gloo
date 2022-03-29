@@ -22,17 +22,17 @@ var _ = Describe("EnvoySnapshot", func() {
 
 		toBeCloned := xds.NewSnapshot("1234",
 			[]*resource.EnvoyResource{resource.NewEnvoyResource(&envoy_config_endpoint_v3.ClusterLoadAssignment{})},
-			[]cache.Resource{resource.NewEnvoyResource(&envoy_config_cluster_v3.Cluster{})},
-			[]cache.Resource{resource.NewEnvoyResource(&envoy_config_route_v3.Route{})},
-			[]cache.Resource{resource.NewEnvoyResource(&envoy_config_listener_v3.Listener{})},
+			[]*resource.EnvoyResource{resource.NewEnvoyResource(&envoy_config_cluster_v3.Cluster{})},
+			[]*resource.EnvoyResource{resource.NewEnvoyResource(&envoy_config_route_v3.Route{})},
+			[]*resource.EnvoyResource{resource.NewEnvoyResource(&envoy_config_listener_v3.Listener{})},
 		)
 
 		// Create an identical struct which is guaranteed not to have been touched to compare against
 		untouched := xds.NewSnapshot("1234",
 			[]*resource.EnvoyResource{resource.NewEnvoyResource(&envoy_config_endpoint_v3.ClusterLoadAssignment{})},
-			[]cache.Resource{resource.NewEnvoyResource(&envoy_config_cluster_v3.Cluster{})},
-			[]cache.Resource{resource.NewEnvoyResource(&envoy_config_route_v3.Route{})},
-			[]cache.Resource{resource.NewEnvoyResource(&envoy_config_listener_v3.Listener{})},
+			[]*resource.EnvoyResource{resource.NewEnvoyResource(&envoy_config_cluster_v3.Cluster{})},
+			[]*resource.EnvoyResource{resource.NewEnvoyResource(&envoy_config_route_v3.Route{})},
+			[]*resource.EnvoyResource{resource.NewEnvoyResource(&envoy_config_listener_v3.Listener{})},
 		)
 
 		clone := toBeCloned.Clone()
@@ -70,13 +70,13 @@ var _ = Describe("EnvoySnapshot", func() {
 			[]*resource.EnvoyResource{resource.NewEnvoyResource(&envoy_config_endpoint_v3.ClusterLoadAssignment{
 				ClusterName: "endpointClusterName",
 			})},
-			[]cache.Resource{resource.NewEnvoyResource(&envoy_config_cluster_v3.Cluster{
+			[]*resource.EnvoyResource{resource.NewEnvoyResource(&envoy_config_cluster_v3.Cluster{
 				Name: "clusterName",
 			})},
-			[]cache.Resource{resource.NewEnvoyResource(&envoy_config_route_v3.RouteConfiguration{ // TODO(kdorosh) change other erroneous uses of this
+			[]*resource.EnvoyResource{resource.NewEnvoyResource(&envoy_config_route_v3.RouteConfiguration{ // TODO(kdorosh) change other erroneous uses of this
 				Name: "routeName",
 			})},
-			[]cache.Resource{resource.NewEnvoyResource(&envoy_config_listener_v3.Listener{
+			[]*resource.EnvoyResource{resource.NewEnvoyResource(&envoy_config_listener_v3.Listener{
 				Name: "listenerName",
 			})},
 		)

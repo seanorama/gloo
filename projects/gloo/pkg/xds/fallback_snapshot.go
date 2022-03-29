@@ -16,9 +16,9 @@ func fallbackSnapshot(bindAddress string, port, invalidConfigStatusCode uint32) 
 	listenerName := "listener-for-invalid-envoy"
 	var (
 		endpoints []*resource.EnvoyResource
-		clusters  []cache.Resource
+		clusters  []*resource.EnvoyResource
 	)
-	routes := []cache.Resource{
+	routes := []*resource.EnvoyResource{
 		resource.NewEnvoyResource(&envoy_config_route_v3.RouteConfiguration{
 			Name: routeConfigName,
 			VirtualHosts: []*envoy_config_route_v3.VirtualHost{
@@ -98,7 +98,7 @@ func fallbackSnapshot(bindAddress string, port, invalidConfigStatusCode uint32) 
 		}},
 	}
 
-	listeners := []cache.Resource{
+	listeners := []*resource.EnvoyResource{
 		resource.NewEnvoyResource(listener),
 	}
 	return NewSnapshot("unversioned", endpoints, clusters, routes, listeners)
