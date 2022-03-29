@@ -49,9 +49,9 @@ func init() {
 const emptyVersionKey = "empty"
 
 var (
-	emptyResource = resource.EnvoyResources{
+	emptyResource = cache.Resources{
 		Version: emptyVersionKey,
-		Items:   map[string]*resource.EnvoyResource{},
+		Items:   map[string]envoycache.Resource{},
 	}
 	emptySnapshot = xds.NewSnapshotFromResources(
 		emptyResource,

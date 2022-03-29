@@ -141,10 +141,10 @@ var _ = Describe("Translate Proxy", func() {
 		sanitizer.Err = errors.Errorf("we ran out of coffee")
 
 		oldXdsSnap := xds.NewSnapshotFromResources(
-			resource.NewEnvoyResources("", nil),
-			resource.NewEnvoyResources("", nil),
-			resource.NewEnvoyResources("", nil),
-			resource.NewEnvoyResources("old listeners from before the war", []*resource.EnvoyResource{
+			envoycache.NewResources("", nil),
+			envoycache.NewResources("", nil),
+			envoycache.NewResources("", nil),
+			envoycache.NewResources("old listeners from before the war", []envoycache.Resource{
 				resource.NewEnvoyResource(&envoy_config_listener_v3.Listener{}),
 			}),
 		)
@@ -221,12 +221,12 @@ var _ = Describe("Empty cache", func() {
 		xdsHasher := &xds.ProxyKeyHasher{}
 
 		snapshot = xds.NewEndpointsSnapshotFromResources(
-			resource.NewEnvoyResources("current endpoint", []*resource.EnvoyResource{
+			envoycache.NewResources("current endpoint", []envoycache.Resource{
 				resource.NewEnvoyResource(&envoy_config_endpoint_v3.ClusterLoadAssignment{
 					ClusterName: "coffee",
 				}),
 			}),
-			resource.NewEnvoyResources("current cluster", []*resource.EnvoyResource{
+			envoycache.NewResources("current cluster", []envoycache.Resource{
 				resource.NewEnvoyResource(&envoy_config_cluster_v3.Cluster{
 					Name:                 "coffee",
 					ClusterDiscoveryType: &envoy_config_cluster_v3.Cluster_Type{Type: envoy_config_cluster_v3.Cluster_EDS},
