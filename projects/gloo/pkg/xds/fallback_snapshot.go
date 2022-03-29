@@ -15,7 +15,7 @@ func fallbackSnapshot(bindAddress string, port, invalidConfigStatusCode uint32) 
 	routeConfigName := "routes-for-invalid-envoy"
 	listenerName := "listener-for-invalid-envoy"
 	var (
-		endpoints []*resource.EnvoyResource
+		endpoints []cache.Resource
 		clusters  []cache.Resource
 	)
 	routes := []cache.Resource{

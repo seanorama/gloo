@@ -21,7 +21,7 @@ var _ = Describe("EnvoySnapshot", func() {
 	It("clones correctly", func() {
 
 		toBeCloned := xds.NewSnapshot("1234",
-			[]*resource.EnvoyResource{resource.NewEnvoyResource(&envoy_config_endpoint_v3.ClusterLoadAssignment{})},
+			[]cache.Resource{resource.NewEnvoyResource(&envoy_config_endpoint_v3.ClusterLoadAssignment{})},
 			[]cache.Resource{resource.NewEnvoyResource(&envoy_config_cluster_v3.Cluster{})},
 			[]cache.Resource{resource.NewEnvoyResource(&envoy_config_route_v3.Route{})},
 			[]cache.Resource{resource.NewEnvoyResource(&envoy_config_listener_v3.Listener{})},
@@ -29,7 +29,7 @@ var _ = Describe("EnvoySnapshot", func() {
 
 		// Create an identical struct which is guaranteed not to have been touched to compare against
 		untouched := xds.NewSnapshot("1234",
-			[]*resource.EnvoyResource{resource.NewEnvoyResource(&envoy_config_endpoint_v3.ClusterLoadAssignment{})},
+			[]cache.Resource{resource.NewEnvoyResource(&envoy_config_endpoint_v3.ClusterLoadAssignment{})},
 			[]cache.Resource{resource.NewEnvoyResource(&envoy_config_cluster_v3.Cluster{})},
 			[]cache.Resource{resource.NewEnvoyResource(&envoy_config_route_v3.Route{})},
 			[]cache.Resource{resource.NewEnvoyResource(&envoy_config_listener_v3.Listener{})},
@@ -67,7 +67,7 @@ var _ = Describe("EnvoySnapshot", func() {
 		Expect(err).To(MatchError("no snapshot found for node test"))
 
 		snapshot := xds.NewSnapshot("1234",
-			[]*resource.EnvoyResource{resource.NewEnvoyResource(&envoy_config_endpoint_v3.ClusterLoadAssignment{
+			[]cache.Resource{resource.NewEnvoyResource(&envoy_config_endpoint_v3.ClusterLoadAssignment{
 				ClusterName: "endpointClusterName",
 			})},
 			[]cache.Resource{resource.NewEnvoyResource(&envoy_config_cluster_v3.Cluster{

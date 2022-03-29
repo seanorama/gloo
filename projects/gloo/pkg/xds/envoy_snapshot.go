@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/solo-io/solo-kit/pkg/api/v1/control-plane/cache"
 	"github.com/solo-io/solo-kit/pkg/api/v1/control-plane/resource"
@@ -28,7 +29,7 @@ import (
 // from the snapshot may be delivered to the proxy in arbitrary order.
 type EnvoySnapshot struct {
 	// Endpoints are items in the EDS V3 response payload.
-	Endpoints resource.EnvoyResources
+	Endpoints cache.Resources
 
 	// Clusters are items in the CDS response payload.
 	Clusters cache.Resources
@@ -38,6 +39,15 @@ type EnvoySnapshot struct {
 
 	// Listeners are items in the LDS response payload.
 	Listeners cache.Resources
+}
+
+// EnvoyResources is a versioned group of envoy resources.
+type EnvoyResources struct {
+	// Version information.
+	Version string
+
+	// Items in the group.
+	Items map[string]resource.EnvoyResource
 }
 
 func (s *EnvoySnapshot) Serialize() ([]byte, error) {
@@ -51,16 +61,16 @@ func (s *EnvoySnapshot) Serialize() ([]byte, error) {
 
 type EnvoySnapshotToDeserialize struct {
 	// Endpoints are items in the EDS V3 response payload.
-	Endpoints resource.EnvoyResources
+	Endpoints EnvoyResources
 
 	// Clusters are items in the CDS response payload.
-	Clusters resource.EnvoyResources
+	Clusters EnvoyResources
 
 	// Routes are items in the RDS response payload.
-	Routes resource.EnvoyResources
+	Routes EnvoyResources
 
 	// Listeners are items in the LDS response payload.
-	Listeners resource.EnvoyResources
+	Listeners EnvoyResources
 }
 
 func (s *EnvoySnapshot) Deserialize(bytes []byte) error {
@@ -69,15 +79,6 @@ func (s *EnvoySnapshot) Deserialize(bytes []byte) error {
 	if err != nil {
 		return err
 	}
-
-	es2 := EnvoySnapshot{}
-	err = json.Unmarshal(bytes, &es2)
-	if err != nil {
-		fmt.Println(err)
-		//return err
-	}
-	s.Endpoints = es2.Endpoints
-
 	s.Clusters.Version = es.Clusters.Version // TODO(kdorosh) unneeded?
 	for k, v := range es.Clusters.Items {
 		if s.Clusters.Items == nil {
@@ -85,13 +86,13 @@ func (s *EnvoySnapshot) Deserialize(bytes []byte) error {
 		}
 		s.Clusters.Items[k] = resource.NewEnvoyResource(v.ResourceProto())
 	}
-	//s.Endpoints.Version = es.Endpoints.Version
-	//for k, v := range es.Endpoints.Items {
-	//	if s.Endpoints.Items == nil {
-	//		//s.Endpoints.Items = make(map[string]cache.Resource)
-	//	}
-	//	//s.Endpoints.Items[k] = resource.NewEnvoyResource(v.ResourceProto())
-	//}
+	s.Endpoints.Version = es.Endpoints.Version
+	for k, v := range es.Endpoints.Items {
+		if s.Endpoints.Items == nil {
+			s.Endpoints.Items = make(map[string]cache.Resource)
+		}
+		s.Endpoints.Items[k] = resource.NewEnvoyResource(v.ResourceProto())
+	}
 	s.Routes.Version = es.Routes.Version
 	for k, v := range es.Routes.Items {
 		if s.Routes.Items == nil {
@@ -118,14 +119,14 @@ var _ cache.Snapshot = &EnvoySnapshot{}
 // NewSnapshot creates a snapshot from response types and a version.
 func NewSnapshot(
 	version string,
-	endpoints []*resource.EnvoyResource,
+	endpoints []cache.Resource,
 	clusters []cache.Resource,
 	routes []cache.Resource,
 	listeners []cache.Resource,
 ) *EnvoySnapshot {
 	// TODO: Copy resources
 	return &EnvoySnapshot{
-		Endpoints: resource.NewEnvoyResources(version, endpoints),
+		Endpoints: cache.NewResources(version, endpoints),
 		Clusters:  cache.NewResources(version, clusters),
 		Routes:    cache.NewResources(version, routes),
 		Listeners: cache.NewResources(version, listeners),
@@ -133,7 +134,7 @@ func NewSnapshot(
 }
 
 func NewSnapshotFromResources(
-	endpoints resource.EnvoyResources,
+	endpoints cache.Resources,
 	clusters cache.Resources,
 	routes cache.Resources,
 	listeners cache.Resources,
@@ -148,7 +149,7 @@ func NewSnapshotFromResources(
 }
 
 func NewEndpointsSnapshotFromResources(
-	endpoints resource.EnvoyResources,
+	endpoints cache.Resources,
 	clusters cache.Resources,
 ) cache.Snapshot {
 	return &EnvoySnapshot{
@@ -173,7 +174,7 @@ func (s *EnvoySnapshot) Consistent() error {
 	if len(endpoints) != len(s.Endpoints.Items) {
 		return fmt.Errorf("mismatched endpoint reference and resource lengths: length of %v does not equal length of %v", endpoints, s.Endpoints.Items)
 	}
-	if err := resource.Superset(endpoints, s.Endpoints.Items); err != nil {
+	if err := cache.Superset(endpoints, s.Endpoints.Items); err != nil {
 		return err
 	}
 
@@ -191,7 +192,7 @@ func (s *EnvoySnapshot) GetResources(typ string) cache.Resources {
 	}
 	switch typ {
 	case resource.EndpointTypeV3:
-		return cache.NewResources(s.Endpoints.Version, resource.GetEnvoyResources(s.Endpoints.Items))
+		return s.Endpoints
 	case resource.ClusterTypeV3:
 		return s.Clusters
 	case resource.RouteTypeV3:
@@ -205,9 +206,9 @@ func (s *EnvoySnapshot) GetResources(typ string) cache.Resources {
 func (s *EnvoySnapshot) Clone() cache.Snapshot {
 	snapshotClone := &EnvoySnapshot{}
 
-	snapshotClone.Endpoints = resource.EnvoyResources{
+	snapshotClone.Endpoints = cache.Resources{
 		Version: s.Endpoints.Version,
-		Items:   cloneEnvoyResourceItems(s.Endpoints.Items),
+		Items:   cloneItems(s.Endpoints.Items),
 	}
 
 	snapshotClone.Clusters = cache.Resources{
@@ -227,17 +228,6 @@ func (s *EnvoySnapshot) Clone() cache.Snapshot {
 
 	return snapshotClone
 }
-
-func cloneEnvoyResourceItems(items map[string]*resource.EnvoyResource) map[string]*resource.EnvoyResource {
-	clonedItems := make(map[string]*resource.EnvoyResource, len(items))
-	for k, v := range items {
-		resProto := v.ResourceProto()
-		resClone := proto.Clone(resProto)
-		clonedItems[k] = resource.NewEnvoyResource(resClone)
-	}
-	return clonedItems
-}
-
 
 func cloneItems(items map[string]cache.Resource) map[string]cache.Resource {
 	clonedItems := make(map[string]cache.Resource, len(items))
