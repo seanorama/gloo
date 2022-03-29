@@ -32,6 +32,10 @@ type ExtAuthConfigXdsResourceWrapper struct {
 	Resource *ExtAuthConfig
 }
 
+func (e *ExtAuthConfigXdsResourceWrapper) GetTypeUrl() string {
+	return ExtAuthConfigType
+}
+
 var jsonpbMarshaler = &jsonpb.Marshaler{OrigName: false}
 var jsonpbUnmarshaler = &jsonpb.Unmarshaler{
 	AllowUnknownFields: false,
