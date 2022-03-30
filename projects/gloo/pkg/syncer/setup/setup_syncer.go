@@ -127,21 +127,18 @@ type setupSyncer struct {
 	callbacks                xdsserver.Callbacks
 }
 
-func NewControlPlane(ctx context.Context, grpcServer *grpc.Server, bindAddr net.Addr, callbacks xdsserver.Callbacks, start bool) bootstrap.ControlPlane {
+func NewControlPlane(ctx context.Context, grpcServer *grpc.Server, bindAddr net.Addr, callbacks xdsserver.Callbacks, types map[string]cache.Snapshot, start bool) bootstrap.ControlPlane {
 	hasher := &xds.ProxyKeyHasher{}
 	emptySnapshot := &xds.EnvoySnapshot{} // used for envoy snapshot types
-	emptyTypedResources := map[string]cache.Resources{
-		extauth.ExtAuthConfigType: {
-			Version: "empty",
-			Items:   map[string]cache.Resource{},
-		},
+
+	if types == nil {
+		types = map[string]cache.Snapshot{}
 	}
-	emptyGenericSnapshot := cache.NewGenericSnapshot(emptyTypedResources) // used for generic types, e.g. enterprise extensions like extauth or ratelimit
+	// used to inject generic types, e.g. enterprise extensions like extauth or ratelimit once we have registered custom marshal/unmarshallers
+	types[emptySnapshot.GetTypeUrl()] = emptySnapshot
+
 	// TODO(kdorosh) smoke test this
-	snapshotCache := cache.NewSnapshotCacheFromBackup(true, hasher, contextutils.LoggerFrom(ctx), "/xds-snapshot-cache/xdscache", map[string]cache.Snapshot{
-		emptySnapshot.GetTypeUrl(): emptySnapshot,
-		emptyGenericSnapshot.GetTypeUrl(): emptyGenericSnapshot,
-	})
+	snapshotCache := cache.NewSnapshotCacheFromBackup(true, hasher, contextutils.LoggerFrom(ctx), "/xds-snapshot-cache/xdscache", types)
 	xdsServer := server.NewServer(ctx, snapshotCache, callbacks)
 	reflection.Register(grpcServer)
 
@@ -248,7 +245,7 @@ func (s *setupSyncer) Setup(ctx context.Context, kubeCache kube.SharedCache, mem
 		if s.extensions != nil {
 			callbacks = s.extensions.XdsCallbacks
 		}
-		s.controlPlane = NewControlPlane(ctx, s.makeGrpcServer(ctx), xdsTcpAddress, callbacks, true)
+		s.controlPlane = NewControlPlane(ctx, s.makeGrpcServer(ctx), xdsTcpAddress, callbacks, s.extensions.XdsSnapshotTypes, true)
 		s.previousXdsServer.cancel = cancel
 		s.previousXdsServer.addr = xdsAddr
 	}
@@ -340,6 +337,8 @@ type Extensions struct {
 	PluginRegistryFactory plugins.PluginRegistryFactory
 	SyncerExtensions      []syncer.TranslatorSyncerExtensionFactory
 	XdsCallbacks          xdsserver.Callbacks
+	// deprecated: used to persist xds snapshot to disk, can remove when https://github.com/solo-io/gloo/issues/6114 is resolved
+	XdsSnapshotTypes  map[string]cache.Snapshot
 }
 
 func RunGloo(opts bootstrap.Opts) error {
