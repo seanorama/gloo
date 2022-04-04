@@ -338,7 +338,7 @@ type Extensions struct {
 	SyncerExtensions      []syncer.TranslatorSyncerExtensionFactory
 	XdsCallbacks          xdsserver.Callbacks
 	// deprecated: used to persist xds snapshot to disk, can remove when https://github.com/solo-io/gloo/issues/6114 is resolved
-	XdsSnapshotTypes  map[string]cache.Snapshot
+	XdsSnapshotTypes map[string]cache.Snapshot
 }
 
 func RunGloo(opts bootstrap.Opts) error {

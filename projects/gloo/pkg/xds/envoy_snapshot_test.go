@@ -1,6 +1,7 @@
 package xds_test
 
 import (
+	"context"
 	"io/ioutil"
 	"syscall"
 
@@ -11,6 +12,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/solo-io/gloo/projects/gloo/pkg/xds"
+	"github.com/solo-io/go-utils/contextutils"
 	"github.com/solo-io/solo-kit/pkg/api/v1/control-plane/cache"
 	"github.com/solo-io/solo-kit/pkg/api/v1/control-plane/resource"
 	"github.com/solo-io/solo-kit/test/matchers"
@@ -60,7 +62,7 @@ var _ = Describe("EnvoySnapshot", func() {
 		empty := xds.NewSnapshot("1234", nil, nil, nil, nil)
 		registeredTypes := map[string]cache.Snapshot{empty.GetTypeUrl(): empty}
 
-		c := cache.NewSnapshotCacheFromBackup(true, &xds.ProxyKeyHasher{}, nil, f.Name(), registeredTypes)
+		c := cache.NewSnapshotCacheFromBackup(true, &xds.ProxyKeyHasher{}, contextutils.LoggerFrom(context.TODO()), f.Name(), registeredTypes)
 		key := "test"
 
 		_, err = c.GetSnapshot(key)
@@ -84,7 +86,7 @@ var _ = Describe("EnvoySnapshot", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		// simulate restart, need to create new cache
-		restoredCache := cache.NewSnapshotCacheFromBackup(true, &xds.ProxyKeyHasher{}, nil, f.Name(), registeredTypes)
+		restoredCache := cache.NewSnapshotCacheFromBackup(true, &xds.ProxyKeyHasher{}, contextutils.LoggerFrom(context.TODO()), f.Name(), registeredTypes)
 
 		snap, err := restoredCache.GetSnapshot(key)
 		Expect(err).ToNot(HaveOccurred())
