@@ -3,10 +3,14 @@
 package enterprise
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 
+	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/any"
 	discovery "github.com/solo-io/solo-kit/pkg/api/external/envoy/api/v2"
 	core "github.com/solo-io/solo-kit/pkg/api/external/envoy/api/v2/core"
 	"google.golang.org/grpc/codes"
@@ -28,12 +32,40 @@ type RateLimitConfigXdsResourceWrapper struct {
 	Resource *RateLimitConfig
 }
 
+func (e *RateLimitConfigXdsResourceWrapper) GetTypeUrl() string {
+	return RateLimitConfigType
+}
+
+var jsonpbMarshaler = &jsonpb.Marshaler{OrigName: false}
+var jsonpbUnmarshaler = &jsonpb.Unmarshaler{
+	AllowUnknownFields: false,
+	AnyResolver:        nil,
+}
+
 func (e *RateLimitConfigXdsResourceWrapper) MarshalJSON() ([]byte, error) {
-	panic("implement me")
+	anyProto, err := ptypes.MarshalAny(e.ResourceProto())
+	if err != nil {
+		return nil, err
+	}
+	buf := &bytes.Buffer{}
+	err = jsonpbMarshaler.Marshal(buf, anyProto)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 func (e *RateLimitConfigXdsResourceWrapper) UnmarshalJSON(data []byte) error {
-	panic("implement me")
+	anyProto := &any.Any{}
+	err := jsonpbUnmarshaler.Unmarshal(bytes.NewBuffer(data), anyProto)
+	if err != nil {
+		return err
+	}
+	err = ptypes.UnmarshalAny(anyProto, e.Resource)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // Make sure the Resource interface is implemented
