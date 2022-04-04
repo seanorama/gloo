@@ -245,7 +245,11 @@ func (s *setupSyncer) Setup(ctx context.Context, kubeCache kube.SharedCache, mem
 		if s.extensions != nil {
 			callbacks = s.extensions.XdsCallbacks
 		}
-		s.controlPlane = NewControlPlane(ctx, s.makeGrpcServer(ctx), xdsTcpAddress, callbacks, s.extensions.XdsSnapshotTypes, true)
+		var snapshotTypes map[string]cache.Snapshot
+		if s.extensions != nil {
+			snapshotTypes = s.extensions.XdsSnapshotTypes
+		}
+		s.controlPlane = NewControlPlane(ctx, s.makeGrpcServer(ctx), xdsTcpAddress, callbacks, snapshotTypes, true)
 		s.previousXdsServer.cancel = cancel
 		s.previousXdsServer.addr = xdsAddr
 	}
