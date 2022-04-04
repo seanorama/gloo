@@ -733,8 +733,8 @@ var _ = Describe("AWS Lambda", func() {
 			defaults.HttpsPort = services.NextBindPort()
 			ns := defaults.GlooSystem
 			ro := &services.RunOptions{
-				NsToWrite:  ns,
-				NsToWatch:  []string{"default", ns},
+				NsToWrite: ns,
+				NsToWatch: []string{"default", ns},
 				WhatToRun: services.What{
 					DisableGateway: justGloo,
 				},
@@ -786,7 +786,7 @@ var _ = Describe("AWS Lambda", func() {
 
 			It("should be able to call lambda with request and response transforms", testProxyWithRequestAndResponseTransforms)
 		})
-	    Context("With gateway translation", func() {
+		Context("With gateway translation", func() {
 			BeforeEach(func() {
 				setupEnvoySts(false)
 				addCredentialsSts()

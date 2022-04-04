@@ -77,15 +77,6 @@ gatewayProxies:
   gatewayProxy:
     healthyPanicThreshold: 0
 `))
-	/*
-		service:
-			type: NodePort
-		httpPort: 31500
-		httpsPort: 32500
-		httpNodePort: 31500
-		httpsNodePort: 32500
-
-	*/
 	Expect(err).NotTo(HaveOccurred())
 
 	err = values.Close()

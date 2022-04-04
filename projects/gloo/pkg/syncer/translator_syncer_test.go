@@ -238,8 +238,6 @@ var _ = Describe("Empty cache", func() {
 		)
 		statusMetrics, err = metrics.NewConfigStatusMetrics(metrics.GetDefaultConfigStatusOptions())
 		Expect(err).NotTo(HaveOccurred())
-		//proxyReconciler := gwreconciler.NewProxyReconciler(nil, proxyClient, statusClient)
-		//gatewaySyncer := gatewaysyncer.NewTranslatorSyncer(ctx, ns, proxyReconciler, rep, gatewayTranslator, statusClient, statusMetrics)
 		syncer = NewTranslatorSyncer(&mockTranslator{true, false, snapshot}, xdsCache, xdsHasher, sanitizer, rep, false, nil, settings, statusMetrics, nil, proxyClient, "")
 
 		_, err = proxyClient.Write(proxy, clients.WriteOpts{})
