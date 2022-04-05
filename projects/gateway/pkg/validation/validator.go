@@ -360,8 +360,7 @@ func (v *validator) validateSnapshot(ctx context.Context, apply applyResource, d
 	}
 
 	if errs != nil {
-		// TODO: debug
-		contextutils.LoggerFrom(ctx).Infof("Rejected %T %v: %v", resource, ref, errs)
+		contextutils.LoggerFrom(ctx).Debugf("Rejected %T %v: %v", resource, ref, errs)
 		if !dryRun {
 			utils2.MeasureZero(ctx, mValidConfig)
 		}

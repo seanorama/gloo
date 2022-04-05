@@ -7,8 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/solo-io/solo-kit/pkg/errors"
-
 	"github.com/solo-io/gloo/projects/gateway/pkg/utils/metrics"
 	gloo_translator "github.com/solo-io/gloo/projects/gloo/pkg/translator"
 	"github.com/solo-io/solo-kit/pkg/api/v1/clients"
@@ -78,8 +76,9 @@ func (s *TranslatorSyncer) Sync(ctx context.Context, snap *v1.ApiSnapshot) error
 
 	return s.reconcile(ctx, desiredProxies, invalidProxies)
 }
+//This replaced a watch on the proxy CR from when the gloo and gateway pods were separate
 func (s *TranslatorSyncer) UpdateProxies(ctx context.Context) {
-	s.statusSyncer.handleUpdatedProxies(ctx, nil)
+	s.statusSyncer.handleUpdatedProxies(ctx)
 }
 func (s *TranslatorSyncer) GeneratedDesiredProxies(ctx context.Context, snap *v1.ApiSnapshot) (reconciler.GeneratedProxies, reconciler.InvalidProxies) {
 	logger := contextutils.LoggerFrom(ctx)
@@ -138,22 +137,20 @@ type statusSyncer struct {
 	mapLock                 sync.RWMutex
 	reporter                reporter.StatusReporter
 
-	proxyWatcher   gloov1.ProxyWatcher
-	proxyClient    gloov1.ProxyClient
-	writeNamespace string
-	statusClient   resources.StatusClient
-	statusMetrics  metrics.ConfigStatusMetrics
-	syncNeeded     chan struct{}
-	previousHash   uint64
+	proxyClient             gloov1.ProxyClient
+	writeNamespace          string
+	statusClient            resources.StatusClient
+	statusMetrics           metrics.ConfigStatusMetrics
+	syncNeeded              chan struct{}
+	previousProxyStatusHash uint64
 }
 
-func newStatusSyncer(writeNamespace string, proxyWatcher gloov1.ProxyClient, reporter reporter.StatusReporter, statusClient resources.StatusClient, statusMetrics metrics.ConfigStatusMetrics) statusSyncer {
+func newStatusSyncer(writeNamespace string, proxyClient gloov1.ProxyClient, reporter reporter.StatusReporter, statusClient resources.StatusClient, statusMetrics metrics.ConfigStatusMetrics) statusSyncer {
 	return statusSyncer{
 		proxyToLastStatus:       map[string]reportsAndStatus{},
 		currentGeneratedProxies: nil,
 		reporter:                reporter,
-		proxyWatcher:            proxyWatcher,
-		proxyClient:             proxyWatcher,
+		proxyClient:             proxyClient,
 		writeNamespace:          writeNamespace,
 		statusClient:            statusClient,
 		statusMetrics:           statusMetrics,
@@ -210,53 +207,13 @@ func (s *statusSyncer) setCurrentProxies(desiredProxies reconciler.GeneratedProx
 	})
 }
 
-// run this in the background
-// Currently this isn't run because UpdateProxies is called from the translation loop.
-// We might want to get proxies from multiple sources in which case we do need this watch.
-func (s *statusSyncer) watchProxies(ctx context.Context) error {
-	ctx = contextutils.WithLogger(ctx, "proxy-err-watcher")
+func (s *statusSyncer) handleUpdatedProxies(ctx context.Context) {
 	logger := contextutils.LoggerFrom(ctx)
-	defer logger.Debugw("done watching proxies")
-	proxies, errs, err := s.proxyWatcher.Watch(s.writeNamespace, clients.WatchOpts{
+	proxyList, err := s.proxyClient.List(s.writeNamespace, clients.ListOpts{
 		Ctx: ctx,
 	})
 	if err != nil {
-		return errors.Wrapf(err, "creating watch for proxies in %v", s.writeNamespace)
-	}
-	return s.watchProxiesFromChannel(ctx, proxies, errs)
-}
-
-func (s *statusSyncer) watchProxiesFromChannel(ctx context.Context, proxies <-chan gloov1.ProxyList, errs <-chan error) error {
-
-	logger := contextutils.LoggerFrom(ctx)
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case err, ok := <-errs:
-			if !ok {
-				return nil
-			}
-			logger.Error(err)
-		case proxyList, ok := <-proxies:
-			if !ok {
-				return nil
-			}
-			contextutils.LoggerFrom(ctx).Debugw("Updated proxies, count", len(proxyList))
-			s.handleUpdatedProxies(ctx, proxyList)
-		}
-	}
-}
-func (s *statusSyncer) handleUpdatedProxies(ctx context.Context, proxyList gloov1.ProxyList) {
-	logger := contextutils.LoggerFrom(ctx)
-	if proxyList == nil {
-		var err error
-		proxyList, err = s.proxyClient.List(s.writeNamespace, clients.ListOpts{
-			Ctx: ctx,
-		})
-		if err != nil {
-			logger.Warnw("Error reading updated proxies, statuses may be out of date.", err)
-		}
+		logger.Warnw("Error reading updated proxies, statuses may be out of date.", err)
 	}
 	currentHash, err := s.hashStatuses(proxyList)
 	if err != nil {
@@ -266,15 +223,14 @@ func (s *statusSyncer) handleUpdatedProxies(ctx context.Context, proxyList gloov
 	// the local e2e; it fires a watch update too all watch object, on any change,
 	// this means that setting by the status of a virtual service we will get another
 	// proxyList from the channel. This results in excessive CPU usage in CI.
-	if currentHash != s.previousHash {
-		logger.Debugw("proxy list updated", "len(proxyList)", len(proxyList), "currentHash", currentHash, "previousHash", s.previousHash)
-		s.previousHash = currentHash
+	if currentHash != s.previousProxyStatusHash {
+		logger.Debugw("proxy list updated", "len(proxyList)", len(proxyList), "currentHash", currentHash, "previousProxyStatusHash", s.previousProxyStatusHash)
+		s.previousProxyStatusHash = currentHash
 		s.setStatuses(proxyList)
 		s.forceSync()
 	}
 }
 
-//This was called by watchProxiesFromChannel which was removed
 func (s *statusSyncer) hashStatuses(proxyList gloov1.ProxyList) (uint64, error) {
 	statuses := make([]interface{}, 0, len(proxyList))
 	for _, proxy := range proxyList {
@@ -284,7 +240,6 @@ func (s *statusSyncer) hashStatuses(proxyList gloov1.ProxyList) (uint64, error) 
 	return hashutils.HashAllSafe(nil, statuses...)
 }
 
-//This is called by watchProxiesFromChannel - TODO: call when gloo translation finishes instead
 func (s *statusSyncer) setStatuses(list gloov1.ProxyList) {
 	s.mapLock.Lock()
 	defer s.mapLock.Unlock()
