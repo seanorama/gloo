@@ -1,6 +1,7 @@
 package consulvaulte2e_test
 
 import (
+	"github.com/onsi/ginkgo/reporters"
 	"log"
 	"os"
 	"testing"
@@ -50,7 +51,6 @@ func TestE2e(t *testing.T) {
 
 	helpers.RegisterCommonFailHandlers()
 	helpers.SetupLog()
-	//TODO: commenting out these tests to be able to test the rest of CI
-	//junitReporter := reporters.NewJUnitReporter("junit.xml")
-	// RunSpecsWithDefaultAndCustomReporters(t, "Consul+Vault E2e Suite", []Reporter{junitReporter})
+	junitReporter := reporters.NewJUnitReporter("junit.xml")
+	RunSpecsWithDefaultAndCustomReporters(t, "Consul+Vault E2e Suite", []Reporter{junitReporter})
 }
