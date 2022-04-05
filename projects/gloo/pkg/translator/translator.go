@@ -30,7 +30,7 @@ type Translator interface {
 	Translate(
 		params plugins.Params,
 		proxy *v1.Proxy,
-	) (envoycache.Snapshot, reporter.ResourceReports, *validationapi.ProxyReport, error)
+	) (envoycache.Snapshot, reporter.ResourceReports, *validationapi.ProxyReport)
 }
 
 func NewTranslator(
@@ -65,7 +65,7 @@ type translatorFactory struct {
 func (t *translatorFactory) Translate(
 	params plugins.Params,
 	proxy *v1.Proxy,
-) (envoycache.Snapshot, reporter.ResourceReports, *validationapi.ProxyReport, error) {
+) (envoycache.Snapshot, reporter.ResourceReports, *validationapi.ProxyReport) {
 	pluginRegistry := t.pluginRegistryFactory(params.Ctx)
 	listenerTranslatorFactory := NewListenerSubsystemTranslatorFactory(pluginRegistry, t.sslConfigTranslator)
 
@@ -91,7 +91,7 @@ type translatorInstance struct {
 func (t *translatorInstance) Translate(
 	params plugins.Params,
 	proxy *v1.Proxy,
-) (envoycache.Snapshot, reporter.ResourceReports, *validationapi.ProxyReport, error) {
+) (envoycache.Snapshot, reporter.ResourceReports, *validationapi.ProxyReport) {
 	// setup tracing, logging
 	ctx, span := trace.StartSpan(params.Ctx, "gloo.translator.Translate")
 	defer span.End()
@@ -107,7 +107,8 @@ func (t *translatorInstance) Translate(
 			Ctx:      params.Ctx,
 			Settings: t.settings,
 		}); err != nil {
-			return nil, nil, nil, errors.Wrapf(err, "plugin init failed")
+			// TODO(kdorosh) e.g. consul ec2 client failures..
+			//return nil, nil, nil, errors.Wrapf(err, "plugin init failed")
 		}
 	}
 
@@ -144,7 +145,7 @@ func (t *translatorInstance) Translate(
 		}
 	}
 
-	return xdsSnapshot, reports, proxyReport, nil
+	return xdsSnapshot, reports, proxyReport
 }
 
 func (t *translatorInstance) translateClusterSubsystemComponents(params plugins.Params, proxy *v1.Proxy, reports reporter.ResourceReports) (

@@ -122,12 +122,7 @@ func (s *translatorSyncer) syncEnvoy(ctx context.Context, snap *v1snap.ApiSnapsh
 			Snapshot: snap,
 		}
 
-		xdsSnapshot, reports, _, err := s.translator.Translate(params, proxy)
-		if err != nil {
-			err := eris.Wrapf(err, "translation loop failed")
-			logger.DPanicw("", zap.Error(err))
-			return err
-		}
+		xdsSnapshot, reports, _ := s.translator.Translate(params, proxy)
 
 		if validateErr := reports.ValidateStrict(); validateErr != nil {
 			logger.Warnw("Proxy had invalid config", zap.Any("proxy", proxy.GetMetadata().Ref()), zap.Error(validateErr))

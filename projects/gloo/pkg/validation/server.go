@@ -190,14 +190,10 @@ func (s *validator) Validate(ctx context.Context, req *validation.GlooValidation
 		proxiesToValidate = snapCopy.Proxies
 	}
 	for _, proxy := range proxiesToValidate {
-		xdsSnapshot, resourceReports, proxyReport, err := s.translator.Translate(params, proxy)
-		if err != nil {
-			logger.Errorw("failed to validate proxy", zap.Error(err))
-			return nil, err
-		}
+		xdsSnapshot, resourceReports, proxyReport := s.translator.Translate(params, proxy)
 
 		// Sanitize routes before sending report to gateway
-		s.xdsSanitizer.SanitizeSnapshot(ctx, &snapCopy, xdsSnapshot, resourceReports)
+		s.xdsSanitizer.SanitizeSnapshot(ctx, &snapCopy, xdsSnapshot, resourceReports) //TODO(kdorosh) this shouldn't error?
 		routeErrorToWarnings(resourceReports, proxyReport)
 
 		validationReports = append(validationReports, convertToValidationReport(proxyReport, resourceReports, proxy))
