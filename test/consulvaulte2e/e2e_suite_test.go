@@ -1,10 +1,11 @@
 package consulvaulte2e_test
 
 import (
-	"github.com/onsi/ginkgo/reporters"
 	"log"
 	"os"
 	"testing"
+
+	"github.com/onsi/ginkgo/reporters"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

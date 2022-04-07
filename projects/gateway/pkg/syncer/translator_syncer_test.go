@@ -201,7 +201,7 @@ var _ = Describe("TranslatorSyncer", func() {
 		errs.Accept(vs)
 
 		desiredProxies := reconciler.GeneratedProxies{
-			desiredProxy: errs,
+			desiredProxy:  errs,
 			acceptedProxy: errs,
 		}
 		ctx, cancel := context.WithCancel(context.Background())

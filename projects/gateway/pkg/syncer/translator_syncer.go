@@ -76,6 +76,7 @@ func (s *TranslatorSyncer) Sync(ctx context.Context, snap *v1.ApiSnapshot) error
 
 	return s.reconcile(ctx, desiredProxies, invalidProxies)
 }
+
 //This replaced a watch on the proxy CR from when the gloo and gateway pods were separate
 func (s *TranslatorSyncer) UpdateProxies(ctx context.Context) {
 	s.statusSyncer.handleUpdatedProxies(ctx)

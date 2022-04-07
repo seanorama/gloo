@@ -2,11 +2,11 @@ package syncer
 
 import (
 	"context"
+
 	gloov1 "github.com/solo-io/gloo/projects/gloo/pkg/api/v1"
 	"github.com/solo-io/solo-kit/pkg/api/v1/clients/kube"
 	"github.com/solo-io/solo-kit/pkg/api/v1/clients/memory"
 )
-
 
 func Setup(ctx context.Context, kubeCache kube.SharedCache, inMemoryCache memory.InMemoryResourceCache, settings *gloov1.Settings) error {
 	//TODO (after gateway removal feature branch merges)
@@ -15,4 +15,3 @@ func Setup(ctx context.Context, kubeCache kube.SharedCache, inMemoryCache memory
 	// WRT what changes were relevant and which were effectively dead code.
 	return nil
 }
-
