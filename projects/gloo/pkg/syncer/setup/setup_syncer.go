@@ -292,6 +292,7 @@ func (s *setupSyncer) Setup(ctx context.Context, kubeCache kube.SharedCache, mem
 		vaultClient,
 		memCache,
 		settings,
+		writeNamespace,
 	)
 	if err != nil {
 		return err
@@ -863,7 +864,7 @@ func startRestXdsServer(opts bootstrap.Opts) {
 		}
 	}()
 }
-func constructOpts(ctx context.Context, clientset *kubernetes.Interface, kubeCache kube.SharedCache, consulClient *consulapi.Client, vaultClient *vaultapi.Client, memCache memory.InMemoryResourceCache, settings *v1.Settings) (bootstrap.Opts, error) {
+func constructOpts(ctx context.Context, clientset *kubernetes.Interface, kubeCache kube.SharedCache, consulClient *consulapi.Client, vaultClient *vaultapi.Client, memCache memory.InMemoryResourceCache, settings *v1.Settings, writeNamespace string) (bootstrap.Opts, error) {
 
 	var (
 		cfg           *rest.Config
@@ -905,6 +906,9 @@ func constructOpts(ctx context.Context, clientset *kubernetes.Interface, kubeCac
 		proxyFactory = &factory.MemoryResourceClientFactory{
 			Cache: memory.NewInMemoryResourceCache(),
 		}
+		// Delete proxies that may have been left from prior to an upgrade or from previously having set persistProxySpec
+		// Ignore errors because gloo will still work with stray proxies.
+		doProxyCleanup(ctx, params, settings, writeNamespace)
 	}
 
 	secretFactory, err := bootstrap.SecretFactoryForSettings(
