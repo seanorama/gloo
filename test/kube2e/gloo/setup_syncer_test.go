@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"google.golang.org/protobuf/types/known/wrapperspb"
 	"github.com/solo-io/gloo/pkg/utils/setuputils"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/solo-io/gloo/projects/gloo/pkg/plugins/registry"
 

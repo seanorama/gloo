@@ -3,17 +3,19 @@ package setup
 import (
 	"context"
 	"errors"
-	"github.com/solo-io/gloo/projects/gloo/pkg/bootstrap"
 
 	v1 "github.com/solo-io/gloo/projects/gloo/pkg/api/v1"
+	"github.com/solo-io/gloo/projects/gloo/pkg/bootstrap"
 	"github.com/solo-io/solo-kit/pkg/api/v1/clients"
 )
-var(
+
+var (
 	// These could theoretically be passed in as arguments to make the cleanup resources by label functionality more generic
 	// Currently there isn't a clear use case for that and defining the values here feels most readable
 	gatewayLabelValue = "gloo-gateway-translator"
 	createdByLabelKey = "created-by"
 )
+
 func deleteUnusedProxies(ctx context.Context, namespace string, proxyClient v1.ProxyClient) error {
 	currentProxies, err := proxyClient.List(namespace, clients.ListOpts{Ctx: ctx})
 	if err != nil {
@@ -39,7 +41,7 @@ func deleteUnusedProxies(ctx context.Context, namespace string, proxyClient v1.P
 	}
 	return nil
 }
-func doProxyCleanup(ctx context.Context, params bootstrap.ConfigFactoryParams, settings *v1.Settings, namespace string) error{
+func doProxyCleanup(ctx context.Context, params bootstrap.ConfigFactoryParams, settings *v1.Settings, namespace string) error {
 	//Do not clean up proxies if all the resources are held in memory or if proxies are being persisted
 	if settings.GetConfigSource() == nil || settings.GetGateway().GetPersistProxySpec().GetValue() {
 		return nil
