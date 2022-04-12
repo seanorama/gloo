@@ -293,8 +293,10 @@ func defaultGlooOpts(ctx context.Context, runOptions *RunOptions) bootstrap.Opts
 		// while it exists test flakes do not occur
 		settings.Gloo.InvalidConfigPolicy = &gloov1.GlooOptions_InvalidConfigPolicy{
 			ReplaceInvalidRoutes:     true,
-			InvalidRouteResponseCode: 404,
-			InvalidRouteResponseBody: "invalid-route-response",
+			// An intentionally unique response code to enable debugging
+			// https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/418
+			InvalidRouteResponseCode: 418,
+			InvalidRouteResponseBody: "invalid-route-response-for-test",
 		}
 	}
 

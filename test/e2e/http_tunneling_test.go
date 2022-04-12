@@ -71,6 +71,15 @@ var _ = Describe("tunneling", func() {
 				DisableFds: true,
 				DisableUds: true,
 			},
+			Settings: &gloov1.Settings{
+				Gloo: &gloov1.GlooOptions{
+					InvalidConfigPolicy: &gloov1.GlooOptions_InvalidConfigPolicy{
+						// By default, e2e test enable invalid route replacement so we need to
+						// explicitly disable it for this test
+						ReplaceInvalidRoutes: false,
+					},
+				},
+			},
 		}
 		testClients = services.RunGlooGatewayUdsFds(ctx, ro)
 
