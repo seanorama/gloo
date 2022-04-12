@@ -132,16 +132,7 @@ func RunGlooGatewayUdsFds(ctx context.Context, runOptions *RunOptions) TestClien
 
 	glooOpts.ControlPlane.BindAddr.(*net.TCPAddr).Port = int(runOptions.GlooPort)
 	glooOpts.ValidationServer.BindAddr.(*net.TCPAddr).Port = int(runOptions.ValidationPort)
-
-	if glooOpts.Settings == nil {
-		glooOpts.Settings = &gloov1.Settings{}
-	}
-	if glooOpts.Settings.GetGloo() == nil {
-		glooOpts.Settings.Gloo = &gloov1.GlooOptions{}
-	}
-	if glooOpts.Settings.GetGloo().GetRestXdsBindAddr() == "" {
-		glooOpts.Settings.GetGloo().RestXdsBindAddr = fmt.Sprintf("0.0.0.0:%v", int(runOptions.RestXdsPort))
-	}
+	glooOpts.Settings.Gloo.RestXdsBindAddr = fmt.Sprintf("0.0.0.0:%v", int(runOptions.RestXdsPort))
 
 	runOptions.Extensions.SyncerExtensions = []syncer.TranslatorSyncerExtensionFactory{
 		ratelimitExt.NewTranslatorSyncerExtension,
@@ -287,8 +278,28 @@ func defaultGlooOpts(ctx context.Context, runOptions *RunOptions) bootstrap.Opts
 		Expect(err).NotTo(HaveOccurred())
 	}
 
+	settings := runOptions.Settings
+	if settings == nil {
+		settings = &gloov1.Settings{}
+	}
+	if settings.GetGloo() == nil {
+		settings.Gloo = &gloov1.GlooOptions{}
+	}
+	if settings.GetGloo().GetInvalidConfigPolicy() == nil {
+		// We intentionally configure invalid route replacement for tests
+		// Test pollution leaves behind invalid upstreams, which in turn cause the proxy to be
+		// rejected. By enabling invalid route replacement, we work around this.
+		// Ideally of course, we will resolve test pollution altogether, but this ensures that
+		// while it exists test flakes do not occur
+		settings.Gloo.InvalidConfigPolicy = &gloov1.GlooOptions_InvalidConfigPolicy{
+			ReplaceInvalidRoutes:     true,
+			InvalidRouteResponseCode: 404,
+			InvalidRouteResponseBody: "invalid-route-response",
+		}
+	}
+
 	return bootstrap.Opts{
-		Settings:                runOptions.Settings,
+		Settings:                settings,
 		WriteNamespace:          runOptions.NsToWrite,
 		StatusReporterNamespace: statusutils.GetStatusReporterNamespaceOrDefault(defaults.GlooSystem),
 		Upstreams:               f,
