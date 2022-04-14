@@ -975,6 +975,34 @@ func (m *JwksOnDemandCacheRefreshPolicy) Equal(that interface{}) bool {
 }
 
 // Equal function
+func (m *AutoMapFromMetadata) Equal(that interface{}) bool {
+	if that == nil {
+		return m == nil
+	}
+
+	target, ok := that.(*AutoMapFromMetadata)
+	if !ok {
+		that2, ok := that.(AutoMapFromMetadata)
+		if ok {
+			target = &that2
+		} else {
+			return false
+		}
+	}
+	if target == nil {
+		return m == nil
+	} else if m == nil {
+		return false
+	}
+
+	if strings.Compare(m.GetNamespace(), target.GetNamespace()) != 0 {
+		return false
+	}
+
+	return true
+}
+
+// Equal function
 func (m *OidcAuthorizationCode) Equal(that interface{}) bool {
 	if that == nil {
 		return m == nil
@@ -2397,34 +2425,6 @@ func (m *UserSession_CookieOptions) Equal(that interface{}) bool {
 }
 
 // Equal function
-func (m *OidcAuthorizationCodeAutoMapFromMetadata) Equal(that interface{}) bool {
-	if that == nil {
-		return m == nil
-	}
-
-	target, ok := that.(*OidcAuthorizationCodeAutoMapFromMetadata)
-	if !ok {
-		that2, ok := that.(OidcAuthorizationCodeAutoMapFromMetadata)
-		if ok {
-			target = &that2
-		} else {
-			return false
-		}
-	}
-	if target == nil {
-		return m == nil
-	} else if m == nil {
-		return false
-	}
-
-	if strings.Compare(m.GetNamespace(), target.GetNamespace()) != 0 {
-		return false
-	}
-
-	return true
-}
-
-// Equal function
 func (m *JwtValidation_RemoteJwks) Equal(that interface{}) bool {
 	if that == nil {
 		return m == nil
@@ -2913,6 +2913,16 @@ func (m *ExtAuthConfig_OidcAuthorizationCodeConfig) Equal(that interface{}) bool
 
 	if m.GetParseCallbackPathAsRegex() != target.GetParseCallbackPathAsRegex() {
 		return false
+	}
+
+	if h, ok := interface{}(m.GetAutoMapFromMetadata()).(equality.Equalizer); ok {
+		if !h.Equal(target.GetAutoMapFromMetadata()) {
+			return false
+		}
+	} else {
+		if !proto.Equal(m.GetAutoMapFromMetadata(), target.GetAutoMapFromMetadata()) {
+			return false
+		}
 	}
 
 	return true
