@@ -38,6 +38,7 @@ weight: 5
 - [DiscoveryOverride](#discoveryoverride)
 - [JwksOnDemandCacheRefreshPolicy](#jwksondemandcacherefreshpolicy)
 - [OidcAuthorizationCode](#oidcauthorizationcode)
+- [autoMapFromMetadata](#automapfrommetadata)
 - [JwtValidation](#jwtvalidation)
 - [RemoteJwks](#remotejwks)
 - [LocalJwks](#localjwks)
@@ -699,6 +700,7 @@ not yet in the local cache.
 "jwksCacheRefreshPolicy": .enterprise.gloo.solo.io.JwksOnDemandCacheRefreshPolicy
 "sessionIdHeaderName": string
 "parseCallbackPathAsRegex": bool
+"autoMapFromMetadata": .enterprise.gloo.solo.io.OidcAuthorizationCode.autoMapFromMetadata
 
 ```
 
@@ -721,6 +723,24 @@ not yet in the local cache.
 | `jwksCacheRefreshPolicy` | [.enterprise.gloo.solo.io.JwksOnDemandCacheRefreshPolicy](../extauth.proto.sk/#jwksondemandcacherefreshpolicy) | If a user executes a request with a key that is not found in the JWKS, it could be that the keys have rotated on the remote source, and not yet in the local cache. This policy lets you define the behavior for how to refresh the local cache during a request where an invalid key is provided. |
 | `sessionIdHeaderName` | `string` | If set, the randomly generated session id will be sent to the token endpoint as part of the code exchange The session id is used as the key for sessions in Redis. |
 | `parseCallbackPathAsRegex` | `bool` | If set, CallbackPath will be evaluated as a regular expression. |
+| `autoMapFromMetadata` | [.enterprise.gloo.solo.io.OidcAuthorizationCode.autoMapFromMetadata](../extauth.proto.sk/#automapfrommetadata) | If specified, authEndpointQueryParams and tokenEndpointQueryParams will be populated using dynamic metadata values. By default parameters will be extracted from the solo_authconfig_oidc namespace this behavior can be overridden by explicitly specifying a namespace. |
+
+
+
+
+---
+### autoMapFromMetadata
+
+
+
+```yaml
+"namespace": string
+
+```
+
+| Field | Type | Description |
+| ----- | ---- | ----------- | 
+| `namespace` | `string` | The namespace from which to map metadata. |
 
 
 
