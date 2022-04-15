@@ -69,7 +69,7 @@ var _ = Describe("Kube2e: helm", func() {
 				file: filepath.Join(crdDir, "gateway.solo.io_v1_MatchableHttpGateway.yaml"),
 			},
 			{
-				name: "persistProxySpec",
+				name: "settings.gloo.solo.io",
 				file: filepath.Join(crdDir, "gloo.solo.io_v1_Settings.yaml"),
 			},
 		}
@@ -80,9 +80,15 @@ var _ = Describe("Kube2e: helm", func() {
 			fmt.Println(string(crdContents))
 			// Apply the CRD and ensure it is eventually accepted
 			runAndCleanCommand("kubectl", "apply", "-f", crd.file)
-			Eventually(func() string {
-				return string(runAndCleanCommand("kubectl", "get", "crd", crd.name, "-o", "yaml"))
-			}, "5s", "1s").Should(ContainSubstring(crd.name))
+			if crd.name == "settings.gloo.solo.io" {
+				Eventually(func() string {
+					return string(runAndCleanCommand("kubectl", "get", "crd", crd.name, "-o", "yaml"))
+				}, "5s", "1s").Should(ContainSubstring("persistProxySpec"))
+			} else {
+				Eventually(func() string {
+					return string(runAndCleanCommand("kubectl", "get", "crd", crd.name))
+				}, "5s", "1s").Should(ContainSubstring(crd.name))
+			}
 		}
 
 		// upgrade to the gloo version being tested

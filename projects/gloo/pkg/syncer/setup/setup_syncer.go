@@ -483,8 +483,9 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 	if err := routeOptionClient.Register(); err != nil {
 		return err
 	}
-
-	opts.ProxyCleanup()
+    if opts.ProxyCleanup != nil {
+		opts.ProxyCleanup()
+	}
 	// Register grpc endpoints to the grpc server
 	xds.SetupEnvoyXds(opts.ControlPlane.GrpcServer, opts.ControlPlane.XDSServer, opts.ControlPlane.SnapshotCache)
 	xdsHasher := xds.NewNodeHasher()
