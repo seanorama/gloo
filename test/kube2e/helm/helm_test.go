@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"text/template"
@@ -74,8 +75,9 @@ var _ = Describe("Kube2e: helm", func() {
 		}
 
 		for _, crd := range crdsToManuallyApply {
-			By(fmt.Sprintf("apply new %s CRD", crd.name))
-
+			By(fmt.Sprintf("apply new %s CRD", crd.file))
+			crdContents, _ := ioutil.ReadFile(crd.file)
+			fmt.Println(crdContents)
 			// Apply the CRD and ensure it is eventually accepted
 			runAndCleanCommand("kubectl", "apply", "-f", crd.file)
 			Eventually(func() string {
