@@ -901,7 +901,7 @@ func constructOpts(ctx context.Context, clientset *kubernetes.Interface, kubeCac
 	var proxyFactory factory.ResourceClientFactory
 	// Delete proxies that may have been left from prior to an upgrade or from previously having set persistProxySpec
 	// Ignore errors because gloo will still work with stray proxies.
-	proxyCleanup := func () {
+	proxyCleanup := func() {
 		doProxyCleanup(ctx, params, settings, writeNamespace)
 	}
 	if settings.GetGateway().GetPersistProxySpec().GetValue() {
