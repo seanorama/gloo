@@ -3372,7 +3372,7 @@ metadata:
     app: gloo
     gloo: gateway
   annotations:
-    "helm.sh/hook": pre-install
+    "helm.sh/hook": pre-install, pre-upgrade
     "helm.sh/hook-weight": "5" # should come before cert-gen job
 webhooks:
  - name: gloo.` + namespace + `.svc  # must be a domain with at least three segments separated by dots
