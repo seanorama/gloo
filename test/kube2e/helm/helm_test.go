@@ -69,7 +69,7 @@ var _ = Describe("Kube2e: helm", func() {
 				file: filepath.Join(crdDir, "gateway.solo.io_v1_MatchableHttpGateway.yaml"),
 			},
 			{
-				name: "settings.gloo.solo.io",
+				name: "persistProxySpec",
 				file: filepath.Join(crdDir, "gloo.solo.io_v1_Settings.yaml"),
 			},
 		}
@@ -77,11 +77,11 @@ var _ = Describe("Kube2e: helm", func() {
 		for _, crd := range crdsToManuallyApply {
 			By(fmt.Sprintf("apply new %s CRD", crd.file))
 			crdContents, _ := ioutil.ReadFile(crd.file)
-			fmt.Println(crdContents)
+			fmt.Println(string(crdContents))
 			// Apply the CRD and ensure it is eventually accepted
 			runAndCleanCommand("kubectl", "apply", "-f", crd.file)
 			Eventually(func() string {
-				return string(runAndCleanCommand("kubectl", "get", "crd", crd.name))
+				return string(runAndCleanCommand("kubectl", "get", "crd", crd.name, "-o", "yaml"))
 			}, "5s", "1s").Should(ContainSubstring(crd.name))
 		}
 
