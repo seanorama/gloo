@@ -52,6 +52,7 @@ type Opts struct {
 	ValidationOpts               *gwtranslator.ValidationOpts
 	ReadGatwaysFromAllNamespaces bool
 	GatewayControllerEnabled     bool
+	ProxyCleanup                 func()
 }
 
 type Consul struct {

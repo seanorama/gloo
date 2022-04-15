@@ -484,6 +484,7 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 		return err
 	}
 
+	opts.ProxyCleanup()
 	// Register grpc endpoints to the grpc server
 	xds.SetupEnvoyXds(opts.ControlPlane.GrpcServer, opts.ControlPlane.XDSServer, opts.ControlPlane.SnapshotCache)
 	xdsHasher := xds.NewNodeHasher()
@@ -577,6 +578,7 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 	if err != nil {
 		return err
 	}
+	//The validation grpc server is available for custom controllers
 	if opts.ValidationServer.StartGrpcServer {
 		validationServer := opts.ValidationServer
 		lis, err := net.Listen(validationServer.BindAddr.Network(), validationServer.BindAddr.String())
@@ -897,6 +899,11 @@ func constructOpts(ctx context.Context, clientset *kubernetes.Interface, kubeCac
 	}
 
 	var proxyFactory factory.ResourceClientFactory
+	// Delete proxies that may have been left from prior to an upgrade or from previously having set persistProxySpec
+	// Ignore errors because gloo will still work with stray proxies.
+	proxyCleanup := func () {
+		doProxyCleanup(ctx, params, settings, writeNamespace)
+	}
 	if settings.GetGateway().GetPersistProxySpec().GetValue() {
 		proxyFactory, err = bootstrap.ConfigFactoryForSettings(params, v1.ProxyCrd)
 		if err != nil {
@@ -906,9 +913,6 @@ func constructOpts(ctx context.Context, clientset *kubernetes.Interface, kubeCac
 		proxyFactory = &factory.MemoryResourceClientFactory{
 			Cache: memory.NewInMemoryResourceCache(),
 		}
-		// Delete proxies that may have been left from prior to an upgrade or from previously having set persistProxySpec
-		// Ignore errors because gloo will still work with stray proxies.
-		doProxyCleanup(ctx, params, settings, writeNamespace)
 	}
 
 	secretFactory, err := bootstrap.SecretFactoryForSettings(
@@ -1058,5 +1062,6 @@ func constructOpts(ctx context.Context, clientset *kubernetes.Interface, kubeCac
 		ValidationOpts:               validation,
 		ReadGatwaysFromAllNamespaces: readGatewaysFromAllNamespaces,
 		GatewayControllerEnabled:     gatewayMode,
+		ProxyCleanup:                 proxyCleanup,
 	}, nil
 }
