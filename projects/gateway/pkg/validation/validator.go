@@ -102,10 +102,7 @@ type validator struct {
 	latestSnapshotErr error
 	translator        translator.Translator
 	//This function replaces a grpc client from when gloo and gateway pods were separate.
-	validationFunc func(
-		context.Context,
-		*validation.GlooValidationServiceRequest,
-	) (*validation.GlooValidationServiceResponse, error)
+	validationFunc    ValidatorFunc
 	ignoreProxyValidationFailure bool
 	allowWarnings                bool
 	writeNamespace               string
@@ -216,7 +213,7 @@ func (v *validator) gatewayUpdate(snap *v1.ApiSnapshot) bool {
 		toHash = append(toHash, snap.Gateways.AsInterfaces()...)
 		toHash = append(toHash, snap.RouteOptions.AsInterfaces()...)
 		toHash = append(toHash, snap.RouteTables.AsInterfaces()...)
-
+		toHash = append(toHash, snap.HttpGateways.AsInterfaces()...)
 		hash, err := hashutils.HashAllSafe(nil, toHash...)
 		if err != nil {
 			panic("this error should never happen, as this is safe hasher")
@@ -309,13 +306,6 @@ func (v *validator) validateSnapshot(ctx context.Context, apply applyResource, d
 		}
 		if err := validate(); err != nil {
 			errs = multierr.Append(errs, errors.Wrapf(err, "could not render proxy"))
-			continue
-		}
-
-		if v.validationFunc == nil {
-			contextutils.LoggerFrom(ctx).Warnf("skipping gloo validation checks as the " +
-				"Gloo validation client has not been initialized. check to ensure that the gateway and gloo processes " +
-				"are configured to communicate.")
 			continue
 		}
 
