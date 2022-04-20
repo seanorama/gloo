@@ -50,7 +50,6 @@ func NewTranslatorSyncer(ctx context.Context, writeNamespace string, proxyWatche
 			"created_by": "gloo-gateway-translator",
 		},
 	}
-	// go t.statusSyncer.watchProxies(ctx)
 	go t.statusSyncer.syncStatusOnEmit(ctx)
 	return t
 }
@@ -77,7 +76,9 @@ func (s *TranslatorSyncer) Sync(ctx context.Context, snap *v1.ApiSnapshot) error
 	return s.reconcile(ctx, desiredProxies, invalidProxies)
 }
 
-//This replaced a watch on the proxy CR from when the gloo and gateway pods were separate
+// This replaced a watch on the proxy CR from when the gloo and gateway pods were separate
+// Now it is called at the end of the gloo translation loop after statuses have been set for proxies
+// This is where we update statuses on gateway types based on the proxy statuses
 func (s *TranslatorSyncer) UpdateProxies(ctx context.Context) {
 	s.statusSyncer.handleUpdatedProxies(ctx)
 }

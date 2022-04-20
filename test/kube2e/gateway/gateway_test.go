@@ -313,7 +313,7 @@ var _ = Describe("Kube2e: gateway", func() {
 					}
 
 					for _, l := range proxy.Listeners {
-						for _, vh := range l.GetHttpListener().VirtualHosts {
+						for _, vh := range l.GetHttpListener().GetVirtualHosts() {
 							for _, r := range vh.Routes {
 								if action := r.GetRouteAction(); action != nil {
 									if single := action.GetSingle(); single != nil {
@@ -495,7 +495,7 @@ var _ = Describe("Kube2e: gateway", func() {
 						Upstream: ref,
 					},
 				}
-				//TODO: This used to work immediately
+
 				Eventually(func() error {
 					_, err := virtualServiceClient.Write(getVirtualService(dest, nil), clients.WriteOpts{})
 					return err
@@ -559,6 +559,7 @@ var _ = Describe("Kube2e: gateway", func() {
 					return err
 				}, time.Second*10).ShouldNot(HaveOccurred())
 
+				// ensure that we have successfully gotten into an invalid state
 				helpers.EventuallyResourceRejected(func() (resources.InputResource, error) {
 					return virtualServiceClient.Read(testHelper.InstallNamespace, invalidVsName, clients.ReadOpts{})
 				})

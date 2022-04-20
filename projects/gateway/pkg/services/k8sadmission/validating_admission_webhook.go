@@ -265,8 +265,7 @@ func (wh *gatewayValidationWebhook) ServeHTTP(w http.ResponseWriter, r *http.Req
 		logger.Errorf("Can't write response: %v", err)
 		http.Error(w, fmt.Sprintf("could not write response: %v", err), http.StatusInternalServerError)
 	}
-	//TODO: should be debug
-	logger.Infof("responded with review: %s", resp)
+	logger.Debugf("responded with review: %s", resp)
 }
 
 func (wh *gatewayValidationWebhook) makeAdmissionResponse(ctx context.Context, review *AdmissionReviewWithProxies) *AdmissionResponseWithProxies {
