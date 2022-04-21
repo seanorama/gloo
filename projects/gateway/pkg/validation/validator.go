@@ -102,7 +102,7 @@ type validator struct {
 	latestSnapshotErr error
 	translator        translator.Translator
 	//This function replaces a grpc client from when gloo and gateway pods were separate.
-	validationFunc    ValidatorFunc
+	validationFunc               ValidatorFunc
 	ignoreProxyValidationFailure bool
 	allowWarnings                bool
 	writeNamespace               string

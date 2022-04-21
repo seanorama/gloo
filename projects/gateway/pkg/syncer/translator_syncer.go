@@ -215,7 +215,9 @@ func (s *statusSyncer) handleUpdatedProxies(ctx context.Context) {
 		Ctx: ctx,
 	})
 	if err != nil {
-		logger.Warnw("Error reading updated proxies, statuses may be out of date.", err)
+		// We don't return errors from this because we don't want to fail the rest of gloo translation
+		logger.Errorw("Error reading updated proxies, statuses may be out of date.", err)
+		return
 	}
 	currentHash, err := s.hashStatuses(proxyList)
 	if err != nil {
