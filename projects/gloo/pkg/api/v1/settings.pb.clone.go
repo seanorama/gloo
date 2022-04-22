@@ -692,6 +692,8 @@ func (m *Settings_ConsulUpstreamDiscoveryConfiguration) Clone() proto.Message {
 
 	target.SplitTlsServices = m.GetSplitTlsServices()
 
+	target.ConsistencyMode = m.GetConsistencyMode()
+
 	return target
 }
 

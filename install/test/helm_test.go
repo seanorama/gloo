@@ -3331,8 +3331,10 @@ spec:
 								Expect(container.Resources).NotTo(BeNil(), "deployment/container %s/%s had nil resources", deployment.GetName(), container.Name)
 								if container.Name == "envoy-sidecar" || container.Name == "sds" || container.Name == "istio-proxy" {
 									var expectedVals = sdsVals
-									// istio-proxy is another sds container
-									if container.Name == "envoy-sidecar" {
+									// Two deployments employ proxy containers requiring the envoySidecar resources config:
+									// - gloo (whose sidecar container is named: "envoy-sidecar")
+									// - gateway-proxy (named: "istio-proxy")
+									if container.Name == "envoy-sidecar" || container.Name == "istio-proxy" {
 										expectedVals = envoySidecarVals
 									}
 
@@ -4369,6 +4371,31 @@ metadata:
 					prepareMakefileFromValuesFile("values/val_static_clusters.yaml")
 
 					byt, err := ioutil.ReadFile("fixtures/envoy_config/static_clusters.yaml")
+					Expect(err).ToNot(HaveOccurred())
+					envoyBootstrapYaml := string(byt)
+
+					envoyBootstrapSpec := make(map[string]string)
+					envoyBootstrapSpec["envoy.yaml"] = envoyBootstrapYaml
+
+					cmRb := ResourceBuilder{
+						Namespace: namespace,
+						Name:      gatewayProxyConfigMapName,
+						Labels:    labels,
+						Data:      envoyBootstrapSpec,
+					}
+					envoyBootstrapCm := cmRb.GetConfigMap()
+					testManifest.ExpectConfigMapWithYamlData(envoyBootstrapCm)
+				})
+
+				It("can create a gateway proxy with added overload manager config", func() {
+					prepareMakefile(namespace, helmValues{
+						valuesArgs: []string{
+							"gatewayProxies.gatewayProxy.envoyOverloadManager.enabled=true",
+							"gatewayProxies.gatewayProxy.envoyOverloadManager.refreshInterval=2s",
+							"gatewayProxies.gatewayProxy.disabled=false"},
+					})
+
+					byt, err := ioutil.ReadFile("fixtures/envoy_config/overload_manager.yaml")
 					Expect(err).ToNot(HaveOccurred())
 					envoyBootstrapYaml := string(byt)
 

@@ -2093,6 +2093,18 @@ spec:
 `,
 							expectedErr: gwtranslator.MissingPrefixErr.Error(),
 						},
+						{
+							resourceYaml: `
+apiVersion: gateway.solo.io/v1
+kind: Gateway
+metadata:
+  name: gateway-without-type
+  namespace: ` + testHelper.InstallNamespace + `
+spec:
+  bindAddress: '::'
+`,
+							expectedErr: gwtranslator.MissingGatewayTypeErr.Error(),
+						},
 					}
 
 					for _, tc := range testCases {

@@ -109,8 +109,8 @@ func (t *GwTranslator) getListenerTranslatorForGateway(gateway *v1.Gateway) List
 	}
 
 	if listenerTranslatorImpl == nil {
-		// This should never happen
-		return &NoOpTranslator{}
+		// This should not happen, but will occur when a user has not defined any GatewayType
+		return &InvalidGatewayTypeTranslator{}
 	}
 
 	return listenerTranslatorImpl
