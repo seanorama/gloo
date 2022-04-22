@@ -87,12 +87,18 @@ var _ = Describe("Kube2e: helm", func() {
 
 		// upgrade to the gloo version being tested
 		//try with --disable-api-validation to avoid errors on changes to settings crd
-		runAndCleanCommand("kubectl", "get", "settings.gloo.solo.io", "-n", "gloo-system", "-o", "yaml")
-		runAndCleanCommand("kubectl", "get", "validatingwebhookconfiguration", "-o", "yaml")
+		output := runAndCleanCommand("kubectl", "get", "settings.gloo.solo.io", "-n", "gloo-system", "-o", "yaml")
+		fmt.Println("settings before upgrade")
+		fmt.Println(string(output))
+		output = runAndCleanCommand("kubectl", "get", "validatingwebhookconfiguration", "-o", "yaml")
+		fmt.Println(string(output))
 		fmt.Println("About to upgrade")
 		runAndCleanCommand("helm", "upgrade", "--disable-openapi-validation","--debug", "gloo", chartUri, "-n", testHelper.InstallNamespace)
-		runAndCleanCommand("kubectl", "get", "settings.gloo.solo.io", "-n", "gloo-system", "-o", "yaml")
-		runAndCleanCommand("kubectl", "get", "validatingwebhookconfiguration", "-o", "yaml")
+		output = runAndCleanCommand("kubectl", "get", "settings.gloo.solo.io", "-n", "gloo-system", "-o", "yaml")
+		fmt.Println("settings after upgrade")
+		fmt.Println(string(output))
+		output = runAndCleanCommand("kubectl", "get", "validatingwebhookconfiguration", "-o", "yaml")
+		fmt.Println(string(output))
 		By("should have upgraded to the gloo version being tested")
 		Expect(GetGlooServerVersion(ctx, testHelper.InstallNamespace)).To(Equal(testHelper.ChartVersion()))
 
