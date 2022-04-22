@@ -93,7 +93,10 @@ var _ = Describe("Kube2e: helm", func() {
 		output = runAndCleanCommand("kubectl", "get", "validatingwebhookconfiguration", "-o", "yaml")
 		fmt.Println(string(output))
 		fmt.Println("About to upgrade")
-		output = runAndCleanCommand("helm", "upgrade","--debug", "--disable-openapi-validation", "gloo", chartUri, "-n", testHelper.InstallNamespace)
+
+		valueOverrideFile, cleanupFunc := kube2e.GetHelmValuesOverrideFile()
+		defer cleanupFunc()
+		output = runAndCleanCommand("helm", "upgrade","--debug", "gloo", chartUri, "-n", testHelper.InstallNamespace, "--values", valueOverrideFile)
 		fmt.Println(string(output))
 		output = runAndCleanCommand("kubectl", "get", "settings.gloo.solo.io", "-n", "gloo-system", "-o", "yaml")
 		fmt.Println("settings after upgrade")
