@@ -80,19 +80,14 @@ var _ = Describe("Kube2e: helm", func() {
 			fmt.Println(string(crdContents))
 			// Apply the CRD and ensure it is eventually accepted
 			runAndCleanCommand("kubectl", "apply", "-f", crd.file)
-			if crd.name == "settings.gloo.solo.io" {
-				Eventually(func() string {
-					return string(runAndCleanCommand("kubectl", "get", "crd", crd.name, "-o", "yaml"))
-				}, "5s", "1s").Should(ContainSubstring("persistProxySpec"))
-			} else {
-				Eventually(func() string {
-					return string(runAndCleanCommand("kubectl", "get", "crd", crd.name))
-				}, "5s", "1s").Should(ContainSubstring(crd.name))
-			}
+			Eventually(func() string {
+				return string(runAndCleanCommand("kubectl", "get", "crd", crd.name))
+			}, "5s", "1s").Should(ContainSubstring(crd.name))
 		}
 
 		// upgrade to the gloo version being tested
-		runAndCleanCommand("helm", "upgrade", "gloo", chartUri, "-n", testHelper.InstallNamespace)
+		//try with --disable-api-validation to avoid errors on changes to settings crd
+		runAndCleanCommand("helm", "upgrade", "--disable-api-validation", "gloo", chartUri, "-n", testHelper.InstallNamespace)
 
 		By("should have upgraded to the gloo version being tested")
 		Expect(GetGlooServerVersion(ctx, testHelper.InstallNamespace)).To(Equal(testHelper.ChartVersion()))
