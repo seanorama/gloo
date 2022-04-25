@@ -84,7 +84,8 @@ var _ = Describe("Kube2e: helm", func() {
 				return string(runAndCleanCommand("kubectl", "get", "crd", crd.name))
 			}, "5s", "1s").Should(ContainSubstring(crd.name))
 		}
-		runAndCleanCommand("rm", "-r", "$HOME/.cache/helm")
+		runAndCleanCommand("rm", "-r", "~/.cache/helm")
+		runAndCleanCommand("rm", "-r", "/.cache/helm")
 		// upgrade to the gloo version being tested
 		//try with --disable-api-validation to avoid errors on changes to settings crd
 		output := runAndCleanCommand("kubectl", "get", "settings.gloo.solo.io", "-n", "gloo-system", "-o", "yaml")
