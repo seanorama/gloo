@@ -85,7 +85,8 @@ var _ = Describe("Kube2e: helm", func() {
 			}, "5s", "1s").Should(ContainSubstring(crd.name))
 		}
 
-		//TODO: logging state of settings before and after upgrade for debugging
+		// upgrade to the gloo version being tested
+		//try with --disable-api-validation to avoid errors on changes to settings crd
 		output := runAndCleanCommand("kubectl", "get", "settings.gloo.solo.io", "-n", "gloo-system", "-o", "yaml")
 		fmt.Println("settings before upgrade")
 		fmt.Println(string(output))
@@ -94,9 +95,10 @@ var _ = Describe("Kube2e: helm", func() {
 		//Helm upgrade expects the same values overrides as installs
 		valueOverrideFile, cleanupFunc := kube2e.GetHelmValuesOverrideFile()
 		defer cleanupFunc()
-		// upgrade to the gloo version being tested
-		//TODO: remove debug mode and logging
-		output = runAndCleanCommand("helm", "upgrade","--debug","--disable-openapi-validation", "gloo", chartUri, "-n", testHelper.InstallNamespace, "--values", valueOverrideFile)
+		output = runAndCleanCommand("helm", "upgrade","--debug", "gloo", chartUri, "-n", testHelper.InstallNamespace, "--values", valueOverrideFile)
+		fmt.Println(string(output))
+		output = runAndCleanCommand("kubectl", "get", "settings.gloo.solo.io", "-n", "gloo-system", "-o", "yaml")
+		fmt.Println("settings after upgrade")
 		fmt.Println(string(output))
 		By("should have upgraded to the gloo version being tested")
 		Expect(GetGlooServerVersion(ctx, testHelper.InstallNamespace)).To(Equal(testHelper.ChartVersion()))
