@@ -56,6 +56,9 @@ message WasmFilter {
 
     // selected VM type
     VmType vm_type = 7;
+
+    // when set to true if there is a fatal error on the VM the filter will be bypassed
+    bool fail_open = 9;
 }
 
 

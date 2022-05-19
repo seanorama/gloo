@@ -1,0 +1,6 @@
+changelog:
+  - type: NON_USER_FACING
+    issueLink: https://github.com/solo-io/gloo/issues/6474
+    resolvesIssue: false
+    description: > 
+      Exposes the wasm option for enterprise consumption
