@@ -15,6 +15,7 @@ weight: 5
 - [LambdaFunctionSpec](#lambdafunctionspec)
 - [DestinationSpec](#destinationspec)
 - [InvocationStyle](#invocationstyle)
+- [TypeToMimic](#typetomimic)
   
 
 
@@ -88,6 +89,8 @@ Each Lambda Function Spec contains data necessary for Gloo to invoke Lambda func
 "requestTransformation": bool
 "responseTransformation": bool
 "unwrapAsAlb": bool
+"unwrapRequestAs": .aws.options.gloo.solo.io.DestinationSpec.TypeToMimic
+"unwrapResponseAs": .aws.options.gloo.solo.io.DestinationSpec.TypeToMimic
 
 ```
 
@@ -97,7 +100,9 @@ Each Lambda Function Spec contains data necessary for Gloo to invoke Lambda func
 | `invocationStyle` | [.aws.options.gloo.solo.io.DestinationSpec.InvocationStyle](../aws.proto.sk/#invocationstyle) | Can be either Sync or Async. |
 | `requestTransformation` | `bool` | Include headers, querystring, request path, and request method in the event payload sent to aws lambda. |
 | `responseTransformation` | `bool` | de-jsonify response bodies returned from aws lambda. |
-| `unwrapAsAlb` | `bool` | Unwrap the response as if the proxy was an ALB. Intended to ease migration when previously using alb to invoke Lambdas. For further information see below link for the expected format when true. https://docs.aws.amazon.com/elasticloadbalancing/latest/application/lambda-functions.html. |
+| `unwrapAsAlb` | `bool` | Unwrap the response as if the proxy was an ALB. Intended to ease migration when previously using alb to invoke Lambdas. For further information see below link for the expected format when true. https://docs.aws.amazon.com/elasticloadbalancing/latest/application/lambda-functions.html In enterprise should instead use unwrap_request_as and unwrap_response_as. |
+| `unwrapRequestAs` | [.aws.options.gloo.solo.io.DestinationSpec.TypeToMimic](../aws.proto.sk/#typetomimic) |  |
+| `unwrapResponseAs` | [.aws.options.gloo.solo.io.DestinationSpec.TypeToMimic](../aws.proto.sk/#typetomimic) |  |
 
 
 
@@ -111,6 +116,20 @@ Each Lambda Function Spec contains data necessary for Gloo to invoke Lambda func
 | ----- | ----------- | 
 | `SYNC` |  |
 | `ASYNC` |  |
+
+
+
+
+---
+### TypeToMimic
+
+
+
+| Name | Description |
+| ----- | ----------- | 
+| `NONE` | Type to mimic is used to deal with a request / response as if it was the given type. This may include tranforming the request / response as well as returning reformatting on certain response codes. |
+| `ALB` | https://docs.aws.amazon.com/elasticloadbalancing/latest/application/lambda-functions.html |
+| `AWS_API_GATEWAY` | https://docs.aws.amazon.com/lambda/latest/dg/services-apigateway.html#apigateway-types-transforms |
 
 
 

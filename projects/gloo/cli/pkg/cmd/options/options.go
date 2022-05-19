@@ -240,6 +240,24 @@ type AwsDestinationSpec struct {
 	LogicalName            string
 	ResponseTransformation bool
 	UnwrapAsAlb            bool
+	UnwrapRequestAs        string
+	UnwrapResponseAs       string
+}
+
+// AWS Types to mimic
+const (
+	AWSNone       = ""
+	ALB           = "alb"
+	AWSApiGateway = "api-gateway"
+)
+
+// AwsTypesToMimic is the str list of AWS types to mimic
+// Ordered so as to be converted to the proto enum as it seemed more
+// glooish to make it this way rather than an enum with a stringer.
+var AwsTypesToMimic = []string{
+	AWSNone,
+	ALB,
+	AWSApiGateway,
 }
 
 type RestDestinationSpec struct {

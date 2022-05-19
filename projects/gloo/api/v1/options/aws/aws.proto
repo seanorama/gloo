@@ -74,6 +74,24 @@ message DestinationSpec {
     // Intended to ease migration when previously using alb to invoke Lambdas.
     // For further information see below link for the expected format when true.
     // https://docs.aws.amazon.com/elasticloadbalancing/latest/application/lambda-functions.html
+    // In enterprise should instead use unwrap_request_as and unwrap_response_as
     bool unwrap_as_alb = 7;
+
+    enum TypeToMimic {
+        // Type to mimic is used to deal with a request / response 
+        // as if it was the given type.
+        // This may include tranforming the request / response 
+        // as well as returning reformatting on certain response codes. 
+        NONE = 0;
+         // https://docs.aws.amazon.com/elasticloadbalancing/latest/application/lambda-functions.html
+        ALB = 1;
+        // https://docs.aws.amazon.com/lambda/latest/dg/services-apigateway.html#apigateway-types-transforms
+        AWS_API_GATEWAY = 2;
+      }
+    
+      TypeToMimic unwrap_request_as = 8;
+      TypeToMimic unwrap_response_as = 9;
+
+
 
 }

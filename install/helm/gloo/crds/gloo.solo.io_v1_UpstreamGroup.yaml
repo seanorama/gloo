@@ -56,6 +56,12 @@ spec:
                                   type: boolean
                                 unwrapAsAlb:
                                   type: boolean
+                                unwrapRequestAs:
+                                  type: string
+                                  x-kubernetes-int-or-string: true
+                                unwrapResponseAs:
+                                  type: string
+                                  x-kubernetes-int-or-string: true
                               type: object
                             azure:
                               properties:

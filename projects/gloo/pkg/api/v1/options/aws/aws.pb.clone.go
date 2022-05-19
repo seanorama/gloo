@@ -96,5 +96,9 @@ func (m *DestinationSpec) Clone() proto.Message {
 
 	target.UnwrapAsAlb = m.GetUnwrapAsAlb()
 
+	target.UnwrapRequestAs = m.GetUnwrapRequestAs()
+
+	target.UnwrapResponseAs = m.GetUnwrapResponseAs()
+
 	return target
 }

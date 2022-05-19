@@ -209,7 +209,7 @@ func (s *statusSyncer) setCurrentProxies(desiredProxies reconciler.GeneratedProx
 	//		proxyToLastStatus       map[string]reportsAndStatus
 	// 		currentGeneratedProxies []*core.ResourceRef
 	// floating around.  Historically, they were there to envorce an alphabetical processing of
-	//  `proxyToLastStatus`.  See https://github.com/solo-io/gloo/issues/5812 for more details.
+	//  `proxyToLastStatus`.  See https:/x`/github.com/solo-io/gloo/issues/5812 for more details.
 	for proxyRef, reports := range proxyReportsByRef {
 		refKey := gloo_translator.UpstreamToClusterName(proxyRef)
 		if _, ok := s.proxyToLastStatus[refKey]; !ok {

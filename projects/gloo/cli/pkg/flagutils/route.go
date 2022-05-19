@@ -46,6 +46,10 @@ func AddRouteFlags(set *pflag.FlagSet, route *options.InputRoute) {
 			"e.g. in the case of static content (images, HTML, etc.) being served by Lambda")
 	set.BoolVarP(&route.Destination.DestinationSpec.Aws.UnwrapAsAlb, "aws-alb-unwrap", "", false,
 		"Sets if gloo should handle responses as if it was an ALB. Appropriately handles the response body and sets headers.")
+	set.StringVarP(&route.Destination.DestinationSpec.Aws.UnwrapRequestAs, "aws-unwrap-request-as", "", "",
+		"Sets how gloo should handle incoming requests to lambdas by setting another product to mimic.")
+	set.StringVarP(&route.Destination.DestinationSpec.Aws.UnwrapResponseAs, "aws-unwrap-response-as", "", "",
+		"Sets how gloo should handle responses from lambdas by setting another product to mimic.")
 
 	set.StringVarP(&route.Destination.DestinationSpec.Rest.FunctionName, "rest-function-name", "f", "",
 		"name of the REST function to invoke with this route. use if destination has a REST service spec")

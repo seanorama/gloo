@@ -24,6 +24,8 @@ glooctl add route [flags]
       --aws-alb-unwrap                    Sets if gloo should handle responses as if it was an ALB. Appropriately handles the response body and sets headers.
   -a, --aws-function-name string          logical name of the AWS lambda to invoke with this route. use if destination is an AWS upstream
       --aws-unescape                      unescape JSON returned by this lambda function (useful if the response is not intended to be JSON formatted, e.g. in the case of static content (images, HTML, etc.) being served by Lambda
+      --aws-unwrap-request-as string      Sets how gloo should handle incoming requests to lambdas by setting another product to mimic.
+      --aws-unwrap-response-as string     Sets how gloo should handle responses from lambdas by setting another product to mimic.
       --cluster-scoped-vs-client          search for *-domain virtual services outside gloo system namespace to add route to
       --delegate-name string              name of the delegated RouteTable for this route
       --delegate-namespace string         namespace of the delegated RouteTable for this route (default "gloo-system")

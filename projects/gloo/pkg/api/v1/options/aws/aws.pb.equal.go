@@ -161,5 +161,13 @@ func (m *DestinationSpec) Equal(that interface{}) bool {
 		return false
 	}
 
+	if m.GetUnwrapRequestAs() != target.GetUnwrapRequestAs() {
+		return false
+	}
+
+	if m.GetUnwrapResponseAs() != target.GetUnwrapResponseAs() {
+		return false
+	}
+
 	return true
 }

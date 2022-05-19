@@ -31,10 +31,10 @@ import (
 )
 
 var (
-	_ plugins.Plugin           = new(plugin)
-	_ plugins.UpstreamPlugin   = new(plugin)
-	_ plugins.RoutePlugin      = new(plugin)
-	_ plugins.HttpFilterPlugin = new(plugin)
+	_ plugins.Plugin           = new(Plugin)
+	_ plugins.UpstreamPlugin   = new(Plugin)
+	_ plugins.RoutePlugin      = new(Plugin)
+	_ plugins.HttpFilterPlugin = new(Plugin)
 )
 
 const (
@@ -48,7 +48,10 @@ var (
 	transformPluginStage = plugins.BeforeStage(plugins.OutAuthStage)
 )
 
-type plugin struct {
+// Plugin contains the needed options for aws Plugin
+// It is exported so that it can be imported in enterprise
+// so that enterprise inherits features.
+type Plugin struct {
 	recordedUpstreams  map[string]*aws.UpstreamSpec
 	ctx                context.Context
 	settings           *v1.GlooOptions_AWSOptions
@@ -56,15 +59,18 @@ type plugin struct {
 	needTransformation bool
 }
 
+// NewPlugin instantiates the aws Plugin struct.
 func NewPlugin() plugins.Plugin {
-	return &plugin{}
+	return &Plugin{}
 }
 
-func (p *plugin) Name() string {
+// Name returns the extension name.
+func (p *Plugin) Name() string {
 	return ExtensionName
 }
 
-func (p *plugin) Init(params plugins.InitParams) error {
+// Init recreates the features on the Plugin for safety.
+func (p *Plugin) Init(params plugins.InitParams) error {
 	p.ctx = params.Ctx
 	p.recordedUpstreams = make(map[string]*aws.UpstreamSpec)
 	p.settings = params.Settings.GetGloo().GetAwsOptions()
@@ -73,11 +79,14 @@ func (p *plugin) Init(params plugins.InitParams) error {
 	return nil
 }
 
+// get the lambda hostname by slotting in the aws region
 func getLambdaHostname(s *aws.UpstreamSpec) string {
 	return fmt.Sprintf("lambda.%s.amazonaws.com", s.GetRegion())
 }
 
-func (p *plugin) ProcessUpstream(params plugins.Params, in *v1.Upstream, out *envoy_config_cluster_v3.Cluster) error {
+// ProccessUpstream processes the upstream and places its information on the
+// provided cluster.
+func (p *Plugin) ProcessUpstream(params plugins.Params, in *v1.Upstream, out *envoy_config_cluster_v3.Cluster) error {
 	upstreamSpec, ok := in.GetUpstreamType().(*v1.Upstream_Aws)
 	if !ok {
 		// not ours
@@ -166,7 +175,8 @@ func (p *plugin) ProcessUpstream(params plugins.Params, in *v1.Upstream, out *en
 	return nil
 }
 
-func (p *plugin) ProcessRoute(params plugins.RouteParams, in *v1.Route, out *envoy_config_route_v3.Route) error {
+// ProcessRoute applies upstream options to the route and applies it to envoyroute.
+func (p *Plugin) ProcessRoute(params plugins.RouteParams, in *v1.Route, out *envoy_config_route_v3.Route) error {
 	err := pluginutils.MarkPerFilterConfig(p.ctx, params.Snapshot, in, out, FilterName,
 		func(spec *v1.Destination) (proto.Message, error) {
 			// check if it's aws destination
@@ -301,7 +311,8 @@ func (p *plugin) ProcessRoute(params plugins.RouteParams, in *v1.Route, out *env
 	)
 }
 
-func (p *plugin) HttpFilters(_ plugins.Params, _ *v1.HttpListener) ([]plugins.StagedHttpFilter, error) {
+// HttpFilters
+func (p *Plugin) HttpFilters(_ plugins.Params, _ *v1.HttpListener) ([]plugins.StagedHttpFilter, error) {
 	if len(p.recordedUpstreams) == 0 {
 		// no upstreams no filter
 		return nil, nil
