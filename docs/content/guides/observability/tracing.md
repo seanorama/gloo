@@ -141,7 +141,7 @@ There are a few steps to make tracing available through Gloo Edge:
 
 ##### 2. Configure a tracing provider
 
-For a list of supported tracing providers, and the configuration that they expect, please see Envoy's documentation on [trace provider configuration](https://www.envoyproxy.io/docs/envoy/v1.13.1/api-v2/config/trace/v2/trace.proto#config-trace-v2-tracing-http).
+For a list of supported tracing providers, and the configuration that they expect, please see Envoy's documentation on [trace provider configuration](https://www.envoyproxy.io/docs/envoy/v1.21.1/api-v3/config/trace/v3/http_tracer.proto#config-trace-v3-tracing-http).
 For demonstration purposes, we show how to configure a *zipkin* trace provider below.
 
 
@@ -191,7 +191,7 @@ data:
                       provider:
                         name: envoy.tracers.zipkin
                         typed_config:
-                          "@type": "type.googleapis.com/envoy.config.trace.v2.ZipkinConfig"
+                          "@type": "type.googleapis.com/envoy.config.trace.v3.ZipkinConfig"
                           collector_cluster: zipkin
                           collector_endpoint: "/api/v2/spans"
                           collector_endpoint_version: HTTP_JSON
