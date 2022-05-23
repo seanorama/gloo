@@ -6,11 +6,19 @@ description: Configure Gloo Edge for tracing
 
 ## Tracing
 
-Gloo Edge makes it easy to implement tracing on your system through [Envoy's tracing capabilities](https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/observability/tracing.html).   
-Following list of tracing systems are currently supported in Gloo Edge:
-* Zipkin
-* Jaeger
-* Datadog
+With Gloo Edge, you can use Envoy's end-to-end tracing capabilities to obtain visibility and track requests as they pass through your API gateway to distributed backends, such as a service, database, or other endpoint in your ecosystem. Tracing enables you to monitor and optimize the performance and latency of requests, and to perform root cause analysis to find bottlenecks and pinpoint failures. 
+
+The following distributed tracing platforms are supported in Gloo Edge: 
+- [Zipkin](https://zipkin.io/)
+- [Jaeger](https://www.jaegertracing.io/)
+- [Datadog](https://docs.datadoghq.com/getting_started/tracing/)
+
+### How does it work? 
+
+To trace a request, data must be captured from the moment the request is initiated and every time the request is forwarded to another endpoint, or other microservices are called. Envoy supports the following features to capture the tracing information:
+
+- 
+
 
 #### Usage
 
