@@ -1,10 +1,10 @@
 ---
-title: Tracing Setup
+title: Set up tracing
 weight: 4
 description: Configure Gloo Edge for tracing
 ---
 
-## Tracing
+# Set up tracing
 
 With Gloo Edge, you can use Envoy's end-to-end tracing capabilities to obtain visibility and track requests as they pass through your API gateway to distributed backends, such as a service, database, or other endpoint in your ecosystem. Tracing enables you to monitor and optimize the performance and latency of requests, and to perform root cause analysis to find bottlenecks and pinpoint failures. 
 
@@ -17,50 +17,61 @@ The following distributed tracing platforms are supported in Gloo Edge:
 This guide uses the Zipkin tracing platform as an example to provide general steps for how to set up tracing in Gloo Edge. To set up other tracing platforms, refer to the platform-specific documentation. 
 {{% /notice %}}
 
-### How does it work? 
+## How does it work? 
 
 To trace a request, data must be captured from the moment the request is initiated and every time the request is forwarded to another endpoint, or when other microservices are called along the way. If the request is initiated, a trace ID and an initial span (parent span) is created. A span represents an operation that is performed on your request, such as an API call, a database lookup, or a call to an external service. If a request is sent to a service, a child span is created in the trace capturing all the operations that are performed within the service. 
 
 Each operation and span is documented with a timestamp so that you can easily see how long a request was processed by a specific endpoint in your trace. Most tracing platforms have support to visualize the tracing information in a graph so that you can easily see bottlenecks in your microservices stack. 
 
-To set up tracing, you follow these general steps: 
+To configure a tracing platform, you must update the Envoy bootstrap configuration. The bootstrap configuration is automatically applied when an Envoy process is initialized. To update the bootstrap configuration, you can use one of the following ways: 
+- **Gloo Edge**: Configure the tracing platform in the Helm chart template and let Gloo Edge determine how to best apply the configuration in Envoy. 
+- **Directly update Envoy**: Use a Kubernetes configmap and provide the Envoy code that you want to apply. You then restart all the deployments where you want to apply the updated Envoy configuration.
+
+## Set up Zipkin tracing
+
+To set up Zipkin tracing, you follow these general steps: 
 
 1. [Set up a tracing cluster](#cluster). 
-2. [Configure the tracing provider](#provider).
+2. [Configure the Zipkin tracing provider](#provider).
 3. [Optional: Annotate routes with descriptors](annotations). 
 4. [Initiate a request](request).
 
-### 1. Set up the tracing cluster
+### 1. Specify the tracing cluster {#cluster}
 
-The tracing platform that you use might require you to set up a dedicated tracing cluster and to provide the name of the tracing cluster in the Envoy bootstrap configuration. For example, for Zipkin, you must set the `collector_cluster` value in the Envoy bootstrap config. 
-
-The bootstrap config is the part of Envoy's configuration that is applied when an Envoy process is initialized. To apply a bootstrap config, you must either provide this configuration through Helm values when you install Envoy, or edit the proxy's configmap and restart the Envoy pods. 
+Zipkin uses a dedicated tracing cluster where tracing information is sent to. The name of the tracing cluster must be set in the Envoy bootstrap configuration for Envoy to know where to send the information to. The following example shows how you can configure the Zipkin tracing cluster by using Gloo Edge or updating the Envoy bootstrap configuration directly. 
+ 
 
 {{< tabs >}}
-{{< tab name="helm">}}
-{{< highlight yaml "hl_lines=4-16" >}}
-gatewayProxies:
-  gatewayProxy:
-    tracing:
-      cluster:
-        - name: zipkin
-          connect_timeout: 1s
-          type: STRICT_DNS
-          load_assignment:
-            cluster_name: zipkin
-            endpoints:
-            - lb_endpoints:
-              - endpoint:
-                  address:
-                    socket_address:
-                      address: zipkin
-                      port_value: 9411
-{{< /highlight >}}
+{{< tab name="Install Gloo Edge with Zipkin tracing">}}
+1. Create a `values.yaml` file and add your Zipkin configuration. In the following example, the Zipkin cluster is called `zipkin`.
 
-When you install Gloo Edge using these Helm values, Envoy will be configured with the tracing cluster you specified.
+   {{< highlight yaml "hl_lines=4-16" >}}
+   gatewayProxies:
+     gatewayProxy:
+       tracing:
+         cluster:
+           - name: zipkin
+             connect_timeout: 1s
+             type: STRICT_DNS
+             load_assignment:
+               cluster_name: zipkin
+               endpoints:
+               - lb_endpoints:
+                 - endpoint:
+                     address:
+                       socket_address:
+                         address: zipkin
+                         port_value: 9411
+   {{< /highlight >}}
+   
+2. Install Gloo Edge with your Zipkin configuration.   
+   ```shell
+   kubectl create namespace gloo-system
+   helm install gloo gloo/gloo --namespace gloo-system -f values.yaml
+   ```
 {{< /tab >}}
 
-{{< tab name="configmap">}}
+{{< tab name="Update the Envoy configmap">}}
 
 1. Edit the Envoy proxy configuration. 
 
@@ -68,7 +79,7 @@ When you install Gloo Edge using these Helm values, Envoy will be configured wit
    kubectl edit configmap -n gloo-system gateway-proxy-envoy-config
    ```
    
-2. Enter the tracing changes. For example, to configure Zipkin, use the following YAML file.
+2. Enter the Zipkin tracing changes.
 
    {{< highlight yaml "hl_lines=25-36">}}
    apiVersion: v1
@@ -114,32 +125,10 @@ When you install Gloo Edge using these Helm values, Envoy will be configured wit
    ```bash
    kubectl rollout restart deployment gateway-proxy
    ```
-
 {{< /tab >}}
 {{< /tabs >}}
 
-
-
-
-#### Usage
-
-*If you have not yet enabled tracing, please see the [configuration](#configuration) details below.*
-
-- Produce a trace by passing the header: `x-client-trace-id`
-  - This id provides a means of associating the spans produced during a trace. The value must be unique, a uuid4 is [recommended](https://www.envoyproxy.io/docs/envoy/v1.9.0/configuration/http_conn_man/headers#config-http-conn-man-headers-x-client-trace-id).
-- Optionally annotate your trace with the `x-envoy-decorator-operation` header.
-  - This will be emitted with the resulting trace and can be a means of identifying the origin of a given trace. Note that it will override any pre-specified route decorator. Additional details can be found [here](https://www.envoyproxy.io/docs/envoy/v1.11.2/configuration/http_filters/router_filter#config-http-filters-router-x-envoy-decorator-operation).
-
-#### Configuration
-
-There are a few steps to make tracing available through Gloo Edge:
-1. Configure a tracing cluster
-1. Configure a tracing provider
-1. (Optional) Annotate routes with descriptors
-
-
-
-##### 2. Configure a tracing provider
+### 2. Configure a tracing provider {#provider}
 
 For a list of supported tracing providers, and the configuration that they expect, please see Envoy's documentation on [trace provider configuration](https://www.envoyproxy.io/docs/envoy/v1.21.1/api-v3/config/trace/v3/http_tracer.proto#config-trace-v3-tracing-http).
 For demonstration purposes, we show how to configure a *zipkin* trace provider below.
@@ -314,3 +303,17 @@ Set up Zipkin tracing in a [local Kind cluster]({{< versioned_link_path fromRoot
 4. Navigate to the zipkin interface at http://localhost:9411 to visualize traces:
 
 ![Zipkin UI]({{% versioned_link_path fromRoot="/img/zipkin.png" %}})
+
+
+
+
+
+#### Usage
+
+*If you have not yet enabled tracing, please see the [configuration](#configuration) details below.*
+
+- Produce a trace by passing the header: `x-client-trace-id`
+  - This id provides a means of associating the spans produced during a trace. The value must be unique, a uuid4 is [recommended](https://www.envoyproxy.io/docs/envoy/v1.9.0/configuration/http_conn_man/headers#config-http-conn-man-headers-x-client-trace-id).
+- Optionally annotate your trace with the `x-envoy-decorator-operation` header.
+  - This will be emitted with the resulting trace and can be a means of identifying the origin of a given trace. Note that it will override any pre-specified route decorator. Additional details can be found [here](https://www.envoyproxy.io/docs/envoy/v1.11.2/configuration/http_filters/router_filter#config-http-filters-router-x-envoy-decorator-operation).
+
