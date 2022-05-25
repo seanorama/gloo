@@ -31,12 +31,89 @@ To configure a tracing platform, you must update the Envoy bootstrap configurati
 
 To set up Zipkin tracing, you follow these general steps: 
 
-1. [Set up a tracing cluster](#cluster). 
-2. [Configure the Zipkin tracing provider](#provider).
-3. [Optional: Annotate routes with descriptors](annotations). 
-4. [Initiate a request](request).
+1. [Set up Zipkin locally](#setup)
+2. [Configure the Zipkin tracing cluster in Gloo Edge](#cluster). 
+3. [Configure Zipkin as the tracing provider for a listener](#provider).
+4. [Optional: Annotate routes with descriptors](#annotations). 
+5. [Initiate a request and view traces](#request).
 
-### 1. Specify the tracing cluster {#cluster}
+### 1. Set up Zipkin locally {#setup}
+Set up Zipkin tracing in a [local Kind cluster]({{< versioned_link_path fromRoot="/installation/platform_configuration/cluster_setup/#kind" >}}) for local troubleshooting and experimentation. 
+1. Run Zipkin.
+   ```shell
+   docker run --network=kind -itd --name zipkin -p 9411:9411 openzipkin/zipkin
+   ```
+
+2. Verify that both `zipkin` and `zipkin-tracing-control-plane` are in your local Kind cluster network.
+   ```shell
+   docker network inspect kind
+   ```
+   {{< highlight json "hl_lines=35">}}
+   [
+       {
+           "Name": "kind",
+           "Id": "6a37a4ebb2d0e7dcbabe50dc8b1a519b431f054aebb822ed85e00abde99fd4d3",
+           "Created": "2021-09-16T09:28:49.88165506-04:00",
+           "Scope": "local",
+           "Driver": "bridge",
+           "EnableIPv6": true,
+           "IPAM": {
+               "Driver": "default",
+               "Options": {},
+               "Config": [
+                   {
+                       "Subnet": "172.18.0.0/16",
+                       "Gateway": "172.18.0.1"
+                   },
+                   {
+                       "Subnet": "fc00:f853:ccd:e793::/64",
+                       "Gateway": "fc00:f853:ccd:e793::1"
+                   }
+               ]
+           },
+           "Internal": false,
+           "Attachable": false,
+           "Ingress": false,
+           "ConfigFrom": {
+              "Network": ""
+           },
+           "ConfigOnly": false,
+           "Containers": {
+               "3431770d0c41bfbc8eceac4c806605286f5dac81820599f828dcb250037a2f48": {
+                   "Name": "zipkin-tracing-control-plane",
+                   "EndpointID": "3e48e18bc7b259ca9d597a594ee3d5205c8339e8ecd9f8f274a178d07f395b78",
+                   "MacAddress": "02:42:ac:12:00:03",
+                   "IPv4Address": "172.18.0.3/16",
+                   "IPv6Address": "fc00:f853:ccd:e793::3/64"
+               },
+               "84dadbd86f113c7104eca23d3d78e9dec997a47666c1ba4eed2ae7a5ad8eb20d": {
+                   "Name": "zipkin",
+                   "EndpointID": "09e07c8ac6b1cd912c325962586d9497520e216a4ec357384c663594248fc104",
+                   "MacAddress": "02:42:ac:12:00:02",
+                   "IPv4Address": "172.18.0.2/16",
+                   "IPv6Address": "fc00:f853:ccd:e793::2/64"
+               }
+           },
+           "Options": {
+               "com.docker.network.bridge.enable_ip_masquerade": "true",
+               "com.docker.network.driver.mtu": "1500"
+           },
+           "Labels": {}
+       }
+   ]
+   {{< /highlight >}}
+
+3. Configure the Zipkin [tracing cluster](#cluster") with the IP address that was assigned in the previous step. In this example, the Zipkin cluster is assigned the `172.18.0.2` IP address.
+4. Port-forward the Zipkin service so that you can access Zipkin on your local machine. 
+   ```shell
+   kubectl port-forward svc/zipkin 9411:9411
+   ```
+
+5. [Open Zipkin on your local machine](http://localhost:9411). 
+
+   ![Zipkin UI]({{% versioned_link_path fromRoot="/img/zipkin.png" %}})
+
+### 2. Configure the Zipkin tracing cluster in Gloo Edge {#cluster}
 
 Zipkin uses a dedicated tracing cluster where tracing information is sent to. The name of the tracing cluster must be set in the Envoy bootstrap configuration for Envoy to know where to send the information to. The following example shows how you can configure the Zipkin tracing cluster by using Gloo Edge or updating the Envoy bootstrap configuration directly. 
  
@@ -133,7 +210,7 @@ Add the Envoy code that you want to apply to a Kubernetes configmap and restart 
 {{< /tab >}}
 {{< /tabs >}}
 
-### 2. Configure a tracing provider for a listener {#provider}
+### 3. Configure Zipkin as the tracing provider for a listener {#provider}
 
 After you configured the tracing cluster, you can now set Zipkin as the tracing platform for a listener in your Gloo Edge gateway. To do that, you can either update the Gloo Edge gateway, or provide the Envoy code in a Kubernetes configmap and apply this configmap by manually restarting the Envoy proxies.
 
@@ -208,119 +285,60 @@ This provider configuration will only be applied to the static listeners that ar
 {{< /tab >}}
 {{< /tabs >}}
 
-### 3. (Optional) Annotate routes with descriptors
+### 4. Optional: Annotate routes with tracing descriptors {#annotations}
 
-In order to associate a trace with a route, it can be helpful to annotate your routes with a descriptive name. This can be applied to the route, via a route plugin, or provided through a header `x-envoy-decorator-operation`.
-If both means are used, the header's value will override the routes's value.
+In order to associate a trace with a route, it can be helpful to annotate your routes with a descriptive name. You can add the name to the virtual service directly, or use the `x-envoy-decorator-operation` Envoy header in your request. If a name is set in both, the name in the header takes precedence.
 
-You can set a route descriptor with `kubectl edit virtualservice -n gloo-system [name-of-vs]`.
-Edit your virtual service as shown below.
+The following steps show how to add the name to the virtual service in Gloo Edge. 
 
-{{< highlight yaml "hl_lines=17-18" >}}
-apiVersion: gateway.solo.io/v1
-kind: VirtualService
-metadata: # collapsed for brevity
-spec:
-  virtualHost:
-    domains:
-    - '*'
-    routes:
-    - matchers:
-      - exact: /abc
-      routeAction:
-        single:
-          upstream:
-            name: my-upstream
-            namespace: gloo-system
-      options:
-        tracing:
-          routeDescriptor: my-route-from-abc-jan-01
-        prefixRewrite: /
-status: # collapsed for brevity
-{{< /highlight >}}
-
-##### 4. (Optional) Setting up zipkin locally
-Set up Zipkin tracing in a [local Kind cluster]({{< versioned_link_path fromRoot="/installation/platform_configuration/cluster_setup/#kind" >}}) for local troubleshooting and experimentation. 
-1. Run Zipkin.
-    ```shell
-    docker run --network=kind -itd --name zipkin -p 9411:9411 openzipkin/zipkin
-    ```
-
-2. Verify that both `zipkin` and `zipkin-tracing-control-plane` are in your local Kind cluster network.
-     ```shell
-     docker network inspect kind
-     ```
-{{< highlight json "hl_lines=35">}}
-[
-    {
-        "Name": "kind",
-        "Id": "6a37a4ebb2d0e7dcbabe50dc8b1a519b431f054aebb822ed85e00abde99fd4d3",
-        "Created": "2021-09-16T09:28:49.88165506-04:00",
-        "Scope": "local",
-        "Driver": "bridge",
-        "EnableIPv6": true,
-        "IPAM": {
-            "Driver": "default",
-            "Options": {},
-            "Config": [
-                {
-                    "Subnet": "172.18.0.0/16",
-                    "Gateway": "172.18.0.1"
-                },
-                {
-                    "Subnet": "fc00:f853:ccd:e793::/64",
-                    "Gateway": "fc00:f853:ccd:e793::1"
-                }
-            ]
-        },
-        "Internal": false,
-        "Attachable": false,
-        "Ingress": false,
-        "ConfigFrom": {
-            "Network": ""
-        },
-        "ConfigOnly": false,
-        "Containers": {
-            "3431770d0c41bfbc8eceac4c806605286f5dac81820599f828dcb250037a2f48": {
-                "Name": "zipkin-tracing-control-plane",
-                "EndpointID": "3e48e18bc7b259ca9d597a594ee3d5205c8339e8ecd9f8f274a178d07f395b78",
-                "MacAddress": "02:42:ac:12:00:03",
-                "IPv4Address": "172.18.0.3/16",
-                "IPv6Address": "fc00:f853:ccd:e793::3/64"
-            },
-            "84dadbd86f113c7104eca23d3d78e9dec997a47666c1ba4eed2ae7a5ad8eb20d": {
-                "Name": "zipkin",
-                "EndpointID": "09e07c8ac6b1cd912c325962586d9497520e216a4ec357384c663594248fc104",
-                "MacAddress": "02:42:ac:12:00:02",
-                "IPv4Address": "172.18.0.2/16",
-                "IPv6Address": "fc00:f853:ccd:e793::2/64"
-            }
-        },
-        "Options": {
-            "com.docker.network.bridge.enable_ip_masquerade": "true",
-            "com.docker.network.driver.mtu": "1500"
-        },
-        "Labels": {}
-    }
-]
-{{< /highlight >}}
-
-3. Configure a [tracing cluster]({{< versioned_link_path fromRoot="/guides/observability/tracing/#1-configure-a-tracing-cluster" >}}) with the IP address of Zipkin, such as `172.18.0.2` in this example.
-
-4. Navigate to the zipkin interface at http://localhost:9411 to visualize traces:
-
-![Zipkin UI]({{% versioned_link_path fromRoot="/img/zipkin.png" %}})
+1. List the virtual services in the `gloo-system` namespace and select the one that you want to edit. 
+   ```bash
+   kubectl get virtualservice -n gloo-system
+   ```
+   
+2. Edit the virtual service. 
+   ```bash
+   kubectl edit virtualservice -n gloo-system <virtual-service-name>
+   ```
+   
+3. Enter the name for the route that you want to associate your trace with in the `routeDescriptor` field. 
+   ```bash
+   {{< highlight yaml "hl_lines=17-18" >}}
+   apiVersion: gateway.solo.io/v1
+   kind: VirtualService
+   metadata: # omitted for brevity
+   spec:
+     virtualHost:
+       domains:
+       - '*'
+       routes:
+       - matchers:
+         - exact: /abc
+         routeAction:
+           single:
+             upstream:
+               name: my-upstream
+               namespace: gloo-system
+         options:
+           tracing:
+             routeDescriptor: <route-descriptor-name>
+           prefixRewrite: /
+   status: # omitted for brevity
+   {{< /highlight >}}
 
 
+### 5. Initiate a request and view traces {#traces}
 
+1. Send a request to your 
+   ```shell
+   curl $(glooctl proxy url)/abc
+   ```
+   
+2. Port-forward the Zipkin service so that you can access Zipkin on your local machine. 
+   ```shell
+   kubectl port-forward svc/zipkin 9411:9411
+   ```
 
+5. [Open Zipkin on your local machine](http://localhost:9411) and review the traces. 
 
-#### Usage
-
-*If you have not yet enabled tracing, please see the [configuration](#configuration) details below.*
-
-- Produce a trace by passing the header: `x-client-trace-id`
-  - This id provides a means of associating the spans produced during a trace. The value must be unique, a uuid4 is [recommended](https://www.envoyproxy.io/docs/envoy/v1.9.0/configuration/http_conn_man/headers#config-http-conn-man-headers-x-client-trace-id).
-- Optionally annotate your trace with the `x-envoy-decorator-operation` header.
-  - This will be emitted with the resulting trace and can be a means of identifying the origin of a given trace. Note that it will override any pre-specified route decorator. Additional details can be found [here](https://www.envoyproxy.io/docs/envoy/v1.11.2/configuration/http_filters/router_filter#config-http-filters-router-x-envoy-decorator-operation).
 
