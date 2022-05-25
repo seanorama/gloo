@@ -34,7 +34,7 @@ To set up Zipkin tracing, you follow these general steps:
 2. [Configure the Zipkin tracing cluster in Gloo Edge](#cluster). 
 3. [Configure Zipkin as the tracing provider for a listener](#provider).
 4. [Optional: Annotate routes with descriptors](#annotations). 
-5. [Initiate a request and view traces](#request).
+5. [Initiate a request and view traces](#traces).
 
 ### 1. Set up Zipkin locally {#setup}
 Set up Zipkin tracing in a [local Kind cluster]({{< versioned_link_path fromRoot="/installation/platform_configuration/cluster_setup/#kind" >}}) for local troubleshooting and experimentation. 
