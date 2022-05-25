@@ -329,7 +329,7 @@ The following steps show how to add the name to the virtual service in Gloo Edge
 
 ### 5. Initiate a request and view traces {#traces}
 
-1. Send a request to your 
+1. Send a request to your app. 
    ```shell
    curl $(glooctl proxy url)/abc
    ```
