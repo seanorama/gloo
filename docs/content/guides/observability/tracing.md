@@ -31,7 +31,7 @@ To configure a tracing platform, you must update the Envoy bootstrap configurati
 
 To set up Zipkin tracing, you follow these general steps: 
 
-1. [Set up Zipkin locally](#setup)
+1. [Set up Zipkin locally](#setup).
 2. [Configure the Zipkin tracing cluster in Gloo Edge](#cluster). 
 3. [Configure Zipkin as the tracing provider for a listener](#provider).
 4. [Optional: Annotate routes with descriptors](#annotations). 
