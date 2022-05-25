@@ -14,7 +14,7 @@ The following distributed tracing platforms are supported in Gloo Edge:
 - [Datadog](https://docs.datadoghq.com/getting_started/tracing/)
 
 {{% notice note %}} 
-This guide uses the Zipkin tracing platform as an example to provide general steps for how to set up tracing in Gloo Edge. To set up other tracing platforms, refer to the platform-specific documentation. 
+This guide uses the Zipkin tracing platform as an example to provide general steps for how to set up tracing in Gloo Edge. To set up other tracing platforms, refer to the platform-specific documentation or the [Envoy tracing provider documentation](https://www.envoyproxy.io/docs/envoy/v1.21.1/api-v3/config/trace/v3/http_tracer.proto#config-trace-v3-tracing-http).
 {{% /notice %}}
 
 ## How does it work? 
@@ -24,8 +24,8 @@ To trace a request, data must be captured from the moment the request is initiat
 Each operation and span is documented with a timestamp so that you can easily see how long a request was processed by a specific endpoint in your trace. Most tracing platforms have support to visualize the tracing information in a graph so that you can easily see bottlenecks in your microservices stack. 
 
 To configure a tracing platform, you must update the Envoy bootstrap configuration. The bootstrap configuration is automatically applied when an Envoy process is initialized. To update the bootstrap configuration, you can use one of the following ways: 
-- **Gloo Edge**: Configure the tracing platform in the Helm chart template and let Gloo Edge determine how to best apply the configuration in Envoy. 
-- **Directly update Envoy**: Use a Kubernetes configmap and provide the Envoy code that you want to apply. You then restart all the deployments where you want to apply the updated Envoy configuration.
+- **Gloo Edge**: Configure the tracing platform in the Helm chart template or the Gloo Edge custom resources, and let Gloo Edge determine how to best apply the configuration in Envoy. 
+- **Manually update Envoy**: Use a Kubernetes configmap and provide the Envoy code that you want to apply. You then manually restart all the deployments where you want to apply the updated Envoy configuration.
 
 ## Set up Zipkin tracing
 
@@ -43,6 +43,9 @@ Zipkin uses a dedicated tracing cluster where tracing information is sent to. Th
 
 {{< tabs >}}
 {{< tab name="Install Gloo Edge with Zipkin tracing">}}
+
+Use the Gloo Edge Helm chart template to configure the Ziplkin tracing platform. Gloo Edge automatically determines the updates that must be made to apply the Zipin configuration in your Envoy proxies. 
+
 1. Create a `values.yaml` file and add your Zipkin configuration. In the following example, the Zipkin cluster is called `zipkin`.
 
    {{< highlight yaml "hl_lines=4-16" >}}
@@ -72,6 +75,8 @@ Zipkin uses a dedicated tracing cluster where tracing information is sent to. Th
 {{< /tab >}}
 
 {{< tab name="Update the Envoy configmap">}}
+
+Add the Envoy code that you want to apply to a Kubernetes configmap and restart the proxy deployments. 
 
 1. Edit the Envoy proxy configuration. 
 
@@ -120,7 +125,7 @@ Zipkin uses a dedicated tracing cluster where tracing information is sent to. Th
                          port_value: 9411
    {{< /highlight >}}
 
-3. Apply the bootstrap config. For Envoy to pick up the new config, you need to restart the Envoy proxy deployment.  
+3. Apply the updated Envoy config. For Envoy to pick up the new config, you need to restart the Envoy proxy deployment.  
 
    ```bash
    kubectl rollout restart deployment gateway-proxy
@@ -128,70 +133,72 @@ Zipkin uses a dedicated tracing cluster where tracing information is sent to. Th
 {{< /tab >}}
 {{< /tabs >}}
 
-### 2. Configure a tracing provider {#provider}
+### 2. Configure a tracing provider for a listener {#provider}
 
-For a list of supported tracing providers, and the configuration that they expect, please see Envoy's documentation on [trace provider configuration](https://www.envoyproxy.io/docs/envoy/v1.21.1/api-v3/config/trace/v3/http_tracer.proto#config-trace-v3-tracing-http).
-For demonstration purposes, we show how to configure a *zipkin* trace provider below.
+After you configured the tracing cluster, you can now set Zipkin as the tracing platform for a listener in your Gloo Edge gateway. To do that, you can either update the Gloo Edge gateway, or provide the Envoy code in a Kubernetes configmap and apply this configmap by manually restarting the Envoy proxies.
 
+{{% notice note %}}
+When you choose to manually update the Envoy proxies with a configmap, you can apply the updated configuration to a static listener that is defined in the Envoy bootstrap config only. If you want to configure a tracing provider for dynamically created listeners, you must update the gateway in Gloo Edge. 
+{{% /notice %}}
 
 {{< tabs >}}
-{{< tab name="(Preferred) Dynamic Listener">}}
+{{< tab name="Dynamic listeners with Gloo Edge">}}
 
-You can enable tracing on a listener-by-listener basis. Please see [the tracing listener docs]({{% versioned_link_path fromRoot="/guides/traffic_management/listener_configuration/http_connection_manager/#tracing" %}}) for details on how to enable tracing on a listener. Note that we have configured a _cluster_ in step 1 which we will refer to by `clusterName`.
+You can enable tracing on a listener-by-listener basis. To find an example tracing listener configuration for your gateway, see [the tracing listener docs]({{% versioned_link_path fromRoot="/guides/traffic_management/listener_configuration/http_connection_manager/#tracing" %}}). In this example, the Zipkin cluster that you created in step 1 is referenced in the `clusterName` field. 
 
 {{< /tab >}}
-{{< tab name="configmap">}}
+{{< tab name="Static listeners with configmaps">}}
 
-First, edit the config map pertaining to your proxy. This should be `gateway-proxy-envoy-config` in the `gloo-system` namespace.
+1. Edit the Envoy proxy configuration. 
 
-```bash
-kubectl edit configmap -n gloo-system gateway-proxy-envoy-config
-```
-Apply the tracing provider changes. A sample Zipkin configuration is shown below.
+   ```bash
+   kubectl edit configmap -n gloo-system gateway-proxy-envoy-config
+   ```
+   
+2. Enter the tracing provider changes. 
 
-{{< highlight yaml "hl_lines=27-34">}}
-apiVersion: v1
-kind: ConfigMap
-data:
-  envoy.yaml:
-    node:
-      cluster: gateway
-      id: "{{.PodName}}{{.PodNamespace}}"
-      metadata:
-        role: "{{.PodNamespace}}~gateway-proxy"
-    static_resources:
-      listeners:
-        - name: prometheus_listener
-          address:
-            socket_address:
-              address: 0.0.0.0
-              port_value: 8081
-          filter_chains:
-            - filters:
-                - name: envoy.filters.network.http_connection_manager
-                  typed_config:
-                    "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
-                    codec_type: AUTO
-                    stat_prefix: prometheus
-                    route_config: # collapsed for brevity
-                    http_filters:
-                      - name: envoy.filters.http.router
-                    tracing:
-                      provider:
-                        name: envoy.tracers.zipkin
-                        typed_config:
-                          "@type": "type.googleapis.com/envoy.config.trace.v3.ZipkinConfig"
-                          collector_cluster: zipkin
-                          collector_endpoint: "/api/v2/spans"
-                          collector_endpoint_version: HTTP_JSON
-{{< /highlight >}}
+   {{< highlight yaml "hl_lines=27-34">}}
+   apiVersion: v1
+   kind: ConfigMap
+   data:
+     envoy.yaml:
+       node:
+         cluster: gateway
+         id: "{{.PodName}}{{.PodNamespace}}"
+         metadata:
+           role: "{{.PodNamespace}}~gateway-proxy"
+       static_resources:
+         listeners:
+           - name: prometheus_listener
+             address:
+               socket_address:
+                 address: 0.0.0.0
+                 port_value: 8081
+             filter_chains:
+               - filters:
+                   - name: envoy.filters.network.http_connection_manager
+                     typed_config:
+                       "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                       codec_type: AUTO
+                       stat_prefix: prometheus
+                       route_config: # collapsed for brevity
+                       http_filters:
+                         - name: envoy.filters.http.router
+                       tracing:
+                         provider:
+                           name: envoy.tracers.zipkin
+                           typed_config:
+                             "@type": "type.googleapis.com/envoy.config.trace.v3.ZipkinConfig"
+                             collector_cluster: zipkin
+                             collector_endpoint: "/api/v2/spans"
+                             collector_endpoint_version: HTTP_JSON
+   {{< /highlight >}}
 
+3. Apply the updated Envoy config. For Envoy to pick up the new config, you need to restart the Envoy proxy deployment.  
 
-To apply the bootstrap config to Envoy we need to restart the process. An easy way to do this is with `kubectl rollout restart`.
-
-```bash
-kubectl rollout restart deployment [deployment_name]
-```
+   ```bash
+   kubectl rollout restart deployment [deployment_name]
+   ```
 
 When the `gateway-proxy` pod restarts it should have the new trace provider config.
 
@@ -201,7 +208,7 @@ This provider configuration will only be applied to the static listeners that ar
 {{< /tab >}}
 {{< /tabs >}}
 
-##### 3. (Optional) Annotate routes with descriptors
+### 3. (Optional) Annotate routes with descriptors
 
 In order to associate a trace with a route, it can be helpful to annotate your routes with a descriptive name. This can be applied to the route, via a route plugin, or provided through a header `x-envoy-decorator-operation`.
 If both means are used, the header's value will override the routes's value.
