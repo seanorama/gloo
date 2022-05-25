@@ -24,7 +24,7 @@ To trace a request, data must be captured from the moment the request is initiat
 Each operation and span is documented with a timestamp so that you can easily see how long a request was processed by a specific endpoint in your trace. Most tracing platforms have support to visualize the tracing information in a graph so that you can easily see bottlenecks in your microservices stack. 
 
 To configure a tracing platform, you must update the Envoy bootstrap configuration. The bootstrap configuration is automatically applied when an Envoy process is initialized. To update the bootstrap configuration, you can use one of the following ways: 
-- **Gloo Edge**: Configure the tracing platform in the Helm chart template or the Gloo Edge custom resources, and let Gloo Edge determine how to best apply the configuration in Envoy. 
+- **Gloo Edge**: Configure the tracing platform in the installation Helm chart template or in the Gloo Edge custom resources, and let Gloo Edge determine how to best apply the configuration in Envoy. 
 - **Manually update Envoy**: Use a Kubernetes configmap and provide the Envoy code that you want to apply. You then manually restart all the deployments where you want to apply the updated Envoy configuration.
 
 ## Set up Zipkin tracing
