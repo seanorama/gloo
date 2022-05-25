@@ -14,7 +14,7 @@ The following distributed tracing platforms are supported in Gloo Edge:
 - [Datadog](https://docs.datadoghq.com/getting_started/tracing/)
 
 {{% notice note %}} 
-This guide uses the Zipkin tracing platform as an example to provide general steps for how to set up tracing in Gloo Edge. To set up other tracing platforms, refer to the platform-specific documentation or the [Envoy tracing provider documentation](https://www.envoyproxy.io/docs/envoy/v1.21.1/api-v3/config/trace/v3/http_tracer.proto#config-trace-v3-tracing-http).
+This guide uses the Zipkin tracing platform as an example to show how to set up tracing in Gloo Edge. To set up other tracing platforms, refer to the platform-specific documentation or the [Envoy tracing provider documentation](https://www.envoyproxy.io/docs/envoy/v1.21.1/api-v3/config/trace/v3/http_tracer.proto#config-trace-v3-tracing-http).
 {{% /notice %}}
 
 ## How does it work? 
