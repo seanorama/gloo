@@ -121,7 +121,7 @@ Zipkin uses a dedicated tracing cluster where tracing information is sent to. Th
 {{< tabs >}}
 {{< tab name="Install Gloo Edge with Zipkin tracing">}}
 
-Use the Gloo Edge Helm chart template to configure the Ziplkin tracing platform. Gloo Edge automatically determines the updates that must be made to apply the Zipin configuration in your Envoy proxies. 
+Use the Gloo Edge installation Helm chart template to configure the Zipkin tracing platform. Gloo Edge automatically determines the updates that must be made to apply the Zipkin configuration in your Envoy proxies. 
 
 1. Create a `values.yaml` file and add your Zipkin configuration. In the following example, the Zipkin cluster is called `zipkin`.
 
