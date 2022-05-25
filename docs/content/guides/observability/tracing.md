@@ -4,9 +4,8 @@ weight: 4
 description: Configure Gloo Edge for tracing
 ---
 
-# Set up tracing
 
-With Gloo Edge, you can use Envoy's end-to-end tracing capabilities to obtain visibility and track requests as they pass through your API gateway to distributed backends, such as services, databases, or other endpoins in your ecosystem. Tracing enables you to monitor and optimize the performance and latency of requests, and to perform root cause analyses to find bottlenecks and pinpoint failures. 
+With Gloo Edge, you can use Envoy's end-to-end tracing capabilities to obtain visibility and track requests as they pass through your API gateway to distributed backends, such as services, databases, or other endpoints in your ecosystem. Tracing enables you to monitor and optimize the performance and latency of requests, and to perform root cause analyses to find bottlenecks and pinpoint failures. 
 
 The following distributed tracing platforms are supported in Gloo Edge: 
 - [Zipkin](https://zipkin.io/)
@@ -212,7 +211,7 @@ Add the Envoy code that you want to apply to a Kubernetes configmap and restart 
 
 ### 3. Configure Zipkin as the tracing provider for a listener {#provider}
 
-After you configure the tracing cluster, you can now set Zipkin as the tracing platform for a listener in your Gloo Edge gateway. To do that, you can either update the Gloo Edge gateway, or provide the Envoy code in a Kubernetes configmap and apply this configmap by manually restarting the Envoy proxies.
+After you configure the [tracing cluster](#cluster), you can now set Zipkin as the tracing platform for a listener in your Gloo Edge gateway. To do that, you can either update the Gloo Edge gateway, or provide the Envoy code in a Kubernetes configmap and apply this configmap by manually restarting the Envoy proxies.
 
 {{% notice note %}}
 When you choose to manually update the Envoy proxies with a configmap, you can apply the updated configuration to a static listener that is defined in the Envoy bootstrap config only. If you want to configure a tracing provider for dynamically created listeners, you must update the gateway in Gloo Edge. 
