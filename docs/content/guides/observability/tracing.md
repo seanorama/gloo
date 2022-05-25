@@ -19,7 +19,7 @@ This guide uses the Zipkin tracing platform as an example to show how to set up 
 
 ## How does it work? 
 
-To trace a request, data must be captured from the moment the request is initiated and every time the request is forwarded to another endpoint, or when other microservices are called along the way. If the request is initiated, a trace ID and an initial span (parent span) is created. A span represents an operation that is performed on your request, such as an API call, a database lookup, or a call to an external service. If a request is sent to a service, a child span is created in the trace capturing all the operations that are performed within the service. 
+To trace a request, data must be captured from the moment the request is initiated and every time the request is forwarded to another endpoint, or when other microservices are called along the way. When a request is initiated, a trace ID and an initial span (parent span) is created. A span represents an operation that is performed on your request, such as an API call, a database lookup, or a call to an external service. If a request is sent to a service, a child span is created in the trace capturing all the operations that are performed within the service. 
 
 Each operation and span is documented with a timestamp so that you can easily see how long a request was processed by a specific endpoint in your trace. Most tracing platforms have support to visualize the tracing information in a graph so that you can easily see bottlenecks in your microservices stack. 
 
