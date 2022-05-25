@@ -64,7 +64,6 @@ import (
 	"github.com/solo-io/solo-kit/pkg/api/v1/clients/kube"
 	corecache "github.com/solo-io/solo-kit/pkg/api/v1/clients/kube/cache"
 	"github.com/solo-io/solo-kit/pkg/api/v1/clients/memory"
-	"github.com/solo-io/solo-kit/pkg/api/v1/control-plane/cache"
 	"github.com/solo-io/solo-kit/pkg/api/v1/control-plane/resource"
 	"github.com/solo-io/solo-kit/pkg/api/v1/control-plane/server"
 	xdsserver "github.com/solo-io/solo-kit/pkg/api/v1/control-plane/server"
@@ -145,8 +144,7 @@ type setupSyncer struct {
 }
 
 func NewControlPlane(ctx context.Context, grpcServer *grpc.Server, bindAddr net.Addr, callbacks xdsserver.Callbacks, start bool) bootstrap.ControlPlane {
-	hasher := &xds.ProxyKeyHasher{}
-	snapshotCache := cache.NewSnapshotCache(true, hasher, contextutils.LoggerFrom(ctx))
+	snapshotCache := xds.NewAdsSnapshotCache(ctx)
 	xdsServer := server.NewServer(ctx, snapshotCache, callbacks)
 	reflection.Register(grpcServer)
 
@@ -537,7 +535,7 @@ func RunGlooWithExtensions(opts bootstrap.Opts, extensions Extensions, apiEmitte
 	}
 	// Register grpc endpoints to the grpc server
 	xds.SetupEnvoyXds(opts.ControlPlane.GrpcServer, opts.ControlPlane.XDSServer, opts.ControlPlane.SnapshotCache)
-	xdsHasher := xds.NewNodeHasher()
+	xdsHasher := xds.NewNodeRoleHasher()
 
 	pluginRegistryFactory := extensions.PluginRegistryFactory
 	if pluginRegistryFactory == nil {
@@ -1106,9 +1104,13 @@ func constructOpts(ctx context.Context, clientset *kubernetes.Interface, kubeCac
 			validation.ValidatingWebhookKeyPath = gwdefaults.ValidationWebhookTlsKeyPath
 		}
 	} else {
-		if validationMustStart := os.Getenv("VALIDATION_MUST_START"); validationMustStart != "" && validationMustStart != "false" {
-			return bootstrap.Opts{}, errors.Errorf("VALIDATION_MUST_START was set to true, but no validation configuration was provided in the settings. "+
-				"Ensure the v1.Settings %v contains the spec.gateway.validation config", settings.GetMetadata().Ref())
+		// This will stop users from setting failurePolicy=fail and then removing the webhook configuration
+		if validationMustStart := os.Getenv("VALIDATION_MUST_START"); validationMustStart != "" && validationMustStart != "false" && gatewayMode {
+			return bootstrap.Opts{}, errors.Errorf("A validation webhook was configured, but no validation configuration was provided in the settings. "+
+				"Ensure the v1.Settings %v contains the spec.gateway.validation config."+
+				"If you have removed the webhook configuration from K8s since installing and want to disable validation, "+
+				"set the environment variable VALIDATION_MUST_START=false",
+				settings.GetMetadata().Ref())
 		}
 	}
 	readGatewaysFromAllNamespaces := settings.GetGateway().GetReadGatewaysFromAllNamespaces()
