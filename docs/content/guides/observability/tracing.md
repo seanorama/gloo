@@ -6,7 +6,7 @@ description: Configure Gloo Edge for tracing
 
 # Set up tracing
 
-With Gloo Edge, you can use Envoy's end-to-end tracing capabilities to obtain visibility and track requests as they pass through your API gateway to distributed backends, such as a service, database, or other endpoint in your ecosystem. Tracing enables you to monitor and optimize the performance and latency of requests, and to perform root cause analysis to find bottlenecks and pinpoint failures. 
+With Gloo Edge, you can use Envoy's end-to-end tracing capabilities to obtain visibility and track requests as they pass through your API gateway to distributed backends, such as services, databases, or other endpoins in your ecosystem. Tracing enables you to monitor and optimize the performance and latency of requests, and to perform root cause analyses to find bottlenecks and pinpoint failures. 
 
 The following distributed tracing platforms are supported in Gloo Edge: 
 - [Zipkin](https://zipkin.io/)
