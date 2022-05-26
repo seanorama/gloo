@@ -106,13 +106,11 @@ func (s *TranslatorSyncer) UpdateProxies(ctx context.Context) {
 }
 func (s *TranslatorSyncer) GeneratedDesiredProxies(ctx context.Context, snap *v1.ApiSnapshot) (reconciler.GeneratedProxies, reconciler.InvalidProxies) {
 	logger := contextutils.LoggerFrom(ctx)
-
-	gatewaysByProxy := utils.GatewaysByProxyName(snap.Gateways)
+	gatewaysByProxyName := utils.GatewaysByProxyName(snap.Gateways)
 
 	desiredProxies := make(reconciler.GeneratedProxies)
 	invalidProxies := make(reconciler.InvalidProxies)
-
-	for proxyName, gatewayList := range gatewaysByProxy {
+	for proxyName, gatewayList := range gatewaysByProxyName {
 		proxy, reports := s.translator.Translate(ctx, proxyName, snap, gatewayList)
 		if proxy != nil {
 

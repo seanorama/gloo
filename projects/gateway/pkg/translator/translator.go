@@ -15,19 +15,21 @@ import (
 )
 
 //go:generate mockgen -destination mocks/mock_translator.go -package mocks github.com/solo-io/gloo/projects/gateway/pkg/translator Translator
+
+// Translator converts a set of Gateways into a Proxy, with the provided proxyName
 type Translator interface {
-	Translate(ctx context.Context, proxyName, namespace string, snap *v1.ApiSnapshot, filteredGateways v1.GatewayList) (*gloov1.Proxy, reporter.ResourceReports)
+	Translate(ctx context.Context, proxyName string, snap *v1.ApiSnapshot, filteredGateways v1.GatewayList) (*gloov1.Proxy, reporter.ResourceReports)
 }
 
 type GwTranslator struct {
-	// listenerTranslators is the set of available translators that convert Gloo Gateways into Envoy Listeners
+	// listenerTranslators is the set of available translators that convert Gloo Gateways into Listeners
 	listenerTranslators map[string]ListenerTranslator
 
 	// writeNamespace is the namespace that all Proxy CRs will be written to
 	writeNamespace string
 
 	// predicate is used to determine which Gateways to process during translation
-	predicate      Predicate
+	predicate Predicate
 }
 
 func NewDefaultTranslator(opts Opts) *GwTranslator {
@@ -56,11 +58,12 @@ func NewTranslator(listenerTranslators []ListenerTranslator, opts Opts) *GwTrans
 
 	return &GwTranslator{
 		listenerTranslators: translatorsByName,
-		predicate:           GetPredicate(opts.WriteNamespace, opts.ReadGatewaysFromAllNamespaces),
 		writeNamespace:      opts.WriteNamespace,
+		predicate:           GetPredicate(opts.WriteNamespace, opts.ReadGatewaysFromAllNamespaces),
 	}
 }
 
+// Translate converts a set of Gateways into a Proxy, with the provided proxyName
 func (t *GwTranslator) Translate(ctx context.Context, proxyName string, snap *v1.ApiSnapshot, gateways v1.GatewayList) (*gloov1.Proxy, reporter.ResourceReports) {
 	logger := contextutils.LoggerFrom(ctx)
 
@@ -69,14 +72,13 @@ func (t *GwTranslator) Translate(ctx context.Context, proxyName string, snap *v1
 	reports.Accept(snap.VirtualServices.AsInputResources()...)
 	reports.Accept(snap.RouteTables.AsInputResources()...)
 
-	// NOTE: We could optimize this by removing this responsibility from the Translator
-	//	that way it is called once per translation run, as opposed to once per proxy
-	//	However, we must perform this both for translation syncs and validation syncs
-	//	and it would be more challenging to keep those two in sync.
+	// NOTE: At the moment the predicate is applied once per Proxy, but we could
+	//	optimize this by moving it out of the Translator and into the Syncer, ensuring
+	//	it runs once per translation run instead.
 	filteredGateways := FilterGateways(gateways, t.predicate)
 	if len(filteredGateways) == 0 {
 		snapHash := hashutils.MustHash(snap)
-		logger.Infof("%v had no gateways", snapHash)
+		logger.Infof("Snapshot %v had no gateways for proxyName=%v", snapHash, proxyName)
 		return nil, reports
 	}
 
@@ -105,6 +107,9 @@ func (t *GwTranslator) Translate(ctx context.Context, proxyName string, snap *v1
 	}, reports
 }
 
+// getListenerTranslatorForGateway returns the translator responsible for converting the Gloo Gateway
+// into a Listener. If there is no available translator for the Gateway type, return
+// a placeholder translator that produces a MissingGatewayTypeErr
 func (t *GwTranslator) getListenerTranslatorForGateway(gateway *v1.Gateway) ListenerTranslator {
 	var listenerTranslatorImpl ListenerTranslator
 
@@ -142,6 +147,11 @@ func ListenerName(gateway *v1.Gateway) string {
 	return fmt.Sprintf("listener-%s-%d", gateway.GetBindAddress(), gateway.GetBindPort())
 }
 
+// validateGateways validates a set of Gateways that will be aggregated on a Proxy
+// and writes errors to the ResourceReports.
+// Gateways must meet the following criteria:
+//	1. All bind addresses are unique
+//	2. All VirtualServices that are referenced by a Gateway are available in the API Snapshot
 func validateGateways(gateways v1.GatewayList, virtualServices v1.VirtualServiceList, reports reporter.ResourceReports) {
 	bindAddresses := map[string]v1.GatewayList{}
 	// if two gateway (=listener) that belong to the same proxy share the same bind address,

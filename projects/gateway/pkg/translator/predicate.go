@@ -2,10 +2,16 @@ package translator
 
 import v1 "github.com/solo-io/gloo/projects/gateway/pkg/api/v1"
 
-// Predicate is used to determine which Gateways to process during translation.
+// Predicate is used to determine how to reduce a list of Gateways
 type Predicate interface {
+	// ReadGateway returns true if a Gateway should be processed during translation, false otherwise
 	ReadGateway(gw *v1.Gateway) bool
 }
+
+var (
+	_ Predicate = new(SingleNamespacePredicate)
+	_ Predicate = new(AllNamespacesPredicate)
+)
 
 // FilterGateways filters a GatewayList based on a Predicate, and returns a new list
 func FilterGateways(gateways v1.GatewayList, predicate Predicate) v1.GatewayList {
