@@ -24,6 +24,7 @@ type InitParams struct {
 
 type Plugin interface {
 	Name() string
+	Messages() []string
 	Init(params InitParams) error
 }
 
