@@ -91,6 +91,7 @@ var _ = Describe("Translate Proxy", func() {
 			State:      2,
 			Reason:     "1 error occurred:\n\t* hi, how ya doin'?\n\n",
 			ReportedBy: ref,
+			Messages:   []string{"This is a message", "And also this"},
 		}))
 
 		// NilSnapshot is always consistent, so snapshot will always be set as part of endpoints update
@@ -159,6 +160,7 @@ var _ = Describe("Translate multiple proxies with errors", func() {
 				State:      2,
 				Reason:     "1 error occurred:\n\t* hi, how ya doin'?\n\n",
 				ReportedBy: ref,
+				Messages:   []string{"This is a message", "And also this"},
 			}))
 
 		}
@@ -252,6 +254,7 @@ var _ = Describe("Translate multiple proxies with errors", func() {
 			State:      2,
 			Reason:     "1 error occurred:\n\t* hi, how ya doin'?\n\n",
 			ReportedBy: ref,
+			Messages:   []string{"This is a message", "And also this"},
 		}))
 
 		// NilSnapshot is always consistent, so snapshot will always be set as part of endpoints update
@@ -277,6 +280,7 @@ var _ = Describe("Translate multiple proxies with errors", func() {
 			State:      2,
 			Reason:     "2 errors occurred:\n\t* upstream is bad - determined by proxy-name1\n\t* upstream is bad - determined by proxy-name2\n\n",
 			ReportedBy: ref,
+			Messages:   []string{"And also this possibly"},
 		}))
 
 		Expect(xdsCache.Called).To(BeTrue())
@@ -296,6 +300,7 @@ var _ = Describe("Translate multiple proxies with errors", func() {
 			State:      2,
 			Reason:     "1 error occurred:\n\t* generic upstream error\n\n",
 			ReportedBy: ref,
+			Messages:   []string{"Or even this"},
 		}))
 
 		Expect(xdsCache.Called).To(BeTrue())
@@ -318,8 +323,10 @@ func (t *mockTranslator) Translate(params plugins.Params, proxy *v1.Proxy) (envo
 			for _, upstream := range params.Snapshot.Upstreams {
 				if upstream.Metadata.Annotations["uniqueErrPerProxy"] == "true" {
 					rpts.AddError(upstream, errors.Errorf("upstream is bad - determined by %s", proxy.Metadata.Name))
+					rpts.AddMessages(upstream, "And also this possibly")
 				} else {
 					rpts.AddError(upstream, errors.Errorf("generic upstream error"))
+					rpts.AddMessages(upstream, "Or even this")
 				}
 			}
 		}
