@@ -26,22 +26,20 @@ import (
 
 var _ = Describe("Translate Proxy", func() {
 
-	var (
-		xdsCache       *MockXdsCache
-		sanitizer      *MockXdsSanitizer
-		syncer         v1snap.ApiSyncer
-		snap           *v1snap.ApiSnapshot
-		settings       *v1.Settings
-		upstreamClient clients.ResourceClient
-		proxyClient    v1.ProxyClient
-		ctx            context.Context
-		cancel         context.CancelFunc
-		proxyName      = "proxy-name"
-		ns             = "any-ns"
-		ref            = "syncer-test"
-		statusClient   resources.StatusClient
-		statusMetrics  metrics.ConfigStatusMetrics
-	)
+	var xdsCache *MockXdsCache
+	var sanitizer *MockXdsSanitizer
+	var syncer v1snap.ApiSyncer
+	var snap *v1snap.ApiSnapshot
+	var settings *v1.Settings
+	var upstreamClient clients.ResourceClient
+	var proxyClient v1.ProxyClient
+	var ctx context.Context
+	var cancel context.CancelFunc
+	var proxyName = "proxy-name"
+	var ns = "any-ns"
+	var ref = "syncer-test"
+	var statusClient resources.StatusClient
+	var statusMetrics metrics.ConfigStatusMetrics
 
 	BeforeEach(func() {
 		var err error
@@ -314,6 +312,8 @@ func (t *mockTranslator) Translate(params plugins.Params, proxy *v1.Proxy) (envo
 	if t.reportErrs {
 		rpts := reporter.ResourceReports{}
 		rpts.AddError(proxy, errors.Errorf("hi, how ya doin'?"))
+		rpts.AddMessages(proxy, "This is a message")
+		rpts.AddMessages(proxy, "And also this")
 		if t.reportUpstreamErrs {
 			for _, upstream := range params.Snapshot.Upstreams {
 				if upstream.Metadata.Annotations["uniqueErrPerProxy"] == "true" {
