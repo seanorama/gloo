@@ -1,10 +1,39 @@
 # End-to-end tests
-This directory contains end-to-end tests that do not require kubernetes
+This directory contains end-to-end tests that do not require Kubernetes
 
 *Note: All commands should be run from the root directory of the Gloo repository*
 
-## Run Envoy in a Docker Container
+## Background
+
+This is the most common type of end-to-end test, since it is the quickest to set up and easiest to debug. However, it does not rely on Kubernetes, so if there is any Kubernetes behavior that needs to be tested, we recommend using the [kubernetes end-to-end tests](../kube2e) instead.
+
+### How do the tests work?
+1. Run the [Gloo controllers in goroutines](https://github.com/solo-io/gloo/blob/1f457f4ef5f32aedabc58ef164aeea92acbf481e/test/services/gateway.go#L109)
+1. Run [Envoy](https://github.com/solo-io/gloo/blob/1f457f4ef5f32aedabc58ef164aeea92acbf481e/test/services/envoy.go#L237) either using a binary or docker container
+1. Apply Gloo resources using [in-memory resource clients](https://github.com/solo-io/gloo/blob/1f457f4ef5f32aedabc58ef164aeea92acbf481e/test/services/gateway.go#L175)
+1. Execute requests against the Envoy proxy and confirm the expected response. This validates that the Gloo resources have been picked up by the controllers, were been translated correctly into Envoy configuration, the configuration was sent to the Envoy proxy, and the proxy behaves appropriately.
+
+## CI
+
+These tests are run by [build-bot](https://github.com/solo-io/build-bot) as part of our CI pipeline.
+
+### What if a test fails on a Pull Request?
+
+Tests must account for the eventually consistent nature of Gloo Edge. If they do not wait for resources to be applied and processed correctly, they may flake. 
+
+The best way to identify that a flake occurred is to run the test locally. We recommend [focusing the test](https://onsi.github.io/ginkgo/#focused-specs) to ensure that no other tests are causing an impact, and following the Ginkgo recommendations for [managing flaky tests](https://onsi.github.io/ginkgo/#repeating-spec-runs-and-managing-flaky-specs).
+
+If a test failure is deemed to be a flake, we take the following steps:
+1. Determine if there is a [GitHub issue](https://github.com/solo-io/gloo/labels/Type%3A%20CI%20Test%20Flake) tracking the existence of that test flake
+1. Timebox an investigation into the flake. Flakes impact the developer experience, and we want to resolve them as soon as they are identified
+1. If a solution can not be determined within a reasonable amount of time (1 hour), we create a GitHub issue to track it
+1. If no issue exists, create one and include the `Type: CI Test Flake` label. If an issue already exists, add a comment with the logs for the failed run. We use comment frequency as a mechanism for determining frequency of flakes
+1. Using the build-bot [comment directives](https://github.com/solo-io/build-bot#issue-comment-directives), retry the build, including a link to the GitHub issue tracking the flake in the comment on the Pull Request
+
+## Local Development
+
 ### Setup
+
 For these tests to run, we require Envoy be built in a docker container.
 
 Refer to the [Envoyinit README](https://github.com/solo-io/gloo/blob/master/projects/envoyinit) for build instructions.
@@ -24,21 +53,15 @@ Example:
 ENVOY_IMAGE_TAG=solo-test-image TEST_PKG=./test/e2e/... make run-tests
 ```
 
-### Example Debug Workflow: Use `WAIT_ON_FAIL` to Dump Envoy Config
-The `WAIT_ON_FAIL` environment variable can be used to inspect Gloo/Envoy state during an e2e test. Instructions to do so are as follows:
-- Run your e2e test with `WAIT_ON_FAIL=1`, in order to prevent the Gloo installation from being torn down on failure
-  - It is important that your test fails -- teardown will occur as normal if the test suite runs successfully
-- When failure occurs, inspect running Docker containers using `docker ps`
-  - You should see a container which matches the following criteria:
-  - 
-    |IMAGE|PORTS|NAMES|
-    |-----|-----|-----|
-    |quay.io/solo-io/gloo-envoy-wrapper:<ENVOY_IMAGE_TAG>|0.0.0.0:11082-11083->11082-11083/tcp, :::11082-11083->11082-11083/tcp, 0.0.0.0:21001->21001/tcp, :::21001->21001/tcp|e2e_envoy|
-- Open http://0.0.0.0:21001 in your browser to access the envoy control panel
-  - we default the adminPort to 20000 (https://github.com/solo-io/gloo/blob/master/test/services/envoy.go#L36), and when we create a new instance we add some digits to ensure it can be run in parallel (https://github.com/solo-io/gloo/blob/master/test/services/envoy.go#L401)
-  - I believe our current way of running tests only runs a single envoy at a time, so this will always be 1 instance more than the default case, which is why it is port 21001.
-- Click on the `config_dump` hyperlink to obtain a complete dump of the current envoy configuration
 
+### Debug Tests
+
+#### Use WAIT_ON_FAIL
+When Ginkgo encounters a [test failure](https://onsi.github.io/ginkgo/#mental-model-how-ginkgo-handles-failure) it will attempt to clean up relevant resources, which includes stopping the running instance of Envoy.
+
+To avoid this clean up, run the test(s) with `WAIT_ON_FAIL=1`. When the test fails, it will halt execution, allowing you to inspect the state of the Envoy instance.
+
+Once halted, use `docker ps` to determine the admin port for the Envoy instance, and follow the recommendations for [debugging Envoy](https://github.com/solo-io/gloo/tree/master/projects/envoyinit#debug), specifically the parts around interacting with the Administration interface.
 
 ## Additional Notes
 

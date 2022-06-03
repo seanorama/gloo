@@ -2,15 +2,15 @@
 
 ### e2e Tests
 
-Instructions for setting up and running the end-to-end tests can be found [here](https://github.com/solo-io/gloo/tree/master/test/e2e#end-to-end-tests).
+Instructions for setting up and running the end-to-end tests can be found [here](./e2e#end-to-end-tests).
 
-### Kube e2e Tests
+### Kubernetes e2e Tests
 
-Instructions for setting up and running the regression tests can be found [here](https://github.com/solo-io/gloo/tree/master/test/kube2e#regression-tests).
+Instructions for setting up and running the kubernetes end-to-end tests can be found [here](./kube2e#kubernetes-end-to-end-tests).
 
-### Consult Vault Test Setup
+### Consult/Vault e2e Tests
 
-The consul vault test downloads and runs vault and is disabled by default. To enable, set `RUN_VAULT_TESTS=1` and `RUN_CONSUL_TESTS=1` in your local environment.
+Instructions for setting up and running the consul and vault end-to-end tests can be found [here](./consulvaulte2e).
 
 ## Debugging Tests
 

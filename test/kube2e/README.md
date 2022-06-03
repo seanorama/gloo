@@ -1,8 +1,11 @@
-# Regression tests
+# Kubernetes end-to-end tests
 This directory contains tests that install each of the 3 Gloo Edge flavors (`gateway`, `ingress`, and `knative`) and run
 regression tests against them.
 
 *Note: All commands should be run from the root directory of the Gloo repository*
+
+## Background
+
 
 ## Setup
 For these tests to run, we require the following conditions:
