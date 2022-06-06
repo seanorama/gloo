@@ -4,9 +4,6 @@ regression tests against them.
 
 *Note: All commands should be run from the root directory of the Gloo repository*
 
-## Background
-
-
 ## Setup
 For these tests to run, we require the following conditions:
   - Gloo Edge Helm chart archive be present in the `_test` folder,
