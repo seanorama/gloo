@@ -245,7 +245,7 @@ var _ = Describe("Translator", func() {
 		Context("when the gateway CRDs don't clash", func() {
 			BeforeEach(func() {
 				translator = NewDefaultTranslator(Opts{
-					WriteNamespace: ns,
+					WriteNamespace:                ns,
 					ReadGatewaysFromAllNamespaces: true,
 				})
 				snap = &v1.ApiSnapshot{
