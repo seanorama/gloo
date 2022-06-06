@@ -14,7 +14,7 @@ A [snapshot](https://github.com/solo-io/solo-kit/blob/97bd7c2c67420a6d99bb96f220
 
 ### Snapshot Cache
 
-A [snapshot cache](https://github.com/solo-io/solo-kit/blob/97bd7c2c67420a6d99bb96f220f2e1a04c6d8a0d/pkg/api/v1/control-plane/cache/simple.go#L70) maintains a single versioned snapshot per key.
+A [snapshot cache](https://github.com/solo-io/solo-kit/blob/97bd7c2c67420a6d99bb96f220f2e1a04c6d8a0d/pkg/api/v1/control-plane/cache/simple.go#L70) maintains a single versioned snapshot per key. It also responds to open xDS requests.
 
 ### xDS Callbacks
 
