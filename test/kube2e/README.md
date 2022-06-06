@@ -5,7 +5,7 @@ end-to-end tests against them.
 *Note: All commands should be run from the root directory of the Gloo repository*
 
 ## Background
-Kubernetes may be used for scheduling, persistence or security. These tests validate that Gloo Edge can successfully operate within a Kubernetes cluster.
+Kubernetes may be relied on for scheduling, persistence or security. These tests validate that Gloo Edge can successfully operate within a Kubernetes cluster.
 
 ### How do the tests work?
 1. Install Gloo Edge in Kubernetes cluster [using Helm](https://github.com/solo-io/gloo/blob/1f457f4ef5f32aedabc58ef164aeea92acbf481e/test/kube2e/gateway/gateway_suite_test.go#L84)

@@ -4,7 +4,7 @@ This directory contains end-to-end tests that do not require Kubernetes
 *Note: All commands should be run from the root directory of the Gloo repository*
 
 ## Background
-This is the most common type of end-to-end test, since it is the quickest to set up and easiest to debug. Additionally, since Gloo Edge may be run using various backing stores, these tests provide a single space to validate the translation of Gloo resources into Envoy resources, independent of where Gloo Edge is deployed. As a result, these test do not rely on Kubernetes, so if there is any Kubernetes behavior that needs to be tested, we recommend using the [kubernetes end-to-end tests](../kube2e) instead.
+This is the most common type of end-to-end test, since it is the quickest to set up and easiest to debug. Additionally, since Gloo Edge may be run using various backing stores, these tests provide a single space to validate the translation of Gloo resources into Envoy resources, independent of where Gloo Edge is deployed. As a result, these test do not rely on Kubernetes, so if there is any Kubernetes behavior that needs to be tested, write a [kubernetes end-to-end test](../kube2e) instead.
 
 ### How do the tests work?
 1. Run the [Gloo controllers in goroutines](https://github.com/solo-io/gloo/blob/1f457f4ef5f32aedabc58ef164aeea92acbf481e/test/services/gateway.go#L109)
@@ -13,7 +13,7 @@ This is the most common type of end-to-end test, since it is the quickest to set
 1. Execute requests against the Envoy proxy and confirm the expected response. This validates that the Gloo resources have been picked up by the controllers, were been translated correctly into Envoy configuration, the configuration was sent to the Envoy proxy, and the proxy behaves appropriately.
 
 ## CI
-These tests are run by [build-bot](https://github.com/solo-io/build-bot) as part of our CI pipeline.
+These tests are run by [build-bot](https://github.com/solo-io/build-bot) in Google Cloud as part of our CI pipeline.
 
 If a test fails, you can retry it using the build-bot [comment directives](https://github.com/solo-io/build-bot#issue-comment-directives). If you do this, please make sure to include a link to the failed logs for debugging purposes.
 
@@ -40,10 +40,10 @@ ENVOY_IMAGE_TAG=solo-test-image TEST_PKG=./test/e2e/... make run-tests
 ```
 
 
-### Debug Tests
+### Debugging Tests
 
 #### Use WAIT_ON_FAIL
-When Ginkgo encounters a [test failure](https://onsi.github.io/ginkgo/#mental-model-how-ginkgo-handles-failure) it will attempt to clean up relevant resources, which includes stopping the running instance of Envoy.
+When Ginkgo encounters a [test failure](https://onsi.github.io/ginkgo/#mental-model-how-ginkgo-handles-failure) it will attempt to clean up relevant resources, which includes stopping the running instance of Envoy, preventing the developer from inspecting the state of the Envoy instance for useful clues.
 
 To avoid this clean up, run the test(s) with `WAIT_ON_FAIL=1`. When the test fails, it will halt execution, allowing you to inspect the state of the Envoy instance.
 
