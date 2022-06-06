@@ -30,7 +30,7 @@ type Plugin interface {
 type Params struct {
 	Ctx      context.Context
 	Snapshot *v1snap.ApiSnapshot
-	Messages *map[*core.ResourceRef][]string
+	Messages map[*core.ResourceRef][]string
 }
 
 type VirtualHostParams struct {

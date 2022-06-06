@@ -127,7 +127,7 @@ func (s *translatorSyncer) syncEnvoy(ctx context.Context, snap *v1snap.ApiSnapsh
 		params := plugins.Params{
 			Ctx:      proxyCtx,
 			Snapshot: snap,
-			Messages: &map[*core.ResourceRef][]string{},
+			Messages: map[*core.ResourceRef][]string{},
 		}
 
 		// TODO(kdorosh) in follow up PR, update this interface so it can never error

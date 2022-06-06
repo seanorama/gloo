@@ -150,8 +150,8 @@ func (t *translatorInstance) Translate(
 	}
 
 	messagesMap := params.Messages
-	if messagesMap != nil && len(*messagesMap) > 0 {
-		for _, messages := range *messagesMap {
+	if messagesMap != nil && len(messagesMap) > 0 {
+		for _, messages := range messagesMap {
 			for _, message := range messages {
 				reports.AddMessages(proxy, message)
 			}
