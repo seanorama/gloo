@@ -23,16 +23,21 @@ type GeneratedProxies map[*gloov1.Proxy]reporter.ResourceReports
 type InvalidProxies map[*core.ResourceRef]reporter.ResourceReports
 
 type ProxyReconciler interface {
-	ReconcileProxies(ctx context.Context, proxiesToWrite GeneratedProxies, writeNamespace string, labels map[string]string) error
+	ReconcileProxies(ctx context.Context, proxiesToWrite GeneratedProxies, writeNamespace string, labelSelectorOptions clients.ListOpts) error
 }
 
 type proxyReconciler struct {
 	statusClient   resources.StatusClient
-	proxyValidator validation.GlooValidationServiceClient
+	proxyValidator func(
+		context.Context,
+		*validation.GlooValidationServiceRequest,
+	) (*validation.GlooValidationServiceResponse, error)
 	baseReconciler gloov1.ProxyReconciler
 }
 
-func NewProxyReconciler(proxyValidator validation.GlooValidationServiceClient, proxyClient gloov1.ProxyClient, statusClient resources.StatusClient) *proxyReconciler {
+func NewProxyReconciler(proxyValidator func(context.Context, *validation.GlooValidationServiceRequest) (*validation.GlooValidationServiceResponse, error),
+	proxyClient gloov1.ProxyClient, statusClient resources.StatusClient) *proxyReconciler {
+
 	return &proxyReconciler{
 		statusClient:   statusClient,
 		proxyValidator: proxyValidator,
@@ -42,7 +47,7 @@ func NewProxyReconciler(proxyValidator validation.GlooValidationServiceClient, p
 
 const proxyValidationErrMsg = "internal err: communication with proxy validation (gloo) failed"
 
-func (s *proxyReconciler) ReconcileProxies(ctx context.Context, proxiesToWrite GeneratedProxies, writeNamespace string, labels map[string]string) error {
+func (s *proxyReconciler) ReconcileProxies(ctx context.Context, proxiesToWrite GeneratedProxies, writeNamespace string, labelSelectorOptions clients.ListOpts) error {
 	if err := s.addProxyValidationResults(ctx, proxiesToWrite); err != nil {
 		return errors.Wrapf(err, "failed to add proxy validation results to reports")
 	}
@@ -64,8 +69,9 @@ func (s *proxyReconciler) ReconcileProxies(ctx context.Context, proxiesToWrite G
 	proxyTransitionFunction := transitionFunc(proxiesToWrite, s.statusClient)
 
 	if err := s.baseReconciler.Reconcile(writeNamespace, allProxies, proxyTransitionFunction, clients.ListOpts{
-		Ctx:      ctx,
-		Selector: labels,
+		Ctx:                ctx,
+		Selector:           labelSelectorOptions.Selector,
+		ExpressionSelector: labelSelectorOptions.ExpressionSelector,
 	}); err != nil {
 		return err
 	}
@@ -110,7 +116,7 @@ func (s *proxyReconciler) addProxyValidationResults(ctx context.Context, proxies
 
 	for proxy, reports := range proxiesToWrite {
 
-		glooValidationResponse, err := s.proxyValidator.Validate(ctx, &validation.GlooValidationServiceRequest{
+		glooValidationResponse, err := s.proxyValidator(ctx, &validation.GlooValidationServiceRequest{
 			Proxy: proxy,
 		})
 		if err != nil {

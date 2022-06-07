@@ -11,7 +11,7 @@ Gloo Edge can be used as an Ingress/Gateway for the Nomad platform. This guide w
 
 You can see a demonstration of Gloo Edge using Consul, Nomad, and Vault in this YouTube video.
 
-<iframe src="https://www.youtube.com/embed/7Mk5r9P4kb0" frameborder="0" width="560" height="315" allowfullscreen></iframe>
+<iframe src="https://www.youtube.com/embed/0EXrVGXmDx0?start=1253" frameborder="0" width="560" height="315" allowfullscreen></iframe>
 
 ---
 
@@ -37,7 +37,7 @@ Before proceeding to the installation, you will need to complete some prerequisi
 Installation on Nomad requires the following:
 
 - [Levant](https://github.com/jrasell/levant) installed on your local machine
-- [Docker](https://github.com/jrasell/levant), [Consul](https://www.consul.io), [Vault](https://www.vaultproject.io), and [Nomad](https://www.nomadproject.io/) installed on the target host machine (which can also be your local machine). A [Vagrantfile](https://github.com/solo-io/gloo/blob/master/install/nomad/Vagrantfile) is provided that includes everything needed to run Nomad.
+- [Docker](https://www.docker.com), [Consul](https://www.consul.io), [Vault](https://www.vaultproject.io), and [Nomad](https://www.nomadproject.io/) installed on the target host machine (which can also be your local machine). A [Vagrantfile](https://github.com/solo-io/gloo/blob/master/install/nomad/Vagrantfile) is provided that includes everything needed to run Nomad.
 
 If you want to run locally on macOS, you will also need to install [Weave Network](https://www.weave.works/docs/net/latest/install/installing-weave/).
 

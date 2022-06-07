@@ -16,6 +16,7 @@ weight: 5
 - [GrpcRequestTemplate](#grpcrequesttemplate)
 - [RESTResolver](#restresolver)
 - [GrpcDescriptorRegistry](#grpcdescriptorregistry)
+- [ProtoRefs](#protorefs)
 - [GrpcResolver](#grpcresolver)
 - [StitchedSchema](#stitchedschema)
 - [SubschemaConfig](#subschemaconfig)
@@ -30,6 +31,7 @@ weight: 5
 - [Executor](#executor)
 - [Local](#local)
 - [LocalExecutorOptions](#localexecutoroptions)
+- [Remote](#remote)
   
 
 
@@ -139,13 +141,32 @@ Is a Schema Extension
 ```yaml
 "protoDescriptor": string
 "protoDescriptorBin": bytes
+"protoRefsList": .graphql.gloo.solo.io.GrpcDescriptorRegistry.ProtoRefs
 
 ```
 
 | Field | Type | Description |
 | ----- | ---- | ----------- | 
-| `protoDescriptor` | `string` | Supplies the filename of :ref:`the proto descriptor set <config_grpc_json_generate_proto_descriptor_set>` for the gRPC services. Only one of `protoDescriptor` or `protoDescriptorBin` can be set. |
-| `protoDescriptorBin` | `bytes` | Supplies the binary content of :ref:`the proto descriptor set <config_grpc_json_generate_proto_descriptor_set>` for the gRPC services. Note: in yaml, this must be provided as a base64 standard encoded string; yaml can't handle binary bytes. Only one of `protoDescriptorBin` or `protoDescriptor` can be set. |
+| `protoDescriptor` | `string` | Supplies the filename of :ref:`the proto descriptor set <config_grpc_json_generate_proto_descriptor_set>` for the gRPC services. Only one of `protoDescriptor`, `protoDescriptorBin`, or `protoRefsList` can be set. |
+| `protoDescriptorBin` | `bytes` | Supplies the binary content of :ref:`the proto descriptor set <config_grpc_json_generate_proto_descriptor_set>` for the gRPC services. Note: in yaml, this must be provided as a base64 standard encoded string; yaml can't handle binary bytes. Only one of `protoDescriptorBin`, `protoDescriptor`, or `protoRefsList` can be set. |
+| `protoRefsList` | [.graphql.gloo.solo.io.GrpcDescriptorRegistry.ProtoRefs](../graphql.proto.sk/#protorefs) | Allows the user to put proto descriptor set binary content in configmaps; The descriptor set binary content in these config maps must be base64 encoded Generating the proto descriptor binary and base64 encoding it can be done using the following command `protoc ./your-proto-here.proto --proto_path . --descriptor_set_out="/dev/stdout" --include_imports | base64`. Only one of `protoRefsList`, `protoDescriptor`, or `protoDescriptorBin` can be set. |
+
+
+
+
+---
+### ProtoRefs
+
+
+
+```yaml
+"configMapRefs": []core.solo.io.ResourceRef
+
+```
+
+| Field | Type | Description |
+| ----- | ---- | ----------- | 
+| `configMapRefs` | [[]core.solo.io.ResourceRef](../../../../../../../../../../solo-kit/api/v1/ref.proto.sk/#resourceref) | List of references to config maps that contain proto data for this resolver. For each of the config maps referenced here, they must contain keys in their data map with valid base64 encoded proto descriptor set binaries as the values. Also they must be in a namespace watched by gloo edge. |
 
 
 
@@ -400,12 +421,14 @@ This message specifies Persisted Query Cache configuration.
 
 ```yaml
 "local": .graphql.gloo.solo.io.Executor.Local
+"remote": .graphql.gloo.solo.io.Executor.Remote
 
 ```
 
 | Field | Type | Description |
 | ----- | ---- | ----------- | 
-| `local` | [.graphql.gloo.solo.io.Executor.Local](../graphql.proto.sk/#local) |  |
+| `local` | [.graphql.gloo.solo.io.Executor.Local](../graphql.proto.sk/#local) |  Only one of `local` or `remote` can be set. |
+| `remote` | [.graphql.gloo.solo.io.Executor.Remote](../graphql.proto.sk/#remote) |  Only one of `remote` or `local` can be set. |
 
 
 
@@ -445,6 +468,29 @@ Execute schema using resolvers.
 | Field | Type | Description |
 | ----- | ---- | ----------- | 
 | `maxDepth` | [.google.protobuf.UInt32Value](https://developers.google.com/protocol-buffers/docs/reference/csharp/class/google/protobuf/well-known-types/u-int-32-value) | Max GraphQL operation (query/mutation/subscription) depth. This sets a limitation on the max nesting on a query that runs against this schema. any GraphQL operation that runs past the `max_depth` will add an error message to the response and will return as `null`. As as simple example, if the schema is ```gql type Query { employee: Employee } type Employee { manager: Employee name: String } ``` and we set a `max_depth` of `3` and we run a query ```gql query { # query depth : 0 employee { # query depth : 1 manager { # query depth : 2 name # query depth : 3 manager { # query depth : 3 name # query depth : 4 } } } } ``` the graphql server will respond with a response: ```json { "data" : { "employee" : { "manager" : { "name" : "Manager 1", "manager" : { "name" : null }}}}, "errors": [ {"message": "field 'name' exceeds the max operation depth of 3 for this schema"} ] } If not configured, or the value is 0, the query depth will be unbounded. |
+
+
+
+
+---
+### Remote
+
+
+
+```yaml
+"upstreamRef": .core.solo.io.ResourceRef
+"headers": map<string, string>
+"queryParams": map<string, string>
+"spanName": string
+
+```
+
+| Field | Type | Description |
+| ----- | ---- | ----------- | 
+| `upstreamRef` | [.core.solo.io.ResourceRef](../../../../../../../../../../solo-kit/api/v1/ref.proto.sk/#resourceref) |  |
+| `headers` | `map<string, string>` | map of header name to extraction type: e.g. ':path': '/hard/coded/path' ':method': '{$headers.method}' ':key': '{$metadata.io.solo.transformation:endpoint_url}'. |
+| `queryParams` | `map<string, string>` | map of query parameter name to extraction type: e.g. 'query': '{$metadata.$KEY_NAME:$KEY_VALUE}'. |
+| `spanName` | `string` |  |
 
 
 

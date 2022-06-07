@@ -22,9 +22,19 @@ spec:
   - name: grpc-validation
     port: {{ .Values.gloo.deployment.validationPort }}
     protocol: TCP
+  - name: grpc-proxydebug
+    port: {{ .Values.gloo.deployment.proxyDebugPort }}
+    protocol: TCP
   - name: wasm-cache
     port: 9979
     protocol: TCP
+{{- if and .Values.gateway.enabled .Values.gateway.validation.enabled }}
+  - name: https
+    port: 443
+    protocol: TCP
+    # this should map to projects/gateway/pkg/defaults.ValidationWebhookBindPort
+    targetPort: 8443
+{{- end }}
 {{- if and $statsConfig.enabled $statsConfig.serviceMonitorEnabled }}
   - name: http-monitoring
     port: 9091

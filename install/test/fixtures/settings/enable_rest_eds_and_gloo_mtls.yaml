@@ -11,6 +11,7 @@ spec:
    fdsMode: WHITELIST
  gateway:
    readGatewaysFromAllNamespaces: false
+   enableGatewayController: true
    validation:
      alwaysAccept: true
      allowWarnings: true
@@ -22,6 +23,7 @@ spec:
    enableRestEds: false
    xdsBindAddr: "127.0.0.1:9999"
    restXdsBindAddr: "127.0.0.1:9998"
+   proxyDebugBindAddr: 0.0.0.0:9966
    disableKubernetesDestinations: false
    disableProxyGarbageCollection: false
    invalidConfigPolicy:

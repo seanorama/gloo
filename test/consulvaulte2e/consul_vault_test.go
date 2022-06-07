@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"google.golang.org/protobuf/types/known/wrapperspb"
+
 	gatewaydefaults "github.com/solo-io/gloo/projects/gateway/pkg/defaults"
 	"github.com/solo-io/solo-kit/pkg/api/v1/resources"
 	"github.com/solo-io/solo-kit/pkg/utils/prototime"
@@ -20,7 +22,6 @@ import (
 	consulapi "github.com/hashicorp/consul/api"
 	vaultapi "github.com/hashicorp/vault/api"
 	v1 "github.com/solo-io/gloo/projects/gateway/pkg/api/v1"
-	gatewaysetup "github.com/solo-io/gloo/projects/gateway/pkg/setup"
 	"github.com/solo-io/gloo/projects/gloo/pkg/bootstrap"
 	"github.com/solo-io/gloo/projects/gloo/pkg/setup"
 	"github.com/solo-io/gloo/test/helpers"
@@ -58,9 +59,11 @@ var _ = Describe("Consul + Vault Configuration Happy Path e2e", func() {
 		glooPort       int
 		validationPort int
 		restXdsPort    int
+		proxyDebugPort int
 	)
 
 	const writeNamespace = defaults.GlooSystem
+	const customSecretEngine = "custom-secret-engine"
 
 	BeforeEach(func() {
 		ctx, cancel = context.WithCancel(context.Background())
@@ -68,6 +71,7 @@ var _ = Describe("Consul + Vault Configuration Happy Path e2e", func() {
 		glooPort = int(services.AllocateGlooPort())
 		validationPort = int(services.AllocateGlooPort())
 		restXdsPort = int(services.AllocateGlooPort())
+		proxyDebugPort = int(services.AllocateGlooPort())
 
 		defaults.HttpPort = services.NextBindPort()
 		defaults.HttpsPort = services.NextBindPort()
@@ -83,23 +87,28 @@ var _ = Describe("Consul + Vault Configuration Happy Path e2e", func() {
 		Expect(err).NotTo(HaveOccurred())
 		err = vaultInstance.Run()
 		Expect(err).NotTo(HaveOccurred())
+		err = vaultInstance.EnableSecretEngine(customSecretEngine)
+		Expect(err).NotTo(HaveOccurred())
+
+		vaultSecretSource := getVaultSecretSource(vaultInstance, customSecretEngine)
 
 		// write settings telling Gloo to use consul/vault
 		settingsDir, err = ioutil.TempDir("", "")
 		Expect(err).NotTo(HaveOccurred())
 
-		settings, err := writeSettings(settingsDir, glooPort, validationPort, restXdsPort, writeNamespace)
+		settings, err := writeSettings(settingsDir, glooPort, validationPort, restXdsPort, proxyDebugPort, writeNamespace, vaultSecretSource)
 		Expect(err).NotTo(HaveOccurred())
 
 		consulClient, err = bootstrap.ConsulClientForSettings(ctx, settings)
 		Expect(err).NotTo(HaveOccurred())
 
-		vaultClient, err = bootstrap.VaultClientForSettings(settings.GetVaultSecretSource())
+		vaultClient, err = bootstrap.VaultClientForSettings(vaultSecretSource)
 		Expect(err).NotTo(HaveOccurred())
 
 		consulResources = &factory.ConsulResourceClientFactory{
-			RootKey: bootstrap.DefaultRootKey,
-			Consul:  consulClient,
+			RootKey:      bootstrap.DefaultRootKey,
+			Consul:       consulClient,
+			QueryOptions: &consulapi.QueryOptions{RequireConsistent: true},
 		}
 
 		gatewayClient, err := v1.NewGatewayClient(ctx, consulResources)
@@ -107,10 +116,7 @@ var _ = Describe("Consul + Vault Configuration Happy Path e2e", func() {
 		err = helpers.WriteDefaultGateways(writeNamespace, gatewayClient)
 		Expect(err).NotTo(HaveOccurred(), "Should be able to write the default gateways")
 
-		vaultResources = &factory.VaultSecretClientFactory{
-			Vault:   vaultClient,
-			RootKey: bootstrap.DefaultRootKey,
-		}
+		vaultResources = bootstrap.NewVaultSecretClientFactory(vaultClient, customSecretEngine, bootstrap.DefaultRootKey)
 
 		// set flag for gloo to use settings dir
 		err = flag.Set("dir", settingsDir)
@@ -120,12 +126,6 @@ var _ = Describe("Consul + Vault Configuration Happy Path e2e", func() {
 			defer GinkgoRecover()
 			// Start Gloo
 			err = setup.StartGlooInTest(ctx)
-			Expect(err).NotTo(HaveOccurred())
-		}()
-		go func() {
-			defer GinkgoRecover()
-			// Start Gateway
-			err = gatewaysetup.Main(ctx)
 			Expect(err).NotTo(HaveOccurred())
 		}()
 		go func() {
@@ -204,7 +204,7 @@ var _ = Describe("Consul + Vault Configuration Happy Path e2e", func() {
 		secretClient, err := gloov1.NewSecretClient(ctx, vaultResources)
 		Expect(err).NotTo(HaveOccurred())
 
-		_, err = secretClient.Write(secret, clients.WriteOpts{})
+		_, err = secretClient.Write(secret, clients.WriteOpts{Ctx: ctx})
 		Expect(err).NotTo(HaveOccurred())
 
 		vsClient, err := v1.NewVirtualServiceClient(ctx, consulResources)
@@ -325,16 +325,27 @@ func makeFunctionRoutingVirtualService(vsNamespace string, upstream *core.Resour
 	}
 }
 
-func writeSettings(settingsDir string, glooPort, validationPort, restXdsPort int, writeNamespace string) (*gloov1.Settings, error) {
+func getVaultSecretSource(vaultInstance *services.VaultInstance, secretEngine string) *gloov1.Settings_VaultSecrets {
+	return &gloov1.Settings_VaultSecrets{
+		Address:    vaultInstance.Address(),
+		Token:      vaultInstance.Token(),
+		PathPrefix: secretEngine,
+		RootKey:    bootstrap.DefaultRootKey,
+	}
+}
+
+func writeSettings(
+	settingsDir string,
+	glooPort, validationPort, restXdsPort, proxyDebugPort int,
+	writeNamespace string,
+	vaultSecretSource *gloov1.Settings_VaultSecrets,
+) (*gloov1.Settings, error) {
 	settings := &gloov1.Settings{
 		ConfigSource: &gloov1.Settings_ConsulKvSource{
 			ConsulKvSource: &gloov1.Settings_ConsulKv{},
 		},
 		SecretSource: &gloov1.Settings_VaultSecretSource{
-			VaultSecretSource: &gloov1.Settings_VaultSecrets{
-				Address: "http://127.0.0.1:8200",
-				Token:   "root",
-			},
+			VaultSecretSource: vaultSecretSource,
 		},
 		ArtifactSource: &gloov1.Settings_DirectoryArtifactSource{
 			DirectoryArtifactSource: &gloov1.Settings_Directory{
@@ -351,6 +362,10 @@ func writeSettings(settingsDir string, glooPort, validationPort, restXdsPort int
 			XdsBindAddr:        fmt.Sprintf("0.0.0.0:%v", glooPort),
 			ValidationBindAddr: fmt.Sprintf("0.0.0.0:%v", validationPort),
 			RestXdsBindAddr:    fmt.Sprintf("0.0.0.0:%v", restXdsPort),
+			ProxyDebugBindAddr: fmt.Sprintf("0.0.0.0:%v", proxyDebugPort),
+		},
+		Gateway: &gloov1.GatewayOptions{
+			PersistProxySpec: &wrapperspb.BoolValue{Value: true},
 		},
 		RefreshRate:        prototime.DurationToProto(time.Second * 1),
 		DiscoveryNamespace: writeNamespace,
