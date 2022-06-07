@@ -3,6 +3,7 @@ package kubernetes
 import (
 	"context"
 	"fmt"
+	"github.com/solo-io/gloo/pkg/utils/settingsutil"
 	"reflect"
 
 	"github.com/solo-io/gloo/projects/gloo/pkg/plugins/kubernetes/serviceconverter"
@@ -64,6 +65,7 @@ func (uc *KubeUpstreamConverter) CreateUpstream(ctx context.Context, svc *kubev1
 			Labels: labels,
 		},
 	}
+	applyGlobalAnnotations(ctx, us)
 
 	for _, sc := range uc.serviceConverters {
 		if err := sc.ConvertService(svc, port, us); err != nil {
@@ -72,6 +74,19 @@ func (uc *KubeUpstreamConverter) CreateUpstream(ctx context.Context, svc *kubev1
 	}
 
 	return us
+}
+
+// Global Annotations are a set of annotations defined in Gloo's Settings which are applied to all Upstreams
+func applyGlobalAnnotations(ctx context.Context, us *v1.Upstream) {
+	globalAnnotations := settingsutil.MaybeFromContext(ctx).GetUpstreamOptions().GetGlobalAnnotations()
+	upstreamAnnotations := us.GetMetadata().GetAnnotations()
+	if globalAnnotations == nil || upstreamAnnotations == nil {
+		return
+	}
+
+	for key, value := range globalAnnotations {
+		upstreamAnnotations[key] = value
+	}
 }
 
 func UpstreamName(serviceNamespace, serviceName string, servicePort int32) string {

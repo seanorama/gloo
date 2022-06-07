@@ -3,6 +3,7 @@ package kubernetes
 import (
 	"context"
 	"encoding/json"
+	"github.com/solo-io/gloo/pkg/utils/settingsutil"
 	"reflect"
 	"strings"
 
@@ -167,6 +168,39 @@ var _ = Describe("UdsConvert", func() {
 
 				return upstream, nil
 			}
+
+			Describe("Global Annotations from Gloo settings", func() {
+
+				const globalAnnotationKey = "globalAnnotation"
+				const globalAnnotationValue = "annotationValue"
+
+				globalAnnotations := map[string]string{globalAnnotationKey: globalAnnotationValue}
+				settings := &v1.Settings{
+					UpstreamOptions: &v1.UpstreamOptions{
+						GlobalAnnotations: globalAnnotations,
+					},
+				}
+				ctx := settingsutil.WithSettings(context.TODO(), settings)
+
+				It("Should include global annotations", func() {
+					svc := &kubev1.Service{
+						Spec: kubev1.ServiceSpec{},
+					}
+					svc.Annotations = make(map[string]string)
+					svc.Annotations[serviceconverter.GlooH2Annotation] = "true"
+					svc.Annotations[serviceconverter.GlooAnnotationPrefix] = `{"use_http2": false}`
+					svc.Name = "test"
+					svc.Namespace = "test-ns"
+
+					port := kubev1.ServicePort{
+						Port: 123,
+					}
+					up := uc.CreateUpstream(ctx, svc, port)
+					Expect(up.GetUseHttp2().GetValue()).To(BeFalse())
+					Expect(up.Metadata.GetAnnotations()).ToNot(BeEmpty())
+					Expect(up.Metadata.GetAnnotations()[globalAnnotationKey]).To(Equal(globalAnnotationValue))
+				})
+			})
 
 			Describe("deep merge", func() {
 				var (
