@@ -3,9 +3,10 @@ package kubernetes
 import (
 	"context"
 	"encoding/json"
-	"github.com/solo-io/gloo/pkg/utils/settingsutil"
 	"reflect"
 	"strings"
+
+	"github.com/solo-io/gloo/pkg/utils/settingsutil"
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 	v1 "github.com/solo-io/gloo/projects/gloo/pkg/api/v1"
