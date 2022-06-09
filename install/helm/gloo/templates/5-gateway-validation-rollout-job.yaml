@@ -15,7 +15,7 @@ metadata:
   annotations:
     "helm.sh/hook": post-install,post-upgrade
     "helm.sh/hook-weight": "5" # run this job after the role/rolebinding is created
-    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed
+    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed,before-hook-creation
 spec:
   template:
     metadata:
@@ -36,7 +36,9 @@ spec:
           command:
           - /bin/sh
           - -c
-          - "kubectl rollout status deployment -n {{ .Release.Namespace }} gloo"
+          - |
+            kubectl rollout status deployment -n {{ .Release.Namespace }} gloo
+            kubectl apply -f - <<EOF{{- include "gloo.customResources" . | indent 12}}EOF
       restartPolicy: Never
   ttlSecondsAfterFinished: 0
 ---
@@ -49,7 +51,7 @@ metadata:
   annotations:
     "helm.sh/hook": post-install,post-upgrade
     "helm.sh/hook-weight": "0" # must be created before rollout job
-    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed
+    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed,before-hook-creation
   name: gloo-validation-service-rollout
   namespace: {{ .Release.Namespace }}
 ---
@@ -64,11 +66,17 @@ metadata:
   annotations:
     "helm.sh/hook": post-install,post-upgrade
     "helm.sh/hook-weight": "0" # must be created before rollout job
-    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed
+    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed,before-hook-creation
 rules:
 - apiGroups: ["apps"]
   resources: ["deployments"]
   verbs: ["get", "list", "watch"]
+- apiGroups: ["gateway.solo.io"]
+  resources: ["*"]
+  verbs: ["get", "create", "update", "patch"]
+- apiGroups: ["gloo.solo.io"]
+  resources: ["*"]
+  verbs: ["get", "create", "update", "patch"]
 ---
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -81,7 +89,7 @@ metadata:
   annotations:
     "helm.sh/hook": post-install,post-upgrade
     "helm.sh/hook-weight": "0" # must be created before rollout job
-    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed
+    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed,before-hook-creation
 roleRef:
   kind: Role
   name: gloo-validation-service-rollout

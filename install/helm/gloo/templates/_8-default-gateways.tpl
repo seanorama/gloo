@@ -144,6 +144,7 @@ spec:
 {{- end }}{{/* with */}}
 {{- end }}{{/* define "defaultGateway.failoverGateway" */}}
 
+{{- define "gloo.customResources.defaultGateways" -}}
 {{- $gatewayProxy := .Values.gatewayProxies.gatewayProxy }}
 {{- range $name, $gatewaySpec := .Values.gatewayProxies }}
 {{- $spec := deepCopy $gatewaySpec | mergeOverwrite (deepCopy $gatewayProxy ) -}}
@@ -171,3 +172,4 @@ spec:
 {{- end }}{{/* if $spec.failover */}}
 {{- end }}{{/* if $spec.gatewaySettings and (not $spec.disabled) */}}
 {{- end }}{{/* range gateways */}}
+{{- end }}{{/* define "gloo.customResources.defaultGateways" */}}

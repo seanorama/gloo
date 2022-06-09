@@ -15,7 +15,7 @@ metadata:
   annotations:
     "helm.sh/hook": post-delete
     "helm.sh/hook-weight": "5" # run this job after the role/rolebinding is created
-    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed
+    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed,before-hook-creation
 spec:
   template:
     metadata:
@@ -52,7 +52,7 @@ metadata:
   annotations:
     "helm.sh/hook": post-delete
     "helm.sh/hook-weight": "0" # must be created before cleanup job
-    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed
+    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed,before-hook-creation
   name: gloo-resource-cleanup
   namespace: {{ .Release.Namespace }}
 ---
@@ -67,7 +67,7 @@ metadata:
   annotations:
     "helm.sh/hook": post-delete
     "helm.sh/hook-weight": "0" # must be created before cleanup job
-    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed
+    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed,before-hook-creation
 rules:
 - apiGroups: ["gateway.solo.io"]
   resources: ["*"]
@@ -87,7 +87,7 @@ metadata:
   annotations:
     "helm.sh/hook": post-delete
     "helm.sh/hook-weight": "0" # must be created before cleanup job
-    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed
+    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed,before-hook-creation
 roleRef:
   kind: Role
   name: gloo-resource-cleanup
@@ -107,7 +107,7 @@ metadata:
   annotations:
     "helm.sh/hook": post-delete
     "helm.sh/hook-weight": "0" # must be created before cleanup job
-    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed
+    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed,before-hook-creation
 rules:
 - apiGroups: ["admissionregistration.k8s.io"]
   resources: ["validatingwebhookconfigurations"]
@@ -123,7 +123,7 @@ metadata:
   annotations:
     "helm.sh/hook": post-delete
     "helm.sh/hook-weight": "0" # must be created before cleanup job
-    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed
+    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed,before-hook-creation
 roleRef:
   kind: ClusterRole
   name: gloo-resource-cleanup
