@@ -1,7 +1,10 @@
 package serviceconverter
 
 import (
+	"context"
 	"strings"
+
+	"github.com/solo-io/gloo/pkg/utils/settingsutil"
 
 	"github.com/golang/protobuf/ptypes/wrappers"
 	v1 "github.com/solo-io/gloo/projects/gloo/pkg/api/v1"
@@ -19,16 +22,23 @@ var http2PortNames = []string{
 // sets UseHttp2 on the upstream if the service has the relevant port name
 type UseHttp2Converter struct{}
 
-func (u *UseHttp2Converter) ConvertService(svc *kubev1.Service, port kubev1.ServicePort, us *v1.Upstream) error {
-	us.UseHttp2 = useHttp2(svc, port)
+func (u *UseHttp2Converter) ConvertService(ctx context.Context, svc *kubev1.Service, port kubev1.ServicePort, us *v1.Upstream) error {
+	us.UseHttp2 = useHttp2(ctx, svc, port)
 	return nil
 }
 
-func useHttp2(svc *kubev1.Service, port kubev1.ServicePort) *wrappers.BoolValue {
+func useHttp2(ctx context.Context, svc *kubev1.Service, port kubev1.ServicePort) *wrappers.BoolValue {
 	if svc.Annotations != nil {
 		if svc.Annotations[GlooH2Annotation] == "true" {
 			return &wrappers.BoolValue{Value: true}
 		} else if svc.Annotations[GlooH2Annotation] == "false" {
+			return &wrappers.BoolValue{Value: false}
+		}
+	}
+	if globalAnnotations := settingsutil.MaybeFromContext(ctx).GetUpstreamOptions().GetGlobalAnnotations(); globalAnnotations != nil {
+		if globalAnnotations[GlooH2Annotation] == "true" {
+			return &wrappers.BoolValue{Value: true}
+		} else if globalAnnotations[GlooH2Annotation] == "false" {
 			return &wrappers.BoolValue{Value: false}
 		}
 	}
